@@ -8,8 +8,14 @@
 /* The TV home: Apple-TV-like shelves in DriveCast's glass. Built for a 1920×1080 screen and a remote's arrows. */
 :root{--bg:#0a0e13;--card:#121a22;--ink:#f2efe6;--dim:#a9b3bf;--line:rgba(255,255,255,.08);--accent:#34d399;--gold:#f5c96a}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Noto Sans Arabic","Noto Naskh Arabic","Roboto",sans-serif;overflow:hidden}
-.screen{width:1920px;height:1080px;padding:40px 64px 44px;display:flex;flex-direction:column;gap:30px;position:relative}
+html{background:var(--bg)}
+html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","Noto Naskh Arabic","Roboto",sans-serif;overflow:hidden}
+.screen{width:1920px;height:1080px;padding:36px 64px 40px;display:flex;flex-direction:column;gap:22px;position:relative}
+/* the wallpaper: a light veil over the sky, solid ink under the shelves so text stays readable */
+.wall{position:fixed;inset:0;background-size:cover;background-position:center;z-index:-2;transition:background-image .6s}
+.veil{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,14,19,.15) 0%,rgba(10,14,19,.25) 36%,rgba(10,14,19,.86) 64%,#0a0e13 84%)}
+.glass{background:rgba(18,26,34,.62)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.line{font-size:20px;color:var(--gold);font-weight:700}
 .top{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .clock b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
 .clock span{font-size:20px;color:var(--dim)}
@@ -20,22 +26,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 .f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
 .f:focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 26px 50px rgba(0,0,0,.55);z-index:2}
 .tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
-.hero{display:flex;gap:40px;padding:38px 48px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
+.hero{display:flex;flex-direction:column;gap:16px;width:1080px;align-self:flex-start;padding:28px 40px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
 .hero .l{flex:1;display:flex;flex-direction:column;gap:8px}
 .hero small{font-size:24px;color:var(--accent);font-weight:600}
-.hero h1{margin:0;font-size:88px;line-height:1.05}
+.hero h1{margin:0;font-size:72px;line-height:1.05}
 .hero p{margin:0;font-size:24px;color:var(--dim)}
-.times{width:760px;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.times{width:100%;display:flex;flex-direction:column;justify-content:center;gap:14px}
 .times .row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center}
-.times .p{padding:14px 0;border-radius:22px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:4px}
+.times .p{padding:10px 0;border-radius:22px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:4px}
 .times .p span{font-size:21px;color:var(--dim)} .times .p b{font-size:30px;font-variant-numeric:tabular-nums}
 .times .p.past b{color:#7c8794} .times .p.next{background:var(--accent);color:#062016} .times .p.next span{color:#062016}
 .bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
-h2{margin:0 0 14px;font-size:30px}
+h2{margin:0 0 4px;font-size:28px}
 .shelf{display:flex;gap:28px;padding:14px 18px 18px;margin:0 -18px;overflow:hidden}
-.card{flex:none;width:380px;height:214px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
-.card b{font-size:38px} .card span{font-size:19px;opacity:.8}
-.app{flex:none;width:236px;height:140px;border-radius:26px;background:#141c25;border:1px solid var(--line);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--ink)}
+.card{flex:none;width:340px;height:190px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
+.card b{font-size:34px} .card span{font-size:19px;opacity:.8}
+.app{flex:none;width:236px;height:140px;border-radius:26px;background:rgba(20,28,37,.8);border:1px solid var(--line);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--ink)}
 .app img{width:100%;height:100%;object-fit:cover}.app img.icon{width:72px;height:72px;object-fit:contain}
 .app.icon{flex-direction:column;gap:8px;font-size:19px}
 .match{flex:none;width:420px;height:150px;border-radius:26px;background:#141c25;border:1px solid var(--line);padding:18px 22px;display:flex;flex-direction:column;gap:8px;color:var(--ink);font-family:inherit;text-align:right}
@@ -43,12 +49,12 @@ h2{margin:0 0 14px;font-size:30px}
 .match .t img{width:40px;height:40px;object-fit:contain}
 .match .t .s{font-variant-numeric:tabular-nums;font-size:32px}
 .match small{font-size:18px;color:var(--dim)} .match.live small{color:var(--accent)}
-.page{display:none;flex-direction:column;gap:22px;min-height:0}.page.on{display:flex}
-.sal{position:absolute;bottom:26px;left:64px;padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.06);font-size:20px;color:#cfd6de}
+.page{display:none;flex-direction:column;gap:14px;min-height:0}.page.on{display:flex}
+.sal{position:absolute;bottom:22px;left:64px;padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.06);font-size:20px;color:#cfd6de}
 .empty{font-size:22px;color:var(--dim);padding:20px 4px}
 .panel{position:absolute;inset:0;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
 .panel.on{display:flex}
-.panel .box{width:1100px;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
+.panel .box{width:1100px;max-height:1000px;overflow:auto;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
 .panel h3{margin:0;font-size:46px}
 .cities{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .btn{height:72px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--ink);font-weight:600;font-size:24px;font-family:inherit}
@@ -57,9 +63,10 @@ h2{margin:0 0 14px;font-size:30px}
 </style>
 </head>
 <body>
+<div class="wall" id="wall"></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
-    <div class="clock"><b id="time">--:--</b><span id="date"></span></div>
+    <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
     <nav class="tabs" id="tabs">
       <button class="tab f on" data-page="home">الرئيسية</button>
       <button class="tab f" data-page="quran">القرآن والأذكار</button>
@@ -71,7 +78,7 @@ h2{margin:0 0 14px;font-size:30px}
   </div>
 
   <section class="page on" id="p-home">
-    <div class="hero">
+    <div class="hero glass">
       <div class="l"><small>الصلاة القادمة</small><h1 id="next">…</h1><p id="nextSub"></p></div>
       <div class="times"><div class="row" id="times"></div><div class="bar"><i id="prog" style="width:0"></i></div></div>
     </div>
@@ -89,6 +96,8 @@ h2{margin:0 0 14px;font-size:30px}
     <h3>الإعدادات</h3>
     <div class="note">مدينة مواقيت الصلاة:</div>
     <div class="cities" id="cities"></div>
+    <div class="note">الخلفية:</div>
+    <div class="cities" id="walls"></div>
     <div class="note" id="phone"></div>
     <div class="note" id="overlay"></div>
     <div style="display:flex;gap:14px"><button class="btn f" data-act="system">إعدادات التلفزيون</button><button class="btn f" data-act="close">إغلاق</button></div>
@@ -123,7 +132,7 @@ function tick() {
   $('#time').textContent = d.toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
   $('#date').textContent = d.toLocaleDateString('ar', { weekday: 'long' }) + ' · ' + hijri + ' · ' + d.toLocaleDateString('ar', { day: 'numeric', month: 'long' });
-  prayersUi();
+  prayersUi(); dayLine(); applyWall();
 }
 let P = {};
 function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } prayersUi(); weather(); }
@@ -148,8 +157,32 @@ function weather() {
     .then(j => { const c = j.current?.temperature_2m; if (c != null) $('#wx').textContent = (P.city || '') + ' ' + AR(Math.round(c)) + '°'; }).catch(() => {});
 }
 
+
+// ---- wallpapers: Omar Al-Rawas mosque (Salalah), and noor-tv's three (MIT, majedphotos); «أوقات اليوم» follows the time of day
+const WALLS = [['rawas', 'جامع عمر الرواس'], ['awqat', 'أوقات اليوم'], ['zakhrafa', 'الزخرفة'], ['masjid-layl', 'مسجد الليل'], ['none', 'بلا خلفية']];
+function getWall() { try { return localStorage.wall || 'rawas'; } catch (e) { return 'rawas'; } }
+function applyWall() {
+  const w = getWall(), h = new Date().getHours();
+  const f = w === 'none' ? '' : w === 'awqat' ? (h >= 5 && h < 15 ? 'awqat-morning' : h >= 15 && h < 19 ? 'awqat-evening' : 'awqat-night') : w;
+  $('#wall').style.backgroundImage = f ? `url(wall/${f}.jpg)` : 'none';
+  $('#veil').style.display = f ? '' : 'none';
+}
+// the line over the clock (noor-tv): Friday, the white days (13-15 of the hijri month), in gold
+function dayLine() {
+  const d = new Date(); let hd = 0;
+  try { hd = +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(d).replace(/\D/g, ''); } catch (e) {}
+  const parts = [];
+  if (d.getDay() === 5) parts.push('جمعة مباركة 🌿');
+  if (hd >= 13 && hd <= 15) parts.push('الأيام البيض 🤍');
+  $('#line').textContent = parts.join(' · ');
+}
+
 // ---- shelves
-function cardsHtml() { return CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join(''); }
+function cardsHtml() {
+  const u = TV.phoneUrl();
+  return CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join('')
+    + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
+}
 let APPS = [];
 function appsHtml(n) {
   return APPS.slice(0, n).map(a => a.tv ? `<button class="app f" data-pkg="${a.pkg}" aria-label="${a.label}"><img src="${a.art}" alt=""></button>`
@@ -184,6 +217,7 @@ function show(page) {
 function settings(on) {
   $('#panel').classList.toggle('on', on);
   if (!on) return $('.tab.on')?.focus();
+  $('#walls').innerHTML = WALLS.map(w => `<button class="btn f ${getWall() === w[0] ? 'on' : ''}" data-wall="${w[0]}">${w[1]}</button>`).join('');
   $('#cities').innerHTML = CITIES.map(c => `<button class="btn f ${P.city === c[0] ? 'on' : ''}" data-city="${c[0]}">${c[0]}</button>`).join('');
   const u = TV.phoneUrl();
   $('#phone').textContent = u ? 'صفحة الجوال (اكتب أو ارسم على التلفزيون): ' + u : 'صفحة الجوال تعمل عندما يتصل التلفزيون بالواي فاي';
@@ -200,6 +234,8 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'settings') return settings(true);
   if (b.dataset.act === 'close') return settings(false);
   if (b.dataset.act === 'system') return TV.settings();
+  if (b.dataset.act === 'phone') return settings(true);
+  if (b.dataset.wall) { try { localStorage.wall = b.dataset.wall; } catch (x) {} applyWall(); return settings(true); }
   if (b.dataset.yt) return TV.youtube(b.dataset.yt);
   if (b.dataset.pkg) { let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (x) {} use[b.dataset.pkg] = (use[b.dataset.pkg] || 0) + 1; try { localStorage.use = JSON.stringify(use); } catch (x) {} return TV.open(b.dataset.pkg); }
   if (b.dataset.city) { const c = CITIES.find(x => x[0] === b.dataset.city); TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); setTimeout(() => { loadPrayers(); settings(true); }, 1500); }
