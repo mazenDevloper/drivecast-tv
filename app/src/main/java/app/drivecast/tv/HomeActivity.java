@@ -158,6 +158,45 @@ public class HomeActivity extends Activity {
             } catch (Exception e) { return ""; }
         }
 
+        /** a YouTube channel (the subscriptions from DriveCast) */
+        @JavascriptInterface
+        public void channel(String id) { link("https://www.youtube.com/channel/" + id); }
+
+        /** IPTV: the player with the whole list, up / down change channel */
+        @JavascriptInterface
+        public void watch(String urlsJson, String namesJson, int index) {
+            try {
+                JSONArray u = new JSONArray(urlsJson), n = new JSONArray(namesJson);
+                String[] us = new String[u.length()], ns = new String[u.length()];
+                for (int k = 0; k < us.length; k++) { us[k] = u.getString(k); ns[k] = n.optString(k, ""); }
+                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("i", index));
+            } catch (Exception ignored) { }
+        }
+
+        /** a text from the internet without the page's CORS limits (IPTV lists, DriveCast's data); answers cb(text|null) */
+        @JavascriptInterface
+        public void fetch(String url, String cb) {
+            new Thread(() -> {
+                String text = null;
+                try {
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    c.setConnectTimeout(12000); c.setReadTimeout(30000);
+                    c.setRequestProperty("User-Agent", "VLC/3.0.20");
+                    java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
+                    in.mark(2);
+                    int b0 = in.read(), b1 = in.read();
+                    in.reset();
+                    if (b0 == 0x1f && b1 == 0x8b) in = new java.util.zip.GZIPInputStream(in);
+                    java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[16384]; int r; long total = 0;
+                    while ((r = in.read(buf)) > 0 && total < 12_000_000) { o.write(buf, 0, r); total += r; }
+                    text = o.toString("UTF-8");
+                } catch (Exception ignored) { }
+                final String js = cb + "(" + (text == null ? "null" : JSONObject.quote(text)) + ")";
+                runOnUiThread(() -> web.evaluateJavascript(js, null));
+            }, "fetch").start();
+        }
+
         @JavascriptInterface
         public boolean canOverlay() { return Settings.canDrawOverlays(HomeActivity.this); }
 

@@ -43,6 +43,9 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".PlayerActivity" android:exported="false" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape" android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize" />
+
         <service android:name=".MessageServer" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Shows phone messages on the TV" />
         </service>

@@ -60,6 +60,25 @@ h2{margin:0 0 4px;font-size:28px}
 .btn{height:72px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--ink);font-weight:600;font-size:24px;font-family:inherit}
 .btn.on{background:var(--ink);color:var(--bg)}
 .note{font-size:22px;color:#cfe1d8;line-height:1.7}
+
+.scroll{overflow:auto;height:930px;padding:0 4px 120px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:14px;padding:10px 4px 18px}
+.grid.ch{grid-template-columns:repeat(6,1fr)}
+.sura{height:84px;border-radius:20px;border:1px solid var(--line);background:rgba(20,28,37,.8);color:var(--ink);font-family:inherit;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px}
+.sura small{font-size:16px;color:var(--dim);font-variant-numeric:tabular-nums}
+.sura.on{background:var(--accent);color:#062016}.sura.on small{color:#062016}
+.chip{flex:none;height:64px;padding:0 26px;border-radius:999px;border:1px solid var(--line);background:rgba(20,28,37,.8);color:var(--ink);font-family:inherit;font-size:22px;font-weight:600}
+.chip.on{background:var(--ink);color:var(--bg)}
+.vid{flex:none;width:340px;border-radius:22px;background:rgba(20,28,37,.8);border:1px solid var(--line);padding:0;overflow:hidden;color:var(--ink);font-family:inherit;text-align:right}
+.vid img{width:100%;height:190px;object-fit:cover;display:block}.vid span{display:block;padding:10px 14px;font-size:18px;line-height:1.35;height:52px;overflow:hidden}
+.chan{flex:none;width:200px;height:200px;border-radius:26px;background:rgba(20,28,37,.8);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink);font-family:inherit;font-size:18px;padding:12px;text-align:center}
+.chan img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222}
+.ichan{height:110px;border-radius:20px;background:rgba(20,28,37,.8);border:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 18px;color:var(--ink);font-family:inherit;font-size:20px;text-align:right;overflow:hidden}
+.ichan img{width:64px;height:64px;object-fit:contain;flex:none}
+.player{position:absolute;bottom:22px;left:420px;right:64px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
+.player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
+.player .btn{height:64px;padding:0 26px}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -69,7 +88,9 @@ h2{margin:0 0 4px;font-size:28px}
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
     <nav class="tabs" id="tabs">
       <button class="tab f on" data-page="home">الرئيسية</button>
-      <button class="tab f" data-page="quran">القرآن والأذكار</button>
+      <button class="tab f" data-page="quran">القرآن</button>
+      <button class="tab f" data-page="subs">الاشتراكات</button>
+      <button class="tab f" data-page="iptv">القنوات</button>
       <button class="tab f" data-page="matches">المباريات</button>
       <button class="tab f" data-page="apps">التطبيقات</button>
       <button class="tab f" data-act="settings">الإعدادات</button>
@@ -86,10 +107,25 @@ h2{margin:0 0 4px;font-size:28px}
     <div><h2>التطبيقات</h2><div class="shelf" id="s-apps"></div></div>
   </section>
 
-  <section class="page" id="p-quran"><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran2" style="flex-wrap:wrap"></div></section>
+  <section class="page" id="p-quran"><div class="scroll">
+    <h2>القارئ</h2><div class="shelf" id="s-reciters"></div>
+    <h2>السور</h2><div class="grid" id="s-surahs"></div>
+    <h2>الأذكار والرقية</h2><div class="shelf" id="s-quran2" style="flex-wrap:wrap"></div>
+  </div></section>
+  <section class="page" id="p-subs"><div class="scroll">
+    <h2>تابع المشاهدة</h2><div class="shelf" id="s-continue"></div>
+    <h2>قنواتك</h2><div class="shelf" id="s-channels" style="flex-wrap:wrap"></div>
+    <h2>القرّاء في DriveCast</h2><div class="shelf" id="s-ytreciters" style="flex-wrap:wrap"></div>
+    <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
+  </div></section>
+  <section class="page" id="p-iptv"><div class="scroll">
+    <h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div>
+    <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
+  </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-apps"><h2>كل التطبيقات</h2><div class="shelf" id="s-apps2" style="flex-wrap:wrap"></div></section>
 
+  <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button></div>
   <div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div>
 
   <div class="panel" id="panel"><div class="box">
@@ -105,11 +141,12 @@ h2{margin:0 0 4px;font-size:28px}
 </div>
 
 <script>
-const TV = window.TV || {   // in a browser (preview) the page still shows, with sample data
+const FAKE = {   // in a browser (preview) the page still shows, with sample data
   apps: () => '[]', open: () => false, youtube: id => open('https://youtu.be/' + id), link: u => open(u),
   prayers: () => JSON.stringify({ today: ['05:02', '12:08', '15:22', '17:42', '18:58'], tomorrow: null, city: 'مسقط', lat: 23.588, lon: 58.383, method: 8 }),
   setCity: () => {}, phoneUrl: () => 'http://192.168.1.20:8080', canOverlay: () => true, settings: () => {},
 };
+const TV = window.TV || FAKE;
 const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 const NAMES = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
 // noor-tv's videos (MIT, majedphotos): Surat Al-Kahf, Al-Baqara, morning and evening adhkar, ruqya
@@ -177,6 +214,85 @@ function dayLine() {
   $('#line').textContent = parts.join(' · ');
 }
 
+
+// ---- the Quran: a reciter, a surah, and it plays here (Quran.com / islamic.network audio, the same reciters as Madar)
+const SURAHS = ["الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس", "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه", "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم", "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر", "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق", "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة", "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج", "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس", "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد", "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات", "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر", "المسد", "الإخلاص", "الفلق", "الناس"];
+const RECITERS = [["q7","مشاري العفاسي","q","7"],["q6","محمود خليل الحصري","q","6"],["q9","محمد صديق المنشاوي","q","9"],["q2","عبد الباسط (مرتّل)","q","2"],["q1","عبد الباسط (مجوّد)","q","1"],["q3","عبد الرحمن السديس","q","3"],["q10","سعود الشريم","q","10"],["q97","ياسر الدوسري","q","97"],["q4","أبو بكر الشاطري","q","4"],["q5","هاني الرفاعي","q","5"],["q161","خليفة الطنيجي","q","161"],["q12","الحصري (المعلّم)","q","12"],["ar.mahermuaiqly","ماهر المعيقلي","a","ar.mahermuaiqly"],["ar.hudhaify","علي الحذيفي","a","ar.hudhaify"],["ar.muhammadayyoub","محمد أيوب","a","ar.muhammadayyoub"],["ar.muhammadjibreel","محمد جبريل","a","ar.muhammadjibreel"],["ar.ahmedajamy","أحمد العجمي","a","ar.ahmedajamy"],["ar.abdullahbasfar","عبد الله بصفر","a","ar.abdullahbasfar"],["ar.ibrahimakhbar","إبراهيم الأخضر","a","ar.ibrahimakhbar"],["ar.aymanswoaid","أيمن سويد","a","ar.aymanswoaid"],["ar.husarymujawwad","الحصري (مجوّد)","a","ar.husarymujawwad"],["ar.minshawimujawwad","المنشاوي (مجوّد)","a","ar.minshawimujawwad"]];
+function getRec() { try { return localStorage.rec || RECITERS[0][0]; } catch (e) { return RECITERS[0][0]; } }
+const audio = new Audio(); let playing = null;
+async function surahUrl(r, n) {
+  if (r[2] === 'a') return `https://cdn.islamic.network/quran/audio-surah/128/${r[3]}/${n}.mp3`;
+  const d = await (await fetch(`https://api.qurancdn.com/api/qdc/audio/reciters/${r[3]}/audio_files?chapter=${n}`)).json();
+  return d.audio_files?.[0]?.audio_url;
+}
+async function playSurah(n) {
+  const r = RECITERS.find(x => x[0] === getRec()) || RECITERS[0];
+  try { audio.src = await surahUrl(r, n); await audio.play(); } catch (e) { $('#plSub').textContent = 'تعذّر التشغيل — تحقق من الإنترنت'; }
+  playing = n; $('#player').hidden = false;
+  $('#plTitle').textContent = 'سورة ' + SURAHS[n - 1]; $('#plSub').textContent = r[1]; $('#plToggle').textContent = 'إيقاف';
+  quranUi();
+}
+audio.onended = () => { if (playing && playing < 114) playSurah(playing + 1); };
+function quranUi() {
+  const cur = getRec();
+  $('#s-reciters').innerHTML = RECITERS.map(r => `<button class="chip f ${r[0] === cur ? 'on' : ''}" data-rec="${r[0]}">${r[1]}</button>`).join('');
+  $('#s-surahs').innerHTML = SURAHS.map((n, i) => `<button class="sura f ${playing === i + 1 ? 'on' : ''}" data-sura="${i + 1}"><small>${AR(i + 1)}</small>${n}</button>`).join('');
+}
+
+// ---- subscriptions: the channels, reciters, saved and «continue» of DriveCast and Madar (their shared library)
+const BIN = id => `https://studio.c-p.workers.dev/bin/${id}`;
+const BINS = { channels: '68ef1b3dd0ea881f40a38bd1', reciters: '6909c1cd43b1c97be997b522', master: '69c782cbb7ec241ddcb0b99a', iptv: '69a87b8bd0ea881f40eeec0c' };
+let cbN = 0;
+function getText(url) {   // through the app (no CORS limits); in a browser preview, plain fetch
+  if (!window.TV || !TV.fetch || TV === FAKE) return fetch(url).then(r => r.text()).catch(() => null);
+  return new Promise(res => { const n = '__cb' + (++cbN); window[n] = t => { delete window[n]; res(t); }; TV.fetch(url, n); });
+}
+async function getJ(url) { const t = await getText(url); try { return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+const arr = (...xs) => xs.find(Array.isArray) || [];
+const esc = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const vidHtml = v => `<button class="vid f" data-yt="${esc(v.id)}"><img src="${esc(v.thumbnail || 'https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg')}" alt="" loading="lazy"><span>${esc(v.title)}</span></button>`;
+const chanHtml = c => `<button class="chan f" data-ch="${esc(c.channelid)}"><img src="${esc(c.image)}" alt="" loading="lazy"><span>${esc(c.name || c.channeltitle)}</span></button>`;
+let subsAt = 0;
+async function loadSubs() {
+  if (Date.now() - subsAt < 5 * 60000) return; subsAt = Date.now();
+  const [ch, rc, ms] = await Promise.all([getJ(BIN(BINS.channels)), getJ(BIN(BINS.reciters)), getJ(BIN(BINS.master))]);
+  const chans = arr(ch?.channels, ch).sort((a, b) => (b.starred - a.starred) || ((b.clickschannel || 0) - (a.clickschannel || 0)));
+  $('#s-channels').innerHTML = chans.map(chanHtml).join('') || '<div class="empty">لا قنوات</div>';
+  $('#s-ytreciters').innerHTML = arr(rc?.reciters).sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0)).map(chanHtml).join('') || '<div class="empty">لا قرّاء</div>';
+  $('#s-continue').innerHTML = arr(ms?.continueWatching).map(c => c.video).filter(v => v && v.id).slice(0, 20).map(vidHtml).join('') || '<div class="empty">لا شيء بعد</div>';
+  $('#s-saved').innerHTML = arr(ms?.savedVideos).filter(v => v && v.id).slice(0, 60).map(vidHtml).join('') || '<div class="empty">لا شيء محفوظ</div>';
+}
+
+// ---- IPTV: DriveCast's favourite channels + iptv-org's Arabic list, played full screen (up / down = next channel)
+let ILIST = [], IGROUP = 'all', IFAV = [];
+function parseM3u(t) {
+  const out = []; let meta = null;
+  for (const raw of String(t || '').split(/\r?\n/)) {
+    const l = raw.trim(); if (!l) continue;
+    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى' }; }
+    else if (!l.startsWith('#') && meta) { out.push({ ...meta, url: l }); meta = null; }
+  }
+  return out;
+}
+const ichHtml = (c, i, list) => `<button class="ichan f" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span>${esc(c.name)}</span></button>`;
+function iptvUi() {
+  const groups = ['all', ...new Set(ILIST.map(c => c.group))].slice(0, 30);
+  $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
+  const shown = ILIST.filter(c => IGROUP === 'all' || c.group === IGROUP).slice(0, 300);
+  window.__shown = shown;
+  $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || '<div class="empty">جارٍ التحميل…</div>';
+}
+let iptvAt = 0;
+async function loadIptv() {
+  if (Date.now() - iptvAt < 30 * 60000) return; iptvAt = Date.now();
+  const fav = await getJ(BIN(BINS.iptv));
+  IFAV = arr(fav?.iptv, fav?.channels, fav).filter(c => c && c.url).map(c => ({ name: c.name, logo: c.stream_icon, url: c.url, group: c.group || '' }));
+  $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
+  iptvUi();
+  ILIST = parseM3u(await getText('https://iptv-org.github.io/iptv/languages/ara.m3u'));
+  iptvUi();
+}
+
 // ---- shelves
 function cardsHtml() {
   const u = TV.phoneUrl();
@@ -213,6 +329,9 @@ function show(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + page));
   document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
   if (page === 'matches') loadMatches();
+  if (page === 'quran') quranUi();
+  if (page === 'subs') loadSubs();
+  if (page === 'iptv') loadIptv();
 }
 function settings(on) {
   $('#panel').classList.toggle('on', on);
@@ -237,6 +356,14 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'phone') return settings(true);
   if (b.dataset.wall) { try { localStorage.wall = b.dataset.wall; } catch (x) {} applyWall(); return settings(true); }
   if (b.dataset.yt) return TV.youtube(b.dataset.yt);
+  if (b.dataset.ch) return TV.channel ? TV.channel(b.dataset.ch) : TV.link('https://www.youtube.com/channel/' + b.dataset.ch);
+  if (b.dataset.rec) { try { localStorage.rec = b.dataset.rec; } catch (x) {} if (playing) playSurah(playing); return quranUi(); }
+  if (b.dataset.sura) return playSurah(+b.dataset.sura);
+  if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
+  if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
+  if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
+  if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
+  if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : window.__shown; if (TV.watch) TV.watch(JSON.stringify(list.map(c => c.url)), JSON.stringify(list.map(c => c.name)), +b.dataset.i); else TV.link(list[+b.dataset.i].url); return; }
   if (b.dataset.pkg) { let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (x) {} use[b.dataset.pkg] = (use[b.dataset.pkg] || 0) + 1; try { localStorage.use = JSON.stringify(use); } catch (x) {} return TV.open(b.dataset.pkg); }
   if (b.dataset.city) { const c = CITIES.find(x => x[0] === b.dataset.city); TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); setTimeout(() => { loadPrayers(); settings(true); }, 1500); }
 });
