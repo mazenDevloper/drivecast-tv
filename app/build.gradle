@@ -8,7 +8,7 @@ android {
         applicationId 'app.drivecast.tv'
         minSdk 26
         targetSdk 34
-        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
         versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
         // the default city until setup sets the real one (CityReceiver); method: Aladhan numbering (8 = Gulf)
         buildConfigField 'String', 'LAT', '"23.5880"'
