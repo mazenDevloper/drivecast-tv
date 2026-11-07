@@ -11,10 +11,10 @@ android {
         versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
         versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
         // the default city until setup sets the real one (CityReceiver); method: Aladhan numbering (8 = Gulf)
-        buildConfigField 'String', 'LAT', '"23.5880"'
-        buildConfigField 'String', 'LON', '"58.3829"'
+        buildConfigField 'String', 'LAT', '"17.0190"'
+        buildConfigField 'String', 'LON', '"54.0890"'
         buildConfigField 'int', 'METHOD', '8'
-        buildConfigField 'String', 'CITY', '"مسقط"'
+        buildConfigField 'String', 'CITY', '"صلالة"'
     }
 
     buildFeatures { buildConfig true }

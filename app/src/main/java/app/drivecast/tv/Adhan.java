@@ -83,6 +83,10 @@ public class Adhan extends BroadcastReceiver {
     static String[] times(Context c, Calendar day) {
         String date = String.format(Locale.US, "%02d-%02d-%d", day.get(Calendar.DAY_OF_MONTH),
                 day.get(Calendar.MONTH) + 1, day.get(Calendar.YEAR));
+        if (City.mine(c)) {   // Salalah: the user's own Ministry table, the same one DriveCast and Madar show
+            String[] mine = mine(c, String.format(Locale.US, "%d-%02d-%02d", day.get(Calendar.YEAR), day.get(Calendar.MONTH) + 1, day.get(Calendar.DAY_OF_MONTH)));
+            if (mine != null) return mine;
+        }
         SharedPreferences p = c.getSharedPreferences("adhan" + City.key(c), Context.MODE_PRIVATE);
         String cached = p.getString(date, null);
         if (cached != null) return cached.split(",");
@@ -96,6 +100,30 @@ public class Adhan extends BroadcastReceiver {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** DriveCast's prayer-times bin (Cloudflare copy), re-read every 3 hours so an edit there reaches the TV the same day. */
+    static final String MY_BIN = "https://studio.c-p.workers.dev/bin/69a00f6eae596e708f4b7291";
+    private static final String[] MY_KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
+    static synchronized String[] mine(Context c, String ymd) {
+        SharedPreferences p = c.getSharedPreferences("mytimes", Context.MODE_PRIVATE);
+        String body = p.getString("body", null);
+        if (body == null || System.currentTimeMillis() - p.getLong("at", 0) > 3 * 3600_000L) {
+            try { body = get(MY_BIN); new org.json.JSONArray(body); p.edit().putString("body", body).putLong("at", System.currentTimeMillis()).apply(); }
+            catch (Exception e) { body = p.getString("body", null); }
+        }
+        if (body == null) return null;
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(body);
+            for (int i = 0; i < a.length(); i++) {
+                JSONObject r = a.optJSONObject(i);
+                if (r == null || !ymd.equals(r.optString("date"))) continue;
+                String[] out = new String[MY_KEYS.length];
+                for (int k = 0; k < MY_KEYS.length; k++) out[k] = r.getString(MY_KEYS[k]).substring(0, 5);
+                return out;
+            }
+        } catch (Exception ignored) { }
+        return null;   // a day the table doesn't have yet: Aladhan fills it
     }
 
     @Override

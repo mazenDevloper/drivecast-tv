@@ -10,6 +10,8 @@ final class City {
     static double lon(Context c) { return Double.parseDouble(p(c).getString("lon", BuildConfig.LON)); }
     static int method(Context c) { return p(c).getInt("method", BuildConfig.METHOD); }
     static String name(Context c) { return p(c).getString("name", BuildConfig.CITY); }
+    /** Salalah uses the user's own table (DriveCast's prayer-times bin) instead of Aladhan */
+    static boolean mine(Context c) { return Math.abs(lat(c) - 17.02) < 0.2 && Math.abs(lon(c) - 54.09) < 0.2; }
     /** a key for caches that depend on the city */
     static String key(Context c) { return lat(c) + "," + lon(c) + "," + method(c); }
     static void set(Context c, double lat, double lon, int method, String name) {
