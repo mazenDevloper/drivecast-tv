@@ -14,7 +14,6 @@ public class CityReceiver extends BroadcastReceiver {
         try {
             City.set(c, Double.parseDouble(i.getStringExtra("lat")), Double.parseDouble(i.getStringExtra("lon")),
                     i.getIntExtra("method", BuildConfig.METHOD), i.getStringExtra("name"));
-            c.getSharedPreferences("adhan" + City.key(c), Context.MODE_PRIVATE);   // new city = new cache
             Adhan.schedule(c);
             setResultData("ok " + City.name(c));
         } catch (Exception e) {
