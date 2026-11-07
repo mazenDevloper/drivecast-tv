@@ -13,10 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - uses: android-actions/setup-android@v3
       - name: Build
         run: |
-          gradle -v >/dev/null 2>&1 || true
           chmod +x gradlew
           ./gradlew -q assembleRelease
           cp app/build/outputs/apk/release/app-release.apk DriveCastTV.apk
