@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>DriveCast TV</title>
+<style>
+/* The TV home: Apple-TV-like shelves in DriveCast's glass. Built for a 1920×1080 screen and a remote's arrows. */
+:root{--bg:#0a0e13;--card:#121a22;--ink:#f2efe6;--dim:#a9b3bf;--line:rgba(255,255,255,.08);--accent:#34d399;--gold:#f5c96a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Noto Sans Arabic","Noto Naskh Arabic","Roboto",sans-serif;overflow:hidden}
+.screen{width:1920px;height:1080px;padding:40px 64px 44px;display:flex;flex-direction:column;gap:30px;position:relative}
+.top{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.clock b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
+.clock span{font-size:20px;color:var(--dim)}
+.tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.tab{padding:12px 28px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
+.tab.on{background:var(--ink);color:var(--bg);font-weight:700}
+.wx{font-size:24px;color:#d6dbe1;min-width:180px;text-align:left}
+.f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
+.f:focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 26px 50px rgba(0,0,0,.55);z-index:2}
+.tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
+.hero{display:flex;gap:40px;padding:38px 48px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
+.hero .l{flex:1;display:flex;flex-direction:column;gap:8px}
+.hero small{font-size:24px;color:var(--accent);font-weight:600}
+.hero h1{margin:0;font-size:88px;line-height:1.05}
+.hero p{margin:0;font-size:24px;color:var(--dim)}
+.times{width:760px;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.times .row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center}
+.times .p{padding:14px 0;border-radius:22px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:4px}
+.times .p span{font-size:21px;color:var(--dim)} .times .p b{font-size:30px;font-variant-numeric:tabular-nums}
+.times .p.past b{color:#7c8794} .times .p.next{background:var(--accent);color:#062016} .times .p.next span{color:#062016}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
+h2{margin:0 0 14px;font-size:30px}
+.shelf{display:flex;gap:28px;padding:14px 18px 18px;margin:0 -18px;overflow:hidden}
+.card{flex:none;width:380px;height:214px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
+.card b{font-size:38px} .card span{font-size:19px;opacity:.8}
+.app{flex:none;width:236px;height:140px;border-radius:26px;background:#141c25;border:1px solid var(--line);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--ink)}
+.app img{width:100%;height:100%;object-fit:cover}.app img.icon{width:72px;height:72px;object-fit:contain}
+.app.icon{flex-direction:column;gap:8px;font-size:19px}
+.match{flex:none;width:420px;height:150px;border-radius:26px;background:#141c25;border:1px solid var(--line);padding:18px 22px;display:flex;flex-direction:column;gap:8px;color:var(--ink);font-family:inherit;text-align:right}
+.match .t{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:24px;font-weight:700}
+.match .t img{width:40px;height:40px;object-fit:contain}
+.match .t .s{font-variant-numeric:tabular-nums;font-size:32px}
+.match small{font-size:18px;color:var(--dim)} .match.live small{color:var(--accent)}
+.page{display:none;flex-direction:column;gap:22px;min-height:0}.page.on{display:flex}
+.sal{position:absolute;bottom:26px;left:64px;padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.06);font-size:20px;color:#cfd6de}
+.empty{font-size:22px;color:var(--dim);padding:20px 4px}
+.panel{position:absolute;inset:0;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
+.panel.on{display:flex}
+.panel .box{width:1100px;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
+.panel h3{margin:0;font-size:46px}
+.cities{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.btn{height:72px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--ink);font-weight:600;font-size:24px;font-family:inherit}
+.btn.on{background:var(--ink);color:var(--bg)}
+.note{font-size:22px;color:#cfe1d8;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="top">
+    <div class="clock"><b id="time">--:--</b><span id="date"></span></div>
+    <nav class="tabs" id="tabs">
+      <button class="tab f on" data-page="home">الرئيسية</button>
+      <button class="tab f" data-page="quran">القرآن والأذكار</button>
+      <button class="tab f" data-page="matches">المباريات</button>
+      <button class="tab f" data-page="apps">التطبيقات</button>
+      <button class="tab f" data-act="settings">الإعدادات</button>
+    </nav>
+    <div class="wx" id="wx"></div>
+  </div>
+
+  <section class="page on" id="p-home">
+    <div class="hero">
+      <div class="l"><small>الصلاة القادمة</small><h1 id="next">…</h1><p id="nextSub"></p></div>
+      <div class="times"><div class="row" id="times"></div><div class="bar"><i id="prog" style="width:0"></i></div></div>
+    </div>
+    <div><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran"></div></div>
+    <div><h2>التطبيقات</h2><div class="shelf" id="s-apps"></div></div>
+  </section>
+
+  <section class="page" id="p-quran"><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran2" style="flex-wrap:wrap"></div></section>
+  <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
+  <section class="page" id="p-apps"><h2>كل التطبيقات</h2><div class="shelf" id="s-apps2" style="flex-wrap:wrap"></div></section>
+
+  <div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div>
+
+  <div class="panel" id="panel"><div class="box">
+    <h3>الإعدادات</h3>
+    <div class="note">مدينة مواقيت الصلاة:</div>
+    <div class="cities" id="cities"></div>
+    <div class="note" id="phone"></div>
+    <div class="note" id="overlay"></div>
+    <div style="display:flex;gap:14px"><button class="btn f" data-act="system">إعدادات التلفزيون</button><button class="btn f" data-act="close">إغلاق</button></div>
+  </div></div>
+</div>
+
+<script>
+const TV = window.TV || {   // in a browser (preview) the page still shows, with sample data
+  apps: () => '[]', open: () => false, youtube: id => open('https://youtu.be/' + id), link: u => open(u),
+  prayers: () => JSON.stringify({ today: ['05:02', '12:08', '15:22', '17:42', '18:58'], tomorrow: null, city: 'مسقط', lat: 23.588, lon: 58.383, method: 8 }),
+  setCity: () => {}, phoneUrl: () => 'http://192.168.1.20:8080', canOverlay: () => true, settings: () => {},
+};
+const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+const NAMES = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
+// noor-tv's videos (MIT, majedphotos): Surat Al-Kahf, Al-Baqara, morning and evening adhkar, ruqya
+const CARDS = [
+  { t: 'سورة الكهف', s: 'يوم الجمعة', v: '9k1U0aGQRNA', c: '#1f5e4a' },
+  { t: 'سورة البقرة', s: 'تُقرأ في البيت', v: '9HW7j9lZZTU', c: '#2b3a55' },
+  { t: 'أذكار الصباح', s: 'بعد الفجر', v: 'fD4uDIoCn3M', c: '#6b4a1f' },
+  { t: 'أذكار المساء', s: 'بعد العصر', v: 'rQnNno3Do60', c: '#3a2c55' },
+  { t: 'الرقية الشرعية', s: 'للبيت وأهله', v: 'BVtCjMyJ320', c: '#1f4a5e' },
+];
+const CITIES = [
+  ['مسقط', 23.588, 58.383, 8], ['صلالة', 17.019, 54.089, 8], ['صحار', 24.347, 56.709, 8], ['نزوى', 22.933, 57.533, 8],
+  ['دبي', 25.204, 55.270, 16], ['أبوظبي', 24.453, 54.377, 16], ['الرياض', 24.713, 46.675, 4], ['مكة', 21.389, 39.858, 4],
+  ['الكويت', 29.376, 47.977, 9], ['الدوحة', 25.285, 51.531, 10], ['المنامة', 26.228, 50.586, 8], ['القاهرة', 30.044, 31.236, 5],
+];
+
+// ---- clock, hijri date, weather
+function tick() {
+  const d = new Date();
+  $('#time').textContent = d.toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
+  let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
+  $('#date').textContent = d.toLocaleDateString('ar', { weekday: 'long' }) + ' · ' + hijri + ' · ' + d.toLocaleDateString('ar', { day: 'numeric', month: 'long' });
+  prayersUi();
+}
+let P = {};
+function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } prayersUi(); weather(); }
+function at(hm, plusDay) { const [h, m] = hm.split(':').map(Number), d = new Date(); d.setHours(h, m, 0, 0); if (plusDay) d.setDate(d.getDate() + 1); return d; }
+function prayersUi() {
+  const t = P.today; if (!t) { $('#next').textContent = 'المواقيت عند أول اتصال'; return; }
+  const now = new Date(), list = t.map((x, i) => ({ i, d: at(x) }));
+  let n = list.find(x => x.d > now), prev = [...list].reverse().find(x => x.d <= now);
+  if (!n) n = { i: 0, d: at((P.tomorrow || t)[0], true) };
+  const mins = Math.round((n.d - now) / 60000);
+  $('#next').textContent = NAMES[n.i] + ' ' + (mins < 60 ? 'بعد ' + AR(mins) + ' دقيقة' : 'بعد ' + AR(Math.floor(mins / 60)) + ' س ' + AR(mins % 60) + ' د');
+  $('#nextSub').textContent = (P.city ? P.city + ' · ' : '') + 'الأذان يتنبّه إذا كان فيلم يعمل، ولا يقطعه';
+  $('#times').innerHTML = t.map((x, i) => `<div class="p ${i === n.i ? 'next' : list[i].d <= now ? 'past' : ''}"><span>${NAMES[i]}</span><b>${AR(fmt(x))}</b></div>`).join('');
+  const from = prev ? prev.d : at(t[0]), span = n.d - from;
+  $('#prog').style.width = Math.max(0, Math.min(100, (now - from) / span * 100)) + '%';
+}
+const fmt = hm => { let [h, m] = hm.split(':').map(Number); h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
+let wxAt = 0;
+function weather() {
+  if (!P.lat || Date.now() - wxAt < 30 * 60000) return; wxAt = Date.now();
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat}&longitude=${P.lon}&current=temperature_2m`).then(r => r.json())
+    .then(j => { const c = j.current?.temperature_2m; if (c != null) $('#wx').textContent = (P.city || '') + ' ' + AR(Math.round(c)) + '°'; }).catch(() => {});
+}
+
+// ---- shelves
+function cardsHtml() { return CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join(''); }
+let APPS = [];
+function appsHtml(n) {
+  return APPS.slice(0, n).map(a => a.tv ? `<button class="app f" data-pkg="${a.pkg}" aria-label="${a.label}"><img src="${a.art}" alt=""></button>`
+    : `<button class="app icon f" data-pkg="${a.pkg}"><img class="icon" src="${a.art}" alt=""><span>${a.label}</span></button>`).join('');
+}
+function loadApps() {
+  try { APPS = JSON.parse(TV.apps()); } catch (e) { APPS = []; }
+  // the most used first: a simple count kept on the TV
+  let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (e) {}
+  APPS.sort((a, b) => (use[b.pkg] || 0) - (use[a.pkg] || 0) || (b.tv - a.tv) || a.label.localeCompare(b.label, 'ar'));
+  $('#s-apps').innerHTML = appsHtml(6) || '<div class="empty">لا تطبيقات</div>';
+  $('#s-apps2').innerHTML = appsHtml(200);
+}
+async function loadMatches() {
+  try {
+    const d = await (await fetch('https://studio.c-p.workers.dev/now?lang=27')).json();
+    const ms = (d.matches || []).sort((a, b) => (b.favorite - a.favorite) || ((b.status === 'live') - (a.status === 'live')) || (a.timestamp - b.timestamp)).slice(0, 24);
+    $('#s-matches').innerHTML = ms.map(m => {
+      const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
+      const mid = live || fin ? `<span class="s">${AR(sc.home ?? 0)} - ${AR(sc.away ?? 0)}</span>` : `<span class="s" style="font-size:24px">${m.omanTime || ''}</span>`;
+      return `<button class="match f ${live ? 'live' : ''}"><div class="t"><span>${m.home?.name || ''}</span>${mid}<span>${m.away?.name || ''}</span></div><small>${live ? '● مباشر ' + (m.elapsed != null ? AR(m.elapsed) + '′' : '') : fin ? 'انتهت' : 'لم تبدأ'} · ${m.league?.name || ''}</small></button>`;
+    }).join('') || '<div class="empty">لا مباريات اليوم</div>';
+  } catch (e) { $('#s-matches').innerHTML = '<div class="empty">لا اتصال بالإنترنت</div>'; }
+}
+
+// ---- pages and settings
+function show(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + page));
+  document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
+  if (page === 'matches') loadMatches();
+}
+function settings(on) {
+  $('#panel').classList.toggle('on', on);
+  if (!on) return $('.tab.on')?.focus();
+  $('#cities').innerHTML = CITIES.map(c => `<button class="btn f ${P.city === c[0] ? 'on' : ''}" data-city="${c[0]}">${c[0]}</button>`).join('');
+  const u = TV.phoneUrl();
+  $('#phone').textContent = u ? 'صفحة الجوال (اكتب أو ارسم على التلفزيون): ' + u : 'صفحة الجوال تعمل عندما يتصل التلفزيون بالواي فاي';
+  $('#overlay').textContent = TV.canOverlay() ? '' : 'الأذان فوق الأفلام يحتاج إذن «العرض فوق التطبيقات» (يفعّله الإعداد مع كلود)';
+  $('#cities .f')?.focus();
+}
+window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
+window.onTvBack = () => { if ($('#panel').classList.contains('on')) settings(false); else show('home'); };
+window.onTvResume = () => { loadApps(); loadPrayers(); };
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.page) return show(b.dataset.page);
+  if (b.dataset.act === 'settings') return settings(true);
+  if (b.dataset.act === 'close') return settings(false);
+  if (b.dataset.act === 'system') return TV.settings();
+  if (b.dataset.yt) return TV.youtube(b.dataset.yt);
+  if (b.dataset.pkg) { let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (x) {} use[b.dataset.pkg] = (use[b.dataset.pkg] || 0) + 1; try { localStorage.use = JSON.stringify(use); } catch (x) {} return TV.open(b.dataset.pkg); }
+  if (b.dataset.city) { const c = CITIES.find(x => x[0] === b.dataset.city); TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); setTimeout(() => { loadPrayers(); settings(true); }, 1500); }
+});
+
+// ---- the remote: arrows move to the nearest visible button in that direction
+function visible(el) { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+function move(dir) {
+  const scope = $('#panel').classList.contains('on') ? $('#panel') : document;
+  const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
+  if (!all.includes(cur)) return all[0]?.focus();
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bd = Infinity;
+  for (const el of all) {
+    if (el === cur) continue;
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, dx = x - ax, dy = y - ay;
+    const ok = dir === 'left' ? dx < -5 : dir === 'right' ? dx > 5 : dir === 'up' ? dy < -5 : dy > 5;
+    if (!ok) continue;
+    const main = dir === 'left' || dir === 'right' ? Math.abs(dx) : Math.abs(dy), side = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
+    const d = main + side * 2.5;
+    if (d < bd) { bd = d; best = el; }
+  }
+  if (best) { best.focus(); best.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+}
+document.addEventListener('keydown', e => {
+  const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+  if (k) { e.preventDefault(); move(k); }
+  if (e.key === 'Escape' || e.key === 'GoBack') { e.preventDefault(); window.onTvBack(); }
+});
+
+$('#s-quran').innerHTML = cardsHtml(); $('#s-quran2').innerHTML = cardsHtml();
+loadPrayers(); loadApps(); tick(); loadMatches();
+setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(loadPrayers, 30 * 60000);
+document.querySelector('.tab').focus();
+// a TV that reports a smaller CSS width (720p / 1080p at a density): the 1920×1080 design scaled to fit
+function fit() { document.body.style.zoom = String(Math.min(innerWidth / 1920, innerHeight / 1080)); }
+fit(); addEventListener('resize', fit);
+</script>
+</body>
+</html>

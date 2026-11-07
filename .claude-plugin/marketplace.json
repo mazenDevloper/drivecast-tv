@@ -1,0 +1,7 @@
+{
+  "name": "drivecast-tv",
+  "owner": { "name": "mazenDevloper" },
+  "plugins": [
+    { "name": "drivecast-tv", "source": "./", "description": "شاشة رئيسية نظيفة للتلفزيون: أذان وأذكار ومباريات بلا إعلانات", "version": "1.0.0" }
+  ]
+}

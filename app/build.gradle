@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'app.drivecast.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.drivecast.tv'
+        minSdk 26
+        targetSdk 34
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int
+        versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+        // the default city until setup sets the real one (CityReceiver); method: Aladhan numbering (8 = Gulf)
+        buildConfigField 'String', 'LAT', '"23.5880"'
+        buildConfigField 'String', 'LON', '"58.3829"'
+        buildConfigField 'int', 'METHOD', '8'
+        buildConfigField 'String', 'CITY', '"مسقط"'
+    }
+
+    buildFeatures { buildConfig true }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // sideloaded over adb: signed with the debug key, like noor-tv
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

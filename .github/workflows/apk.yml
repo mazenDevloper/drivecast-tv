@@ -1,0 +1,27 @@
+name: APK
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '*.gradle', 'gradle/**', '.github/workflows/apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - name: Build
+        run: |
+          gradle -v >/dev/null 2>&1 || true
+          chmod +x gradlew
+          ./gradlew -q assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk DriveCastTV.apk
+      - name: Release «latest»
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh release delete latest -y --cleanup-tag 2>/dev/null || true
+          gh release create latest DriveCastTV.apk -t "DriveCast TV (build ${{ github.run_number }})" -n "الشاشة الرئيسية للتلفزيون. ثبّتها مع كلود: اقرأ skills/drivecast-tv/SKILL.md"

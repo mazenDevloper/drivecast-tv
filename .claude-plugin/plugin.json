@@ -1,0 +1,8 @@
+{
+  "name": "drivecast-tv",
+  "version": "1.0.0",
+  "description": "شاشة رئيسية نظيفة لتلفزيون أندرويد بأسلوب DriveCast: بلا إعلانات، أذان وأذكار، ومباريات اليوم. كلود يمشّيك خطوة خطوة.",
+  "author": { "name": "mazenDevloper" },
+  "homepage": "https://github.com/mazenDevloper/drivecast-tv",
+  "license": "MIT"
+}
