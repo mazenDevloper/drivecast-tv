@@ -70,6 +70,7 @@ public class HomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         front = this;
+        Access.keep(this);
         if (web != null) web.evaluateJavascript("window.onTvResume && onTvResume()", null);
     }
 
@@ -261,6 +262,41 @@ public class HomeActivity extends Activity {
                 final String js = cb + "(" + (text == null ? "null" : JSONObject.quote(text)) + ")";
                 runOnUiThread(() -> web.evaluateJavascript(js, null));
             }, "fetch").start();
+        }
+
+        /** every setting of the TV's settings panel, as JSON (the adhan, the player and the mouse read them too) */
+        @JavascriptInterface
+        public String prefs() { return new JSONObject(Access.set(HomeActivity.this).getAll()).toString(); }
+
+        @JavascriptInterface
+        public void setPref(String k, String v) {
+            if (k == null || !k.matches("[a-z0-9-]{1,20}")) return;
+            Access.set(HomeActivity.this).edit().putString(k, v == null ? "" : v).apply();
+            if ("force".equals(k)) Access.keep(HomeActivity.this);
+        }
+
+        /** the mouse: {on: switched on in Android, live: connected now, force: the adb grant is there} */
+        @JavascriptInterface
+        public String mouse() {
+            return "{\"on\":" + Access.enabled(HomeActivity.this) + ",\"live\":" + (MouseService.on != null) + ",\"force\":" + Access.canForce(HomeActivity.this) + "}";
+        }
+
+        @JavascriptInterface
+        public boolean mouseOn() {
+            boolean ok = Access.force(HomeActivity.this);
+            if (!ok) runOnUiThread(() -> Access.openSettings(HomeActivity.this));
+            return ok;
+        }
+
+        @JavascriptInterface
+        public void accessSettings() { runOnUiThread(() -> Access.openSettings(HomeActivity.this)); }
+
+        /** «جرّب» in the settings: the adhan or the iqamah now */
+        @JavascriptInterface
+        public void tryAdhan(String what) {
+            Context app = getApplicationContext();
+            if ("stop".equals(what)) { runOnUiThread(Adhan::stop); return; }
+            new Thread(() -> { Adhan.sounds(app); runOnUiThread(() -> Adhan.fire(app, 3, true, "iqama".equals(what))); }, "adhan-try").start();
         }
 
         /** OK held on a channel: the stream in another player on the TV (VLC, MX…), YouTube links in YouTube */

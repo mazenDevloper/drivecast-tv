@@ -63,6 +63,14 @@ curl -fsS -m 10 -X POST --data 'board' http://127.0.0.1:18080/key >/dev/null; sl
 key KEYCODE_DPAD_DOWN 1; shot 12-board-focus "a board card in focus"
 key KEYCODE_DPAD_CENTER 1.5; shot 13-board-edit "OK on a card: the edit panel"; key KEYCODE_BACK 1; key KEYCODE_BACK 1
 for n in 1 2 3 4 5 6 7; do a shell input keyevent KEYCODE_$n; sleep 1.2; done; shot 14-number-7 "number 7: the 7th tab"; key KEYCODE_1
+# settings (0): its sections; the channels page (5) with the big-five leagues on top
+key KEYCODE_0 2; shot 15-settings "0: the settings, first section"
+key KEYCODE_DPAD_DOWN 1; shot 15b-settings-home "settings: the home screen section"
+key KEYCODE_BACK 1; key KEYCODE_5 4; shot 16-channels "5: the channels, the big five leagues on top"; key KEYCODE_1
+# the mouse kept on: with the adb grant, switch it off and see the app turn it back on
+a shell pm grant $PKG android.permission.WRITE_SECURE_SETTINGS
+a shell settings put secure enabled_accessibility_services null; a shell settings put secure accessibility_enabled 0; sleep 8
+a shell settings get secure enabled_accessibility_services | grep -q "$PKG" && ok "mouse switched back on by the app" || bad "mouse stayed off"
 curl -fsS -m 10 -X POST --data-binary @"$OUT/board-before.json" http://127.0.0.1:18080/board >/dev/null
 key KEYCODE_HOME 2
 

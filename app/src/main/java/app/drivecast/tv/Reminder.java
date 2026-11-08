@@ -42,9 +42,11 @@ public class Reminder extends BroadcastReceiver {
             schedule(c);
             Adhan.schedule(c);
             MessageServer.start(c);
+            Access.keep(c);
             return;
         }
         if (!Settings.canDrawOverlays(c)) return;
+        if ("off".equals(Access.set(c).getString("salawat", "on"))) return;   // switched off in the settings
         Calendar now = Calendar.getInstance();
         boolean friday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY && now.get(Calendar.HOUR_OF_DAY) < 17;
         Context app = c.getApplicationContext();

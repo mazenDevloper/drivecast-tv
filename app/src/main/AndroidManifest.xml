@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- granted with appops over adb: tells the home screen from a film before playing the adhan -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- granted over adb (tools/force-mouse.sh): the app switches its own mouse back on when the TV turns it off -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <!-- the home screen lists every app that can be opened -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="QueryAllPackagesPermission" />
 

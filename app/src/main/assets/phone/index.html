@@ -69,7 +69,7 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 </section>
 
 <section id="m" class="hide">
-  <div class="warn hide" id="mwarn">الماوس يحتاج تفعيل مرة وحدة على التلفزيون: الإعدادات ← إمكانية الوصول ← <b>DriveCast TV ماوس</b> ← تشغيل. (أو خلّ كلود يفعّله وقت التثبيت)</div>
+  <div class="warn hide" id="mwarn">الماوس يحتاج تفعيل مرة وحدة على التلفزيون: الإعدادات ← إمكانية الوصول ← <b>DriveCast TV ماوس</b> ← تشغيل. (أو خلّ كلود يفعّله وقت التثبيت)<div class="row"><button id="mon">🖱️ شغّل الماوس</button></div></div>
   <div class="touch" id="tp">حرّك إصبعك = تحريك المؤشر<br>لمسة = ضغط · لمسة طويلة = ضغط مطوّل<br>إصبعين فوق/تحت = سكرول</div>
   <div class="row"><button data-m="b">↩︎ رجوع</button><button data-m="h">🏠 الرئيسية</button><button data-m="r">🗂 التطبيقات المفتوحة</button></div>
   <div class="row"><button data-m="s -6">⬆︎ سكرول</button><button data-m="s 6">⬇︎ سكرول</button></div>
@@ -158,7 +158,9 @@ setInterval(() => {
   if (Math.abs(sc) >= 8) { out.push('s ' + Math.round(-sc / 8)); sc = 0; }
   if (out.length) post('/mouse', out.join('\n'));
 }, 45);
+function mouseOn() { post('/mouse-on', '1'); $('s').textContent = 'جاري التشغيل… لو ما اشتغل تنفتح صفحة تسهيل الوصول على التلفزيون'; setTimeout(status, 2500); }
 function status() { fetch('/status').then(r => r.json()).then(j => $('mwarn').classList.toggle('hide', !!j.mouse)).catch(() => {}); }
+document.getElementById('mon').onclick = mouseOn;
 // ---- Quran: DriveCast's reciters (through the TV), a surah, played on the TV as sound
 let recLoaded = false;
 function reciters() {

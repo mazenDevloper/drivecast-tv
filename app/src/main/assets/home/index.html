@@ -82,6 +82,22 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .panel.on{display:flex}
 .panel .box{width:1100px;max-height:1000px;overflow:auto;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
 .panel h3{margin:0;font-size:46px}
+/* settings: the sections on the right, each section's rows on the left */
+.panel.sets .box{width:1680px;height:960px;max-height:none;overflow:hidden;padding:40px 48px}
+.scols{display:flex;gap:30px;min-height:0;flex:1}
+.snav{display:flex;flex-direction:column;gap:10px;width:330px;flex:none}
+.snav button{height:76px;border-radius:24px;border:1px solid transparent;background:none;color:var(--dim);font-size:27px;font-weight:600;font-family:inherit;text-align:right;padding:0 22px;display:flex;align-items:center;gap:14px}
+.snav button i{font-style:normal;font-size:30px}.snav button.on{background:rgba(255,255,255,.08);color:var(--ink);border-color:rgba(255,255,255,.12)}
+.sbody{flex:1;overflow:auto;padding:6px 10px 30px;display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 22px;border-radius:24px;background:rgba(255,255,255,.035)}
+.srow>span{font-size:26px;font-weight:600;flex:none;max-width:44%}.srow>em{font-style:normal;font-size:22px;color:#cfe1d8;text-align:left;direction:rtl}
+.srow.wide{flex-direction:column;align-items:stretch}.srow.wide .sopt{justify-content:flex-start}
+.sopt{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.sopt button{height:62px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:var(--ink);font-size:23px;font-weight:600;font-family:inherit;padding:0 24px}
+.sopt button.on{background:var(--accent);color:#06281b;border-color:var(--accent)}
+.sopt.num b{font-size:30px;min-width:110px;text-align:center}
+.cnt{font-style:normal;font-size:16px;color:var(--gold);margin-right:6px}
+body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!important}
 .panel.ytp .box{width:1680px;max-height:1000px;overflow:hidden;padding:40px 48px}
 .ytph{display:flex;align-items:center;justify-content:space-between;gap:20px}.ytph h3{font-size:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ytpb{overflow:auto;max-height:820px;padding:8px}
@@ -223,15 +239,15 @@ body.ambient .phrase.on{display:block}
 
   <section class="page on" id="p-home"><div class="scroll" id="homeScroll">
     <div class="heroRow">
-      <div class="hero glass">
+      <div class="hero glass" id="heroP">
         <div class="l"><small id="heroSmall">الصلاة القادمة</small><h1 id="next">…</h1><p id="nextSub"></p></div>
         <div class="times"><div class="row" id="times"></div><div class="bar"><i id="prog" style="width:0"></i></div></div>
       </div>
       <button class="nextm glass f" id="nextm" data-act="nextm"><small>أقرب مباراة</small><div class="empty">جارٍ التحميل…</div></button>
     </div>
-    <div><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran"></div></div>
-    <div><h2>قنوات مباشرة</h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
-    <div><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div></div>
+    <div id="shQuran"><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran"></div></div>
+    <div id="shLive"><h2>قنوات مباشرة</h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
+    <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div></div>
   </div></section>
 
   <section class="page" id="p-quran"><div class="scroll">
@@ -246,6 +262,7 @@ body.ambient .phrase.on{display:block}
     <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
+    <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div></div>
     <h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div>
     <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
@@ -277,15 +294,9 @@ body.ambient .phrase.on{display:block}
     <div class="ytph"><h3 id="ytpT"></h3><button class="btn f" data-act="ytclose">إغلاق</button></div>
     <div class="ytpb" id="ytpBody"></div>
   </div></div>
-  <div class="panel" id="panel"><div class="box">
-    <h3>الإعدادات</h3>
-    <div class="note">مدينة مواقيت الصلاة:</div>
-    <div class="cities" id="cities"></div>
-    <div class="note">الخلفية:</div>
-    <div class="cities" id="walls"></div>
-    <div class="note" id="phone"></div>
-    <div class="note" id="overlay"></div>
-    <div style="display:flex;gap:14px"><button class="btn f" data-act="system">إعدادات التلفزيون</button><button class="btn f" data-act="close">إغلاق</button></div>
+  <div class="panel sets" id="panel"><div class="box">
+    <div class="ytph"><h3>الإعدادات</h3><button class="btn f" data-act="close">إغلاق</button></div>
+    <div class="scols"><div class="snav" id="snav"></div><div class="sbody" id="sbody"></div></div>
   </div></div>
 </div>
 
@@ -297,6 +308,12 @@ const FAKE = {   // in a browser (preview) the page still shows, with sample dat
   setCity: () => {}, phoneUrl: () => 'http://192.168.1.20:8080', canOverlay: () => true, settings: () => {},
 };
 const TV = window.TV || FAKE;
+// ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
+let SET = {};
+function loadSet() { try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
+const S = (k, d) => SET[k] ?? d;
+function setPref(k, v) { SET[k] = v; try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
+loadSet();
 // one clock for the whole page (a test can move it: window.__simTime)
 const NOW = () => window.__simTime ? window.__simTime() : new Date();
 const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
@@ -318,7 +335,7 @@ const CITIES = [
 // ---- clock, hijri date, weather
 function tick() {
   const d = NOW();
-  $('#time').textContent = d.toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
+  $('#time').textContent = d.toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit', hour12: S('clock', '12') !== '24' });
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
   $('#date').textContent = d.toLocaleDateString('ar', { weekday: 'long' }) + ' · ' + hijri + ' · ' + d.toLocaleDateString('ar', { day: 'numeric', month: 'long' });
   prayersUi(); dayLine(); applyWall();
@@ -350,7 +367,7 @@ function prayersUi() {
   const t = P.today; if (!t) { $('#next').textContent = 'المواقيت عند أول اتصال'; return; }
   const now = NOW(), list = t.map((x, i) => {
     const d = at(x); d.setMinutes(d.getMinutes() + (+pset(i).offsetMinutes || 0));
-    const iq = pset(i).iqamahDuration ?? IQ[i];
+    const iq = S('iqsrc', 'dc') === 'custom' ? +S('iq' + i, IQ[i]) : (pset(i).iqamahDuration ?? IQ[i]);
     return { i, d, q: new Date(d.getTime() + iq * 60000) };
   });
   const iqNow = list.find(x => x.d <= now && x.q > now);
@@ -376,7 +393,7 @@ function prayersUi() {
 // Arabic counting: دقيقة / دقيقتان / ٣–١٠ دقائق / ١١+ دقيقة
 const minutesAr = m => m === 1 ? 'دقيقة' : m === 2 ? 'دقيقتان' : m <= 10 ? AR(m) + ' دقائق' : AR(m) + ' دقيقة';
 const fmtD = d => fmt(d.getHours() + ':' + d.getMinutes());
-const fmt = hm => { let [h, m] = hm.split(':').map(Number); h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
+const fmt = hm => { let [h, m] = hm.split(':').map(Number); if (S('clock', '12') !== '24') h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
 let wxAt = 0;
 function weather() {
   if (!P.lat || Date.now() - wxAt < 30 * 60000) return; wxAt = Date.now();
@@ -387,7 +404,7 @@ function weather() {
 
 // ---- wallpapers: Omar Al-Rawas mosque (Salalah), and noor-tv's three (MIT, majedphotos); «أوقات اليوم» follows the time of day
 const WALLS = [['rawas', 'جامع عمر الرواس (يتغيّر مع الشمس)'], ['awqat', 'أوقات اليوم'], ['zakhrafa', 'الزخرفة'], ['masjid-layl', 'مسجد الليل'], ['none', 'بلا خلفية']];
-function getWall() { try { return localStorage.wall || 'rawas'; } catch (e) { return 'rawas'; } }
+function getWall() { let w = 'rawas'; try { w = localStorage.wall || w; } catch (e) {} return S('wall', w); }
 function applyWall() {
   const w = getWall(), h = NOW().getHours();
   const f = w === 'none' ? '' : w === 'awqat' ? (h >= 5 && h < 15 ? 'awqat-morning' : h >= 15 && h < 19 ? 'awqat-evening' : 'awqat-night') : w;
@@ -656,9 +673,33 @@ function liveUi() {
   LIVE = [...picks, ...IFAV.filter(c => !picks.includes(c))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
+// ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
+const BIG5 = [
+  ['الإنجليزي', /الإنجليزي/, /bein ?sports?/i, 'beIN SPORTS'],
+  ['الإسباني', /الإسباني|لاليغا/, /bein ?sports?/i, 'beIN SPORTS'],
+  ['الإيطالي', /الإيطالي/, /starz/i, 'STARZPLAY Sport'],
+  ['الألماني', /الألماني|بوندسليغا/, /mbc action|shahid|شاهد/i, 'MBC Action · شاهد'],
+  ['الفرنسي', /الفرنسي/, /bein ?sports?/i, 'beIN SPORTS'],
+];
+let B5 = -1, B5LIST = [], TODAYM = [];
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : window.__shown;
+function big5Ui() {
+  const cnt = i => TODAYM.filter(m => BIG5[i][1].test(m.league?.name || '') && !/كأس/.test(m.league?.name || '') && m.status !== 'finished').length;
+  $('#s-b5l').innerHTML = `<button class="chip f ${B5 < 0 ? 'on' : ''}" data-b5="-1">الكل</button>` + BIG5.map((b, i) => { const n = cnt(i);
+    return `<button class="chip f ${B5 === i ? 'on' : ''}" data-b5="${i}">${b[0]}${n ? `<i class="cnt">${AR(n)} اليوم</i>` : ''}</button>`; }).join('');
+  const rules = B5 < 0 ? BIG5 : [BIG5[B5]], seen = new Set();
+  B5LIST = [];
+  for (const c of [...IFAV, ...ILIST]) if (rules.some(r => r[2].test(c.name)) && !/geo-blocked/i.test(c.name) && !seen.has(c.url)) { seen.add(c.url); B5LIST.push(c); }
+  const apps = APPS.filter(a => rules.some(r => r[2].test(a.label) || r[2].test(a.pkg) || a.label.includes(r[3].split(' ')[0])));
+  const who = [...new Set(rules.map(r => r[3]))].join(' · ');
+  $('#s-b5').innerHTML = B5LIST.slice(0, 40).map((c, i) => ichHtml(c, i, 'b5')).join('')
+    + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
+    || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم المجانية ولا تطبيقها على التلفزيون</div>`;
+}
 async function loadIptv() {
+  big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
-  iptvUi(); await loadLists();
+  iptvUi(); await loadLists(); big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
 }
 
@@ -726,6 +767,7 @@ const ytId = u => (String(u).match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/)([\
 function playChannel(list, i) {
   const c = list[i]; if (!c) return;
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
+  if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
   if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
@@ -763,6 +805,7 @@ function loadApps() {
 async function loadMatches() {
   try {
     const d = await (await fetch('https://studio.c-p.workers.dev/now?lang=27')).json();
+    TODAYM = d.matches || []; if ($('#p-iptv').classList.contains('on')) big5Ui();
     const ms = (d.matches || []).sort((a, b) => (b.favorite - a.favorite) || ((b.status === 'live') - (a.status === 'live')) || (a.timestamp - b.timestamp)).slice(0, 24);
     $('#s-matches').innerHTML = ms.map(m => {
       const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
@@ -900,15 +943,105 @@ function show(page) {
   if (page === 'subs') loadSubs();
   if (page === 'iptv') loadIptv();
 }
+// ⚙️ settings: every part of the TV in one place — sections on the right, their choices on the left (0 on the remote)
+const ON = [['on', 'نعم'], ['off', 'لا']], SHOW = [['on', 'يظهر'], ['off', 'مخفي']];
+let SEC = 0;
+function mouseState() { try { return JSON.parse(TV.mouse ? TV.mouse() : '{}') || {}; } catch (e) { return {}; } }
+function sections() {
+  const m = mouseState(), u = TV.phoneUrl();
+  return [
+    ['🕌', 'الصلاة والأذان', [
+      { k: 'city', l: 'مدينة المواقيت', o: CITIES.map(c => [c[0], c[0]]), v: P.city },
+      { k: 'adhan', l: 'الأذان', o: [['sound', 'بالصوت'], ['banner', 'شريط فقط'], ['off', 'لا شيء']], d: 'sound' },
+      { k: 'fajr', l: 'أذان الفجر', o: [['on', 'بالصوت'], ['banner', 'شريط فقط']], d: 'on' },
+      { k: 'iqama', l: 'الإقامة', o: [['sound', 'بالصوت'], ['banner', 'شريط فقط'], ['off', 'لا شيء']], d: 'sound' },
+      { k: 'asound', l: 'صوت الأذان', o: [['haram', 'الحرم المكي'], ['mine', 'ملفي في Music']], d: 'haram' },
+      { k: 'vol', l: 'مستوى الصوت', o: [['40', 'منخفض'], ['70', 'متوسط'], ['100', 'عالي']], d: '100' },
+      { a: 'جرّب الصوت', o: [['adhan', '🕌 الأذان'], ['iqama', '🔔 الإقامة'], ['stop', '⏹ وقّف']] },
+      { k: 'iqsrc', l: 'دقائق الإقامة', o: [['dc', 'من DriveCast'], ['custom', 'أحددها هنا']], d: 'dc' },
+      ...NAMES.map((n, i) => ({ k: 'iq' + i, l: 'إقامة ' + n, n: [0, 60], d: String(IQ[i]), when: () => S('iqsrc', 'dc') === 'custom' })),
+      { k: 'salawat', l: 'تذكير «صلّ على النبي ﷺ» كل ٤٥ دقيقة', o: ON, d: 'on' },
+    ]],
+    ['🏠', 'الشاشة الرئيسية', [
+      { k: 'h-prayer', l: 'كرت الصلاة', o: SHOW, d: 'on' }, { k: 'h-match', l: 'كرت أقرب مباراة', o: SHOW, d: 'on' },
+      { k: 'h-quran', l: 'رف القرآن والأذكار', o: SHOW, d: 'on' }, { k: 'h-live', l: 'رف القنوات المباشرة', o: SHOW, d: 'on' },
+      { k: 'h-apps', l: 'التطبيقات', o: SHOW, d: 'on' },
+      { k: 'clock', l: 'الساعة', o: [['12', '١٢ ساعة'], ['24', '٢٤ ساعة']], d: '12' },
+      { k: 'zoom', l: 'تقريب صورة المسجد مع النزول', o: ON, d: 'on' },
+      { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
+    ]],
+    ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
+    ['📺', 'القنوات والمشغّل', [
+      { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
+      { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
+      { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['ext', 'مشغّل آخر'], ['off', 'لا شيء']], d: 'ext' },
+      { k: 'big5', l: 'قنوات الدوريات الخمس أعلى صفحة القنوات', o: SHOW, d: 'on' },
+      { a: '', o: [['reload', '↻ حدّث قوائم القنوات']] },
+    ]],
+    ['📌', 'لوحتي', [{ k: 'boardbg', l: 'خلفية اللوحة', o: [['white', 'أبيض'], ['paper', 'ورق'], ['blush', 'وردي'], ['mint', 'نعناعي'], ['sky', 'سماوي'], ['lavender', 'لافندر'], ['dusk', 'غروب']], v: BOARD.bg || 'white' }]],
+    ['🖱️', 'الماوس والريموت', [
+      { i: 'الحالة', t: m.on ? (m.live ? '✅ الماوس مفعّل ويشتغل' : '✅ مفعّل · ينتظر') : '⚠️ الماوس مطفّي' },
+      { i: 'الرجوع التلقائي', t: m.force ? '✅ مسموح — لو التلفزيون طفّاه يرجّعه لحاله' : '⚠️ يحتاج أمر الإعداد من الكمبيوتر مرة وحدة' },
+      { k: 'force', l: 'إبقاء الماوس مفعّل دائماً', o: ON, d: 'on' },
+      { a: '', o: [['mouse-on', '🖱️ شغّل الماوس الحين'], ['access', 'إعدادات تسهيل الوصول']] },
+    ]],
+    ['ℹ️', 'الجهاز', [
+      { i: 'صفحة الجوال', t: u ? u.replace('http://', '') : 'تشتغل لما يتصل التلفزيون بالواي فاي' },
+      { i: 'الأذان فوق الأفلام', t: TV.canOverlay() ? '✅ مسموح' : '⚠️ يحتاج إذن «العرض فوق التطبيقات»' },
+      { a: '', o: [['system', 'إعدادات التلفزيون'], ['reload-all', '↻ أعد تشغيل الواجهة']] },
+    ]],
+  ];
+}
+function rowHtml(r) {
+  if (r.i) return `<div class="srow"><span>${r.i}</span><em>${esc(r.t)}</em></div>`;
+  if (r.a !== undefined) return `<div class="srow"><span>${r.a}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f" data-sact="${v}">${l}</button>`).join('')}</div></div>`;
+  const cur = String(r.v ?? S(r.k, r.d));
+  if (r.n) { const b = (d, t) => `<button class="f" data-set="${r.k}" data-v="${Math.max(r.n[0], Math.min(r.n[1], +cur + d))}">${t}</button>`;
+    return `<div class="srow"><span>${r.l}</span><div class="sopt num">${b(-5, '−٥')}${b(-1, '−١')}<b>${AR(cur)} د</b>${b(1, '+١')}${b(5, '+٥')}</div></div>`; }
+  return `<div class="srow ${r.o.length > 4 ? 'wide' : ''}"><span>${r.l}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f ${cur === String(v) ? 'on' : ''}" data-set="${r.k}" data-v="${esc(v)}">${l}</button>`).join('')}</div></div>`;
+}
+function setsBody() { $('#sbody').innerHTML = sections()[SEC][2].filter(r => !r.when || r.when()).map(rowHtml).join(''); }
+function setsUi() {
+  $('#snav').innerHTML = sections().map((x, i) => `<button class="f ${i === SEC ? 'on' : ''}" data-sec="${i}"><i>${x[0]}</i>${x[1]}</button>`).join('');
+  setsBody(); $(`#snav [data-sec="${SEC}"]`)?.focus();
+}
 function settings(on) {
   $('#panel').classList.toggle('on', on);
   if (!on) return $('.tab.on')?.focus();
-  $('#walls').innerHTML = WALLS.map(w => `<button class="btn f ${getWall() === w[0] ? 'on' : ''}" data-wall="${w[0]}">${w[1]}</button>`).join('');
-  $('#cities').innerHTML = CITIES.map(c => `<button class="btn f ${P.city === c[0] ? 'on' : ''}" data-city="${c[0]}">${c[0]}</button>`).join('');
-  const u = TV.phoneUrl();
-  $('#phone').textContent = u ? 'صفحة الجوال (اكتب أو ارسم على التلفزيون): ' + u : 'صفحة الجوال تعمل عندما يتصل التلفزيون بالواي فاي';
-  $('#overlay').textContent = TV.canOverlay() ? '' : 'الأذان فوق الأفلام يحتاج إذن «العرض فوق التطبيقات» (يفعّله الإعداد مع كلود)';
-  $('#cities .f')?.focus();
+  setsUi();
+}
+// the section follows the focus on the right; a choice keeps the focus where it was
+document.addEventListener('focusin', e => {
+  const b = e.target.closest && e.target.closest('#snav [data-sec]'); if (!b || +b.dataset.sec === SEC) return;
+  SEC = +b.dataset.sec; document.querySelectorAll('#snav button').forEach(x => x.classList.toggle('on', x === b)); setsBody();
+});
+function setClick(b) {
+  const all = [...document.querySelectorAll('#sbody .f')], at = all.indexOf(b);
+  applySet(b.dataset.set, b.dataset.v); setsBody();
+  (document.querySelectorAll('#sbody .f')[at] || $('#sbody .f'))?.focus();
+}
+function applySet(k, v) {
+  if (k === 'city') { const c = CITIES.find(x => x[0] === v); if (!c) return; TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); P.city = v; setTimeout(() => { loadPrayers(); if ($('#panel').classList.contains('on') && SEC === 0) setsBody(); }, 1500); return; }
+  if (k === 'boardbg') { loadBoard(); BOARD.bg = v; BOARD.v2 = 1; saveBoard(); boardUi(); return; }
+  setPref(k, v);
+  if (k === 'wall') { try { localStorage.wall = v; } catch (e) {} applyWall(); }
+  if (k === 'clock') { tick(); nextUi(); }
+  if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
+  if (/^iq/.test(k)) prayersUi();
+}
+function setAct(a) {
+  if (/^(adhan|iqama|stop)$/.test(a)) return TV.tryAdhan && TV.tryAdhan(a);
+  if (a === 'reload') { listsAt = 0; return loadLists(); }
+  if (a === 'mouse-on') { TV.mouseOn && TV.mouseOn(); return setTimeout(() => { if ($('#panel').classList.contains('on')) setsBody(); }, 1500); }
+  if (a === 'access') return TV.accessSettings && TV.accessSettings();
+  if (a === 'system') return TV.settings();
+  if (a === 'reload-all') return location.reload();
+}
+function homeLayout() {
+  const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
+  vis('#heroP', 'h-prayer'); vis('#nextm', 'h-match'); vis('#shQuran', 'h-quran'); vis('#shLive', 'h-live'); vis('#shApps', 'h-apps'); vis('#b5wrap', 'big5');
+  document.body.classList.toggle('nozoom', S('zoom', 'on') === 'off');
+  document.body.classList.toggle('nophrase', S('phrase-on', 'on') === 'off');
 }
 // the remote's numbers: 1 = the first tab … (0 = settings)
 document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.dataset.act === 'settings' ? '0' : String(i + 1));
@@ -961,7 +1094,11 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
-  if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown; return playChannel(list, +b.dataset.i); }
+  if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
+  if (b.dataset.b5) { B5 = +b.dataset.b5; big5Ui(); return $(`[data-b5="${B5}"]`)?.focus(); }
+  if (b.dataset.sec) { SEC = +b.dataset.sec; return setsUi(); }
+  if (b.dataset.set) return setClick(b);
+  if (b.dataset.sact) return setAct(b.dataset.sact);
   if (b.dataset.bid) return MOVING ? moveEnd() : editCard(b.dataset.bid);
   if (b.dataset.be) return editAct(b.dataset.be);
   if (b.dataset.bec) { EDIT.color = b.dataset.bec; return editColors(); }
@@ -1002,11 +1139,11 @@ function move(dir) {
 let HOLD = null;
 function holdPlay(b) {
   if (b.dataset.act === 'nextm') return playMatchChannel(true);
-  const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown, c = list && list[+b.dataset.i];
+  const list = listOf(b.dataset.ilist), c = list && list[+b.dataset.i];
   if (c) TV.external ? TV.external(c.url) : TV.link(c.url);
 }
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
+  if (e.key !== 'Enter' || S('hold', 'ext') === 'off') return;
   const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm')) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
@@ -1026,7 +1163,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(); $('#s-quran2').innerHTML = cardsHtml();
-loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters();
+homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters();
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();

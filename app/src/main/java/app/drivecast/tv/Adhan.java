@@ -104,11 +104,11 @@ public class Adhan extends BroadcastReceiver {
         }
     }
 
-    /** the sound for this moment: the user's own Music/adhan.mp3 first, then the Haram recordings */
+    /** the sound for this moment: the Haram recordings (its own Fajr adhan at Fajr), or Music/adhan.mp3 when «ملفي» is chosen */
     private static java.io.File sound(Context c, boolean iqama, int prayer) {
         if (!iqama) {
             java.io.File mine = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "adhan.mp3");
-            if (mine.canRead()) return mine;
+            if (!"haram".equals(Access.set(c).getString("asound", "haram")) && mine.canRead()) return mine;   // «ملفي» in the settings
             java.io.File fajr = new java.io.File(c.getFilesDir(), "adhan-fajr.mp3");
             if (prayer == 0 && fajr.length() > 50_000) return fajr;
         }
@@ -117,7 +117,11 @@ public class Adhan extends BroadcastReceiver {
     }
 
     /** DriveCast's iqamah gap for the prayer (master bin prayerSettings: offset + duration), else the usual Oman gaps */
-    private static int iqamaMinutes(int prayer) {
+    static int iqamaMinutes(Context c, int prayer) {
+        SharedPreferences st = Access.set(c);
+        if ("custom".equals(st.getString("iqsrc", "dc"))) {
+            try { return Integer.parseInt(st.getString("iq" + prayer, String.valueOf(IQAMA_MIN[prayer]))); } catch (Exception ignored) { }
+        }
         try {
             JSONObject m = new JSONObject(get("https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a"));
             org.json.JSONArray a = m.optJSONArray("prayerSettings");
@@ -132,7 +136,7 @@ public class Adhan extends BroadcastReceiver {
 
     private static void setIqama(Context c, int prayer) {
         new Thread(() -> {
-            long when = System.currentTimeMillis() + iqamaMinutes(prayer) * 60_000L;
+            long when = System.currentTimeMillis() + iqamaMinutes(c, prayer) * 60_000L;
             Intent fire = new Intent(c, Adhan.class).setAction(IQAMA).putExtra("p", prayer);
             PendingIntent pi = PendingIntent.getBroadcast(c, 2, fire, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
             c.getSystemService(AlarmManager.class).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
@@ -199,9 +203,13 @@ public class Adhan extends BroadcastReceiver {
         if (!FIRE.equals(i.getAction()) && !iqama) return;
         Context app = c.getApplicationContext();
         int prayer = i.getIntExtra("p", 1);
-        if (!iqama) { schedule(app); setIqama(app, prayer); }
+        SharedPreferences st = Access.set(app);
+        String mode = st.getString(iqama ? "iqama" : "adhan", "sound");
+        if (!iqama) { schedule(app); if (!"off".equals(st.getString("iqama", "sound"))) setIqama(app, prayer); }
+        if ("off".equals(mode)) return;
         if (!app.getSystemService(PowerManager.class).isInteractive()) return; // TV is off
-        fire(app, prayer, idle(app), iqama);
+        boolean loud = "sound".equals(mode) && !(prayer == 0 && !iqama && "banner".equals(st.getString("fajr", "on")));
+        fire(app, prayer, loud && idle(app), iqama);
     }
 
     /** the home screen is in front and nothing else is playing (usage access may be missing: then the home screen's own word) */
@@ -238,6 +246,7 @@ public class Adhan extends BroadcastReceiver {
             return;
         }
         player.setOnCompletionListener(mp -> stop());
+        try { float v = Integer.parseInt(Access.set(app).getString("vol", "100")) / 100f; player.setVolume(v, v); } catch (Exception ignored) { }
         player.start();
         banner(app, text, player.getDuration());
         watch(app);

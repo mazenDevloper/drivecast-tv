@@ -28,13 +28,14 @@ public class PlayerActivity extends Activity {
     private int i;
     private final Handler h = new Handler(Looper.getMainLooper());      // the name label
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects and the stall watchdog
-    private static final int TRIES = 6;
+    private int TRIES = 6;   // from the settings: 3 / 6 / 10
     private int errors;
     private boolean offered;
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        try { TRIES = Integer.parseInt(Access.set(this).getString("tries", "6")); } catch (Exception ignored) { }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         urls = getIntent().getStringArrayExtra("urls");
         names = getIntent().getStringArrayExtra("names");

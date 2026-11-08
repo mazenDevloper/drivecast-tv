@@ -62,6 +62,7 @@ public class MessageServer extends Service {
                 .build();
         startForeground(1, n);
         new Thread(this::serve, "msg-server").start();
+        Access.watch(this);   // the mouse stays on, even when the TV switches it off
     }
 
     @Override
@@ -97,7 +98,7 @@ public class MessageServer extends Service {
             if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
-            else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"home\":" + (HomeActivity.front != null) + "}");
+            else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else reply(s.getOutputStream(), "text/html", page());
             return;
         }
@@ -145,6 +146,8 @@ public class MessageServer extends Service {
             String t = body.trim(); if (t.length() > 120) t = t.substring(0, 120);
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
             main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
+        } else if (first.startsWith("POST /mouse-on")) {   // the phone's «شغّل الماوس»: on now if the adb grant is there
+            main.post(() -> { if (!Access.force(this)) Access.openSettings(this); });
         } else if (first.startsWith("POST /adhan")) {   // try the Haram adhan / iqamah from the phone (body: adhan | iqama | stop)
             String w = body.trim();
             if (w.equals("stop")) main.post(Adhan::stop);
