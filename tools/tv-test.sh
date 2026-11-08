@@ -17,11 +17,17 @@ a shell appops set $PKG SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
 a shell cmd alarm set-timezone Asia/Muscat >/dev/null 2>&1 || a shell setprop persist.sys.timezone Asia/Muscat >/dev/null 2>&1
 a shell settings put secure enabled_accessibility_services $PKG/$PKG.MouseService; a shell settings put secure accessibility_enabled 1
 a shell cmd role add-role-holder --user 0 android.app.role.HOME $PKG >/dev/null 2>&1 || a shell cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
-a shell cmd role get-role-holders --user 0 android.app.role.HOME 2>/dev/null | tr -d '\r' | sed 's/^/- home role: /' >> "$OUT/report.md"
 a logcat -c
 key KEYCODE_HOME 8
 if [ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ]; then ok "HOME opens DriveCast TV"
-else bad "HOME opens another launcher"; a shell am start -n $PKG/.HomeActivity >/dev/null; sleep 8; fi
+else
+  if [ -n "${CI:-}" ]; then   # the emulator only: what the setup does on a real TV (tools/disable.sh) — the stock launcher off
+    for L in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.android.tv.launcher; do a shell pm disable-user --user 0 $L >/dev/null 2>&1; done
+    key KEYCODE_HOME 8
+  fi
+  if [ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ]; then ok "HOME opens DriveCast TV once the stock launcher is off"
+  else bad "HOME opens another launcher"; a shell am start -n $PKG/.HomeActivity >/dev/null; sleep 8; fi
+fi
 shot 01-home "the home page after HOME"
 
 # the remote: every row of the home page, then the pages

@@ -100,6 +100,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .chan img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222}
 .ichan{height:110px;border-radius:20px;background:rgba(20,28,37,.8);border:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 18px;color:var(--ink);font-family:inherit;font-size:20px;text-align:right;overflow:hidden}
 .ichan img{width:64px;height:64px;object-fit:contain;flex:none}
+.shelf .ichan{flex:none;width:380px}   /* in a row (the home's live shelf) the cards keep their size */
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
@@ -375,9 +376,10 @@ function liveSky() {
   // the moon: DriveCast's moon picture for tonight's hijri day, where the moon really is (kept inside the picture)
   const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = toScreen(mo.alt, mo.az), mi = $('#wMoon');
   const src = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay()}.webp`; if (mi.getAttribute('src') !== src) mi.src = src;
-  mi.style.display = mo.alt > 0 ? '' : 'none';
+  const dark = Math.max(night, ph);
+  mi.style.display = mo.alt > 0 && dark > .05 ? '' : 'none';   // the picture is a night moon: not on a blue sky
   mi.style.left = clamp(ms.x, 6, 94) + '%'; mi.style.top = clamp(ms.y, 30, 56) + '%';
-  mi.style.opacity = (.45 + .55 * night).toFixed(2);
+  mi.style.opacity = dark.toFixed(2);
   // sky colours: fajr / isha blue, sunrise rose-gold, sunset orange-red, golden hour warm, midday clear
   const tw = clamp(1 - Math.abs(alt - 0.5) / 7), deep = clamp(1 - Math.abs(alt + 11) / 8), gold = alt > 4 ? clamp((pm ? 38 : 22) - alt, 0, 16) / 16 : 0;   // golden light: early morning, and from asr
   const hor = pm ? '255,140,70' : '255,190,140', mid = pm ? '214,84,74' : '232,140,150', top = pm ? '58,44,110' : '70,86,160';
