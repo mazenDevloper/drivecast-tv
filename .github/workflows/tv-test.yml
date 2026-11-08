@@ -4,6 +4,8 @@ name: TV test
 on:
   workflow_run: { workflows: [APK], types: [completed] }
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   emulator:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
@@ -26,7 +28,16 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash tools/tv-test.sh DriveCastTV.apk emulator-5554
+          script: bash tools/tv-test.sh DriveCastTV.apk emulator-5554 || touch tv-test/FAILED
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: tv-test, path: tv-test/ }
+      # the screenshots also on the «tv-test» branch, so they can be read without the artifact store
+      - name: Results branch
+        if: always()
+        run: |
+          cd tv-test && git init -q -b tv-test && git add -A
+          git -c user.name=tv-test -c user.email=tv-test@users.noreply.github.com commit -qm "TV test ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" tv-test
+      - name: Verdict
+        run: test ! -f tv-test/FAILED

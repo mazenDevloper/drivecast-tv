@@ -19,7 +19,7 @@ a shell settings put secure enabled_accessibility_services $PKG/$PKG.MouseServic
 a shell cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
 a logcat -c
 key KEYCODE_HOME 8
-[ "$(a shell dumpsys activity activities | grep -m1 -o 'mResumedActivity.*' | grep -c $PKG)" = 1 ] && ok "home screen is DriveCast TV" || bad "home screen is not DriveCast TV"
+[ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ] && ok "home screen is DriveCast TV" || bad "home screen is not DriveCast TV"
 shot 01-home "the home page after HOME"
 
 # the remote: every row of the home page, then the pages
@@ -35,6 +35,8 @@ key KEYCODE_BACK; key KEYCODE_HOME 2
 pid=$(a shell pidof $PKG | tr -d '\r'); [ -n "$pid" ] && ok "still running after BACK / HOME (pid $pid)" || bad "the app is not running"
 
 # the phone page (port 8080 on the TV)
+a shell "netstat -tln 2>/dev/null | grep 8080 || ss -tln 2>/dev/null | grep 8080" | sed 's/^/- port: /' >> "$OUT/report.md"
+a shell dumpsys activity services $PKG | grep -m3 -E "ServiceRecord|isForeground" | sed 's/^/- service: /' >> "$OUT/report.md"
 a forward tcp:18080 tcp:8080 >/dev/null
 curl -fsS -m 10 http://127.0.0.1:18080/ | grep -q 'ريموت' && ok "phone page served" || bad "phone page not served"
 curl -fsS -m 10 http://127.0.0.1:18080/status > "$OUT/status.json" && ok "status: $(cat "$OUT/status.json")" || bad "status"
@@ -52,4 +54,5 @@ a logcat -d -b crash > "$OUT/crash.txt"; a logcat -d '*:E' | grep -iE "drivecast
 [ -s "$OUT/crash.txt" ] && grep -q $PKG "$OUT/crash.txt" && bad "crash: see crash.txt" || ok "no crash"
 grep -q "ANR in $PKG" <(a logcat -d) && bad "ANR" || ok "no ANR"
 a shell dumpsys meminfo $PKG | grep -m1 'TOTAL' | sed 's/^/- memory: /' >> "$OUT/report.md"
-echo; cat "$OUT/report.md"; exit $FAIL
+a logcat -d | grep -iE "drivecast|MessageServer|MouseService|FATAL|AndroidRuntime" | tail -120 > "$OUT/app-log.txt"
+echo; cat "$OUT/report.md"; echo "---- errors"; tail -40 "$OUT/errors.txt"; echo "---- app log"; tail -60 "$OUT/app-log.txt"; exit $FAIL
