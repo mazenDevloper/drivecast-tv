@@ -7,12 +7,12 @@
 /* DriveCast TV's phone page (served by the TV on port 8080): remote, touchpad, Quran, write, draw */
 :root{--bg:#0b1411;--card:#14211c;--line:#2a3f37;--acc:#1f9d6b;--ink:#f2efe6;--dim:#9fb1a9}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,"SF Arabic",sans-serif;padding:max(14px,env(safe-area-inset-top)) 14px 24px}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Thmanyah Sans",-apple-system,system-ui,"SF Arabic",Inter,sans-serif;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1;padding:max(14px,env(safe-area-inset-top)) 14px 24px}
 .c{max-width:560px;margin:0 auto}
 h1{font-size:22px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center}
 h1 small{font-size:13px;color:var(--dim);font-weight:500}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:4px;border-radius:999px;background:var(--card);margin-bottom:14px}
-.tabs button{border:0;background:none;color:var(--dim);font:600 14px inherit;font-family:inherit;padding:10px 0;border-radius:999px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:24px;background:var(--card);margin-bottom:14px}
+.tabs button{border:0;background:none;color:var(--dim);font:600 15px inherit;font-family:inherit;padding:10px 0;border-radius:999px}
 .tabs button.on{background:var(--ink);color:#0b1411}
 .hide{display:none!important}
 button{font-family:inherit}
@@ -29,11 +29,22 @@ textarea{width:100%;height:140px;font-size:20px;padding:14px;border-radius:18px;
 canvas{width:100%;aspect-ratio:16/9;background:var(--card);border-radius:18px;border:1px solid var(--line);touch-action:none;display:block}
 .dot{width:38px;height:38px;border-radius:50%;border:3px solid transparent;flex:none}.dot.on{border-color:#fff}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.chips button{border:1px solid var(--line);background:none;color:var(--dim);border-radius:999px;padding:8px 14px;font-size:14px}
+/* the adhkar like DriveCast's: tap a card to count, the badge shows what is left */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:999px;background:var(--card)}
+.seg button{border:0;background:none;color:var(--dim);font:700 15px inherit;font-family:inherit;padding:10px 0;border-radius:999px}.seg button.on{background:var(--acc);color:#fff}
+.zk{margin-top:12px;padding:18px;border-radius:26px;background:var(--card);border:2px solid var(--line);transition:transform .12s,border-color .3s}
+.zk:active{transform:scale(.98)}.zk.done{border-color:#1f9d6b;background:#11281f}
+.zk .h{display:flex;align-items:center;justify-content:space-between;gap:10px}.zk h3{margin:0;font-size:18px}
+.zk p{margin:10px 0 12px;font-size:19px;line-height:1.95}
+.zk .f{display:flex;align-items:center;gap:12px}.zk .bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}.zk .bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.zk .n{min-width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;background:rgba(255,255,255,.06)}
+.zk.done .n{background:var(--acc);color:#fff}.zk .sp{border:0;background:rgba(255,255,255,.06);color:var(--dim);width:38px;height:38px;border-radius:50%;font-size:16px}
+.zhead{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:var(--dim);font-size:14px}.zhead button{border:1px solid #5a2a2a;background:#2a1414;color:#f3a3a3;border-radius:999px;padding:8px 14px;font-size:13px}
 p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 .warn{background:#2a2414;border:1px solid #5a4a20;color:#f2d98a;border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.6;margin-bottom:10px}
 </style></head><body><div class="c">
 <h1>📺 التلفزيون <small id="st">متصل</small></h1>
-<div class="tabs"><button data-t="r" class="on">🎮 ريموت</button><button data-t="m">🖱️ ماوس</button><button data-t="q">📖 القرآن</button><button data-t="w">✍️ اكتب</button><button data-t="d">🎨 ارسم</button></div>
+<div class="tabs"><button data-t="r" class="on">🎮 ريموت</button><button data-t="m">🖱️ ماوس</button><button data-t="q">📖 القرآن</button><button data-t="z">📿 الأذكار</button><button data-t="w">✍️ اكتب</button><button data-t="d">🎨 ارسم</button></div>
 
 <section id="r">
   <div class="pad"><i></i><button data-k="up">▲</button><i></i><button data-k="right">▶</button><button class="ok" data-k="ok">OK</button><button data-k="left">◀</button><i></i><button data-k="down">▼</button><i></i></div>
@@ -62,6 +73,12 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div class="row"><button data-k="prev">⏮ السابقة</button><button data-k="play">⏯</button><button data-k="next">⏭ التالية</button><button data-k="stop">⏹ إيقاف</button></div>
 </section>
 
+<section id="z" class="hide">
+  <div class="seg"><button data-zc="morning">☀️ الصباح</button><button data-zc="evening">🌙 المساء</button><button data-zc="general">✨ أذكاري</button></div>
+  <div class="zhead"><span id="zsum"></span><button id="zreset">تصفير العدادات</button></div>
+  <div id="zlist"></div>
+</section>
+
 <section id="w" class="hide"><textarea id="t" maxlength="200" placeholder="اكتب هني…"></textarea><button class="big" id="send">أرسل</button>
   <div class="chips"><button data-msg="العشاء جاهز 🍽️">العشاء جاهز</button><button data-msg="وقت النوم 🌙">وقت النوم</button><button data-msg="صلّوا 🕌">صلّوا</button></div></section>
 
@@ -76,8 +93,8 @@ const buzz = () => navigator.vibrate && navigator.vibrate(10);
 let cur = 'r';
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   cur = b.dataset.t; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['r', 'm', 'q', 'w', 'd'].forEach(t => $(t).classList.toggle('hide', t !== cur));
-  if (cur === 'd') fit(); if (cur === 'q') reciters(); if (cur === 'm') status();
+  ['r', 'm', 'q', 'z', 'w', 'd'].forEach(t => $(t).classList.toggle('hide', t !== cur));
+  if (cur === 'd') fit(); if (cur === 'q') reciters(); if (cur === 'z') azkar(); if (cur === 'm') status();
   try { localStorage.tab = cur; } catch (e) {}
 });
 document.addEventListener('click', e => {
@@ -146,5 +163,34 @@ $('font').onchange = e => {
   $('s').textContent = 'جارٍ إرسال الخط…';
   fetch('/font?ext=' + ext, { method: 'POST', body: f }).then(r => r.text()).then(t => $('s').textContent = t === 'ok' ? 'وصل الخط ✅' : 'الملف فاضي').catch(() => $('s').textContent = 'ما وصل، جرّب مرة ثانية');
 };
+// ---- adhkar (DriveCast's own list; «أذكاري» = the general adhkar saved in DriveCast's cloud)
+const AZKAR = [{"id": "ts-1", "label": "آية الكرسي", "count": 1, "cat": "morning", "text": "اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ وَلَا يَئُودُهُ حِفْظُهُمَا وَهُوَ الْعَلِيُّ الْعَظِيمُ."}, {"id": "ts-2", "label": "الاستعانة", "count": 1, "cat": "morning", "text": "اللهم أعني على ذكرك وشكرك وحسن عبادتك."}, {"id": "ts-3", "label": "المعوذات", "count": 3, "cat": "morning", "text": "سورة الإخلاص، سورة الفلق، سورة الناس."}, {"id": "ts-4", "label": "دعاء الصباح", "count": 1, "cat": "morning", "text": "اللهم بك أصبحنا، وبك أمسينا، وبك نحيا، وبك نموت، وإليك النشور."}, {"id": "tm-3", "label": "التوكل", "count": 7, "cat": "morning", "text": "حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم."}, {"id": "tm-1", "label": "الحفظ من الضرر", "count": 3, "cat": "morning", "text": "بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم."}, {"id": "tm-2", "label": "الاستغاثة", "count": 1, "cat": "morning", "text": "يا حي يا قيوم برحمتك أستغيث، أصلح لي شأني كله ولا تكلني إلى نفسي طرفة عين."}, {"id": "tl-1", "label": "عالم الغيب", "count": 1, "cat": "morning", "text": "اللهم عالم الغيب والشهادة فاطر السماوات والأرض، رب كل شيء ومليكه، أشهد أن لا إله إلا أنت، أعوذ بك من شر نفسي، ومن شر الشيطان وشركه، وأن أقترف على نفسي سوءاً أو أجره إلى مسلم."}, {"id": "tl-2", "label": "سيد الاستغفار", "count": 1, "cat": "morning", "text": "اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء بذنبي فاغفر لي، فإنه لا يغفر الذنوب إلا أنت."}, {"id": "tsl-1", "label": "العافية", "count": 1, "cat": "morning", "text": "اللهم إني أسألك العفو والعافية في الدنيا والآخرة، اللهم إني أسألك العفو والعافية في ديني ودنياي وأهلي ومالي، اللهم استر عوراتي وآمن روعاتي، اللهم احفظني من بين يدي ومن خلفي وعن يميني وعن شمالي ومن فوقي، وأعوذ بعظمتك أن أُغتال من تحتي."}, {"id": "tsl-2", "label": "الملك لله", "count": 1, "cat": "morning", "text": "أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذا اليوم وخير ما بعده، وأعوذ بك من شر ما في هذا اليوم وشر ما بعده، رب أعوذ بك من الكسل وسوء الكبر، رب أعوذ بك من عذاب في النار وعذاب في القبر."}, {"id": "ets-1", "label": "آية الكرسي", "count": 1, "cat": "evening", "text": "اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ وَلَا يَئُودُهُ حِفْظُهُمَا وَهُوَ الْعَلِيُّ الْعَظِيمُ."}, {"id": "ets-2", "label": "الاستعانة", "count": 1, "cat": "evening", "text": "اللهم أعني على ذكرك وشكرك وحسن عبادتك."}, {"id": "ets-3", "label": "المعوذات", "count": 3, "cat": "evening", "text": "سورة الإخلاص، سورة الفلق، سورة الناس."}, {"id": "etm-3", "label": "التوكل", "count": 7, "cat": "evening", "text": "حسبي الله لا إله إلا هو عليه توكلت وهو رب العرش العظيم."}, {"id": "etm-1", "label": "دعاء المساء", "count": 1, "cat": "evening", "text": "اللهم بك أمسينا، وبك أصبحنا، وبك نحيا، وبك نموت، وإليك المصير."}, {"id": "etm-2", "label": "الحفظ من الضرر", "count": 3, "cat": "evening", "text": "بسم الله الذي لا يضر مع اسمه شيء في الأرض ولا في السماء وهو السميع العليم."}, {"id": "etm-4", "label": "الاستغاثة", "count": 1, "cat": "evening", "text": "يا حي يا قيوم برحمتك أستغيث، أصلح لي شأني كله ولا تكلني إلى نفسي طرفة عين."}, {"id": "etl-1", "label": "النعمة", "count": 1, "cat": "evening", "text": "اللهم ما أمسى بي من نعمة أو بأحد من خلقك فمنك وحدك لا شريك لك، فلك الحمد ولك الشكر."}, {"id": "etl-2", "label": "سيد الاستغفار", "count": 1, "cat": "evening", "text": "اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء بذنبي فاغفر لي، فإنه لا يغفر الذنوب إلا أنت."}, {"id": "etsl-1", "label": "العافية", "count": 1, "cat": "evening", "text": "اللهم إني أسألك العفو والعافية في الدنيا والآخرة، اللهم إني أسألك العفو والعافية في ديني ودنياي وأهلي ومالي، اللهم استر عوراتي وآمن روعاتي، اللهم احفظني من بين يدي ومن خلفي عن يميني وعن شمالي ومن فوقي، وأعوذ بعظمتك أن أُغتال من تحتي."}, {"id": "etsl-2", "label": "أمسينا وأمسى الملك لله", "count": 1, "cat": "evening", "text": "أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذه الليلة وخير ما بعدها، وأعوذ بك من شر ما في هذه الليلة وشر ما بعدها، رب أعوذ بك من الكسل وسوء الكبر، رب أعوذ بك من عذاب في النار وعذاب في القبر."}];
+const AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+const today = () => new Date().toISOString().slice(0, 10);
+let zcat = (() => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h >= 4.8 && h < 15.4 ? 'morning' : 'evening'; })(), zcounts = {}, zgeneral = null;
+try { zcounts = JSON.parse(localStorage['azkar-' + today()] || '{}'); } catch (e) {}
+const zsave = () => { try { localStorage['azkar-' + today()] = JSON.stringify(zcounts); } catch (e) {} };
+function azkar() {
+  document.querySelectorAll('[data-zc]').forEach(b => b.classList.toggle('on', b.dataset.zc === zcat));
+  if (zcat === 'general' && zgeneral === null) {
+    zgeneral = [];
+    fetch('https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a').then(r => r.json()).then(d => { zgeneral = (d.generalAzkar || []).map(a => ({ id: 'g-' + a.id, label: a.label, count: +a.count || 1, text: a.text || '' })); azkar(); }).catch(() => {});
+  }
+  const list = zcat === 'general' ? (zgeneral || []) : AZKAR.filter(a => a.cat === zcat);
+  const done = list.filter(a => (zcounts[a.id] || 0) >= a.count).length;
+  $('zsum').textContent = list.length ? AR(done) + ' من ' + AR(list.length) + ' مكتملة' : '';
+  $('zlist').innerHTML = list.map(a => { const c = zcounts[a.id] || 0, left = Math.max(0, a.count - c);
+    return `<div class="zk ${left ? '' : 'done'}" data-z="${a.id}" data-zn="${a.count}"><div class="h"><h3>${a.label}</h3><button class="sp" data-say="${a.id}">🔊</button></div>${a.text ? `<p>${a.text}</p>` : ''}<div class="f"><div class="bar"><i style="width:${Math.min(100, c / a.count * 100)}%"></i></div><div class="n">${left ? AR(left) : '✓'}</div></div></div>`; }).join('') || '<p class="s">لا أذكار محفوظة في DriveCast بعد</p>';
+}
+document.addEventListener('click', e => {
+  const zc = e.target.closest('[data-zc]'); if (zc) { zcat = zc.dataset.zc; return azkar(); }
+  const sp = e.target.closest('[data-say]'); if (sp) { const a = [...AZKAR, ...(zgeneral || [])].find(x => x.id === sp.dataset.say); if (a && window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(a.text || a.label); u.lang = 'ar-SA'; u.rate = .9; speechSynthesis.speak(u); } return; }
+  const z = e.target.closest('[data-z]'); if (!z) return;
+  const id = z.dataset.z, n = +z.dataset.zn; if ((zcounts[id] || 0) >= n) return;
+  zcounts[id] = (zcounts[id] || 0) + 1; zsave();
+  if (navigator.vibrate) navigator.vibrate(zcounts[id] >= n ? [20, 40, 60] : 12);
+  azkar();
+});
+$('zreset').onclick = () => { if (zcat === 'general') (zgeneral || []).forEach(a => delete zcounts[a.id]); else AZKAR.filter(a => a.cat === zcat).forEach(a => delete zcounts[a.id]); zsave(); azkar(); };
 try { const t = localStorage.tab; if (t) document.querySelector(`.tabs [data-t="${t}"]`).click(); } catch (e) {}
 </script></body></html>

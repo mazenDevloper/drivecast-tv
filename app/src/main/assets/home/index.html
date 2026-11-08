@@ -115,8 +115,9 @@ body.ambient .tabs,body.ambient .clock span{visibility:hidden}
 /* the day in the middle, big (the user's font when sent from the phone: e.g. Thmanyah), the hijri date under it */
 .day{position:absolute;top:40px;left:0;right:0;display:none;flex-direction:column;align-items:center;gap:4px;text-align:center;pointer-events:none;text-shadow:0 4px 30px rgba(0,0,0,.55)}
 body.ambient .day{display:flex}
-.day b{font-family:"UserFont","Thmanyah Serif Display","Thmanyah Sans","Noto Kufi Arabic","Noto Naskh Arabic",serif;font-size:132px;font-weight:700;line-height:1.05;letter-spacing:0}
-.day span{font-family:"UserFont","Thmanyah Sans","Noto Sans Arabic",sans-serif;font-size:36px;color:#e8e2d2;opacity:.92}
+.day b,.day span{font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
+.day b{font-size:132px;font-weight:400;line-height:1.05;letter-spacing:0}
+.day span{font-size:36px;color:#e8e2d2;opacity:.92}
 .pill{flex:1;min-width:0;height:124px;border-radius:999px;display:flex;align-items:center;gap:20px;padding:0 34px;position:relative;overflow:hidden}
 .pill b{font-size:40px;white-space:nowrap}.pill span{font-size:25px;color:#d6dbe1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill .dot{width:18px;height:18px;border-radius:50%;background:var(--accent);flex:none}
@@ -230,7 +231,7 @@ let P = {};
 function loadFont() {
   let u = ''; try { u = TV.font ? TV.font() : ''; } catch (e) {}
   if (!u) return;
-  try { const f = new FontFace('UserFont', `url(${u})`); f.load().then(x => { document.fonts.add(x); }).catch(() => {}); } catch (e) {}
+  try { for (const fam of ['Thmanyah Sans', 'UserFont']) { const f = new FontFace(fam, `url(${u})`); f.load().then(x => document.fonts.add(x)).catch(() => {}); } } catch (e) {}
 }
 function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } prayersUi(); weather(); }
 async function loadSettings() { const ms = await getJ('https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a'); if (ms && Array.isArray(ms.prayerSettings)) { PSET = ms.prayerSettings; prayersUi(); } }
