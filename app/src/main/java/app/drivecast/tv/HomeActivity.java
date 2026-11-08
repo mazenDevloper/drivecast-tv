@@ -241,7 +241,10 @@ public class HomeActivity extends Activity {
                 try {
                     java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
                     c.setConnectTimeout(12000); c.setReadTimeout(30000);
-                    if (url.contains("365scores.com")) {   // the fixtures API answers a browser
+                    if (url.contains("youtube.com/results")) {   // YouTube search: the normal page, in Arabic
+                        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+                        c.setRequestProperty("Accept-Language", "ar,en;q=0.8"); c.setRequestProperty("Cookie", "CONSENT=YES+1; SOCS=CAI");
+                    } else if (url.contains("365scores.com")) {   // the fixtures API answers a browser
                         c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36");
                         c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
                     } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
@@ -258,6 +261,18 @@ public class HomeActivity extends Activity {
                 final String js = cb + "(" + (text == null ? "null" : JSONObject.quote(text)) + ")";
                 runOnUiThread(() -> web.evaluateJavascript(js, null));
             }, "fetch").start();
+        }
+
+        /** OK held on a channel: the stream in another player on the TV (VLC, MX…), YouTube links in YouTube */
+        @JavascriptInterface
+        public void external(String url) {
+            runOnUiThread(() -> {
+                try {
+                    if (url.contains("youtu")) { link(url); return; }
+                    Intent v = new Intent(Intent.ACTION_VIEW).setDataAndType(android.net.Uri.parse(url), "video/*");
+                    startActivity(Intent.createChooser(v, "شغّل القناة في…").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) { android.widget.Toast.makeText(HomeActivity.this, "ما فيه مشغّل ثاني على التلفزيون", android.widget.Toast.LENGTH_LONG).show(); }
+            });
         }
 
         @JavascriptInterface

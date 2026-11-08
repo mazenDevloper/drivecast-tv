@@ -87,6 +87,8 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div class="seg"><button data-zc="morning">☀️ الصباح</button><button data-zc="evening">🌙 المساء</button><button data-zc="general">✨ أذكاري</button></div>
   <div class="zhead"><span id="zsum"></span><button id="zreset">تصفير العدادات</button></div>
   <div id="zlist"></div>
+  <label>صوت الأذان والإقامة (الحرم المكي) — جرّبه على التلفزيون</label>
+  <div class="row"><button data-adhan="adhan">🕌 الأذان</button><button data-adhan="iqama">🔔 الإقامة</button><button data-adhan="stop">⏹ وقّف</button></div>
 </section>
 
 <section id="b" class="hide">
@@ -188,6 +190,7 @@ cv.onpointerup = cv.onpointercancel = () => { flush(); last = null; };
 function flush() { if (q.length < 1) return; const s = (cont ? '+' : '') + col + ' ' + q.map(p => p[0].toFixed(4) + ',' + p[1].toFixed(4)).join(' '); if (last) { q = [last]; cont = true; } else q = []; post('/draw', s); }
 setInterval(() => { if (last && q.length > 1) flush(); }, 80);
 $('clr').onclick = () => { cx.clearRect(0, 0, cv.width, cv.height); post('/clear', ''); };
+document.querySelectorAll('[data-adhan]').forEach(b => b.onclick = () => { post('/adhan', b.dataset.adhan); $('s').textContent = b.dataset.adhan === 'stop' ? 'وقف' : 'يشتغل على التلفزيون… أول مرة ياخذ ثواني لين ينزل الصوت'; });
 fetch('/phrase').then(r => r.text()).then(t => { $('ph').value = t; }).catch(() => {});
 $('phs').onclick = () => post('/phrase', $('ph').value).then(r => r && ($('s').textContent = $('ph').value.trim() ? 'انحفظت العبارة ✅' : 'انشالت العبارة'));
 $('font').onchange = e => {
@@ -227,12 +230,12 @@ document.addEventListener('click', e => {
 $('zreset').onclick = () => { if (zcat === 'general') (zgeneral || []).forEach(a => delete zcounts[a.id]); else AZKAR.filter(a => a.cat === zcat).forEach(a => delete zcounts[a.id]); zsave(); azkar(); };
 // ---- «لوحتي»: add pastel cards to the TV's board
 const PAL = { butter: '#fff2c6', pink: '#fde2e8', mint: '#d6f2df', sky: '#dbe9ff', lav: '#e8ddff', peach: '#ffe2cc', pista: '#e4f1c9', sand: '#f1e5d6' };
-const BGS = { paper: ['ورق', '#f7f2e8'], blush: ['وردي', 'linear-gradient(135deg,#fde3ea,#f6f0e8)'], mint: ['نعناعي', 'linear-gradient(135deg,#dcf3e8,#f7f4ea)'], sky: ['سماوي', 'linear-gradient(135deg,#dfeaff,#f8f1f4)'], lavender: ['لافندر', 'linear-gradient(160deg,#e9e0ff,#fdeee6)'], dusk: ['غروب', 'linear-gradient(160deg,#e6e2f5,#fbe6d4)'] };
+const BGS = { white: ['أبيض', '#fff'], paper: ['ورق', '#f7f2e8'], blush: ['وردي', 'linear-gradient(135deg,#fde3ea,#f6f0e8)'], mint: ['نعناعي', 'linear-gradient(135deg,#dcf3e8,#f7f4ea)'], sky: ['سماوي', 'linear-gradient(135deg,#dfeaff,#f8f1f4)'], lavender: ['لافندر', 'linear-gradient(160deg,#e9e0ff,#fdeee6)'], dusk: ['غروب', 'linear-gradient(160deg,#e6e2f5,#fbe6d4)'] };
 const EMO = ['🌸', '🌿', '☕', '🌙', '⭐', '💛', '🕌', '📖', '🎈', '🍰', '🌷', '🦋', '☀️', '🍋', '🫖', '🎁', '✈️', '🏃', '💊', '🛒', '📚', '🎂', '🌈', '🤲'];
-let BRD = { bg: 'blush', items: [] }, btype = 'note', bcolor = 'butter', bemoji = '🌸';
+let BRD = { bg: 'white', v2: 1, items: [] }, btype = 'note', bcolor = 'butter', bemoji = '🌸';
 $('bsw').innerHTML = Object.entries(PAL).map(([k, c]) => `<i data-bc="${k}" style="background:${c}" class="${k === bcolor ? 'on' : ''}"></i>`).join('');
 $('bemo').innerHTML = EMO.map(e => `<button data-be="${e}" class="${e === bemoji ? 'on' : ''}">${e}</button>`).join('');
-function boardLoad() { fetch('/board').then(r => r.json()).then(j => { BRD = Object.assign({ bg: 'blush', items: [] }, j); blist(); }).catch(() => blist()); }
+function boardLoad() { fetch('/board').then(r => r.json()).then(j => { BRD = Object.assign({ bg: 'white', items: [] }, j); if (!BRD.v2) { if (BRD.bg === 'blush') BRD.bg = 'white'; BRD.v2 = 1; } blist(); }).catch(() => blist()); }
 function boardSave(msg) { return post('/board', JSON.stringify(BRD)).then(r => { if (r) { $('s').textContent = msg; blist(); } }); }
 const bname = it => ({ note: '📝', reminder: '⏰', quote: '❝', sticker: it.emoji || '🌸', drawing: '🎨', photo: '🖼' }[it.type] || '•') + ' ' + (it.text || (it.time || '') || ({ drawing: 'رسمة', photo: 'صورة', sticker: 'ملصق' }[it.type] || ''));
 function blist() {

@@ -145,6 +145,10 @@ public class MessageServer extends Service {
             String t = body.trim(); if (t.length() > 120) t = t.substring(0, 120);
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
             main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
+        } else if (first.startsWith("POST /adhan")) {   // try the Haram adhan / iqamah from the phone (body: adhan | iqama | stop)
+            String w = body.trim();
+            if (w.equals("stop")) main.post(Adhan::stop);
+            else new Thread(() -> { Adhan.sounds(this); main.post(() -> Adhan.fire(this, 3, true, w.equals("iqama"))); }, "adhan-try").start();
         } else if (first.startsWith("POST /key")) {
             String k = body.trim();
             main.post(() -> key(k));

@@ -103,7 +103,8 @@ public class PlayerActivity extends Activity {
 
     private void openOtherPlayer() {
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(urls[i]), "video/*"));
+            Intent v = new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(urls[i]), "video/*");
+            startActivity(Intent.createChooser(v, "شغّل القناة في…"));
         } catch (Exception e) {
             label.setText("ما فيه مشغّل ثاني على التلفزيون · ↑↓ قناة ثانية");
         }
@@ -113,7 +114,10 @@ public class PlayerActivity extends Activity {
     public boolean onKeyDown(int code, KeyEvent e) {
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
-        if ((code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) && offered) { openOtherPlayer(); return true; }
+        boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
+        if (ok && e.getRepeatCount() == 8) { openOtherPlayer(); return true; }   // OK held down ≈ ½ s: another player
+        if (ok && e.getRepeatCount() > 0) return true;
+        if (ok && offered) { openOtherPlayer(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) { label.setAlpha(1f); h.postDelayed(() -> label.animate().alpha(0f), 3000); return true; }
         return super.onKeyDown(code, e);
     }

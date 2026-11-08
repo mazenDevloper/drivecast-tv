@@ -82,6 +82,12 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .panel.on{display:flex}
 .panel .box{width:1100px;max-height:1000px;overflow:auto;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
 .panel h3{margin:0;font-size:46px}
+.panel.ytp .box{width:1680px;max-height:1000px;overflow:hidden;padding:40px 48px}
+.ytph{display:flex;align-items:center;justify-content:space-between;gap:20px}.ytph h3{font-size:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ytpb{overflow:auto;max-height:820px;padding:8px}
+.ytgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.ytres{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}.ytres .vid{width:auto}
+.ytres .vid em{display:block;padding:0 14px 12px;font-style:normal;font-size:15px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cities{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .btn{height:72px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:var(--ink);font-weight:600;font-size:24px;font-family:inherit}
 .btn.on{background:var(--ink);color:var(--bg)}
@@ -111,6 +117,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .boardBg{position:fixed;inset:0;z-index:-1;display:none;background:linear-gradient(135deg,#fde3ea 0%,#fbeee4 55%,#f6f0e8 100%)}
 body.board .boardBg{display:block}body.board .wall,body.board .veil{display:none}
 .boardBg.paper{background:#f7f2e8 radial-gradient(rgba(120,96,70,.16) 1.4px,transparent 1.6px) 0 0/30px 30px}
+.boardBg.white{background:#fff}
 .boardBg.blush{background:linear-gradient(135deg,#fde3ea 0%,#fbeee4 55%,#f6f0e8 100%)}
 .boardBg.mint{background:linear-gradient(135deg,#dcf3e8 0%,#eef6e2 60%,#f7f4ea 100%)}
 .boardBg.sky{background:linear-gradient(135deg,#dfeaff 0%,#ece6fb 60%,#f8f1f4 100%)}
@@ -167,6 +174,8 @@ body.moving .bmove{display:block}
 .panel.bedit .btn.bsave{background:#2f2b3a;color:#fff}.panel.bedit .btn.bdel{color:#c2415c}
 .c-pink{background:#fde2e8}.c-butter{background:#fff2c6}.c-mint{background:#d6f2df}.c-sky{background:#dbe9ff}
 .c-lav{background:#e8ddff}.c-peach{background:#ffe2cc}.c-pista{background:#e4f1c9}.c-sand{background:#f1e5d6}
+/* a card not edited yet: a whisper of its colour on the white board; edit it on the TV and its full pastel comes back */
+.bi.soft.note,.bi.soft.reminder,.bi.soft.quote,.bi.soft .disc{background-image:linear-gradient(rgba(255,255,255,.66),rgba(255,255,255,.66))}
 /* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
@@ -263,6 +272,10 @@ body.ambient .phrase.on{display:block}
     <div class="beRow"><button class="btn f" data-be="move">✥ حرّكه</button><button class="btn f" data-be="front">فوق الكل</button><button class="btn f" data-be="back">تحت الكل</button><button class="btn f" data-be="bigger">＋ كبّر</button><button class="btn f" data-be="smaller">－ صغّر</button></div>
     <div class="beRow"><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
     <div class="beRow"><button class="btn f bsave" data-be="save">حفظ</button><button class="btn f" data-be="close">إغلاق</button></div>
+  </div></div>
+  <div class="panel ytp" id="ytp"><div class="box">
+    <div class="ytph"><h3 id="ytpT"></h3><button class="btn f" data-act="ytclose">إغلاق</button></div>
+    <div class="ytpb" id="ytpBody"></div>
   </div></div>
   <div class="panel" id="panel"><div class="box">
     <h3>الإعدادات</h3>
@@ -554,13 +567,46 @@ const arr = (...xs) => xs.find(Array.isArray) || [];
 const esc = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const vidHtml = v => `<button class="vid f" data-yt="${esc(v.id)}"><img src="${esc(v.thumbnail || 'https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg')}" alt="" loading="lazy"><span>${esc(v.title)}</span></button>`;
 const chanHtml = c => `<button class="chan f" data-ch="${esc(c.channelid)}"><img src="${esc(c.image)}" alt="" loading="lazy"><span>${esc(c.name || c.channeltitle)}</span></button>`;
+const recHtml = c => `<button class="chan f" data-rname="${esc(c.name || c.channeltitle)}"><img src="${esc(c.image)}" alt="" loading="lazy"><span>${esc(c.name || c.channeltitle)}</span></button>`;
+// a reciter: pick the surah, then YouTube's results for «القارئ سورة …» — OK plays it in YouTube
+let YTP = null;
+function ytPick(name) {
+  YTP = { name: name || YTP?.name, sura: null };
+  $('#ytpT').textContent = YTP.name + ' · اختر السورة';
+  $('#ytpBody').innerHTML = `<div class="ytgrid">${SURAHS.map((n, i) => `<button class="sura f" data-yts="${i}"><small>${AR(i + 1)}</small>${n}</button>`).join('')}</div>`;
+  $('#ytp').classList.add('on'); $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
+}
+async function ytSearch(i) {
+  const q = `${YTP.name} سورة ${SURAHS[i]}`; YTP.sura = i;
+  $('#ytpT').textContent = '🔎 ' + q;
+  $('#ytpBody').innerHTML = '<div class="empty">أبحث في يوتيوب…</div>';
+  const vids = ytParse(await getText('https://www.youtube.com/results?hl=ar&gl=OM&search_query=' + encodeURIComponent(q)));
+  if (!YTP || YTP.sura !== i) return;
+  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 20).map(ytHtml).join('')}</div>`
+    : `<div class="empty">ما طلعت نتائج هني</div><button class="btn f" data-ytq="${esc(q)}">افتح البحث في يوتيوب</button>`;
+  $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
+}
+function ytParse(html) {
+  const m = String(html || '').match(/ytInitialData\s*=\s*(\{[\s\S]+?\});\s*<\/script>/); if (!m) return [];
+  let d; try { d = JSON.parse(m[1]); } catch (e) { return []; }
+  const out = [], seen = new Set();
+  const walk = o => {
+    if (!o || typeof o !== 'object' || out.length >= 24) return;
+    const v = o.videoRenderer;
+    if (v && v.videoId) { if (!seen.has(v.videoId)) { seen.add(v.videoId); out.push({ id: v.videoId, title: (v.title?.runs || []).map(r => r.text).join('') || v.title?.simpleText || '', ch: (v.ownerText?.runs || [])[0]?.text || '', len: v.lengthText?.simpleText || '' }); } return; }
+    for (const k in o) walk(o[k]);
+  };
+  walk(d); return out;
+}
+const ytHtml = v => `<button class="vid f" data-yt="${esc(v.id)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" loading="lazy"><span>${esc(v.title)}</span><em>${esc(v.ch)}${v.len ? ' · ' + esc(AR(v.len)) : ''}</em></button>`;
+function ytClose() { $('#ytp').classList.remove('on'); YTP = null; $('.tab.on')?.focus(); }
 let subsAt = 0;
 async function loadSubs() {
   if (Date.now() - subsAt < 5 * 60000) return; subsAt = Date.now();
   const [ch, rc, ms] = await Promise.all([getJ(BIN(BINS.channels)), getJ(BIN(BINS.reciters)), getJ(BIN(BINS.master))]);
   const chans = arr(ch?.channels, ch).sort((a, b) => (b.starred - a.starred) || ((b.clickschannel || 0) - (a.clickschannel || 0)));
   $('#s-channels').innerHTML = chans.map(chanHtml).join('') || '<div class="empty">لا قنوات</div>';
-  $('#s-ytreciters').innerHTML = arr(rc?.reciters).sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0)).map(chanHtml).join('') || '<div class="empty">لا قرّاء</div>';
+  $('#s-ytreciters').innerHTML = arr(rc?.reciters).sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0)).map(recHtml).join('') || '<div class="empty">لا قرّاء</div>';
   $('#s-continue').innerHTML = arr(ms?.continueWatching).map(c => c.video).filter(v => v && v.id).slice(0, 20).map(vidHtml).join('') || '<div class="empty">لا شيء بعد</div>';
   $('#s-saved').innerHTML = arr(ms?.savedVideos).filter(v => v && v.id).slice(0, 60).map(vidHtml).join('') || '<div class="empty">لا شيء محفوظ</div>';
 }
@@ -595,9 +641,9 @@ async function loadLists() {
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
   liveUi(); iptvUi();
 }
-// the home shelf: Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
+// the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
-const HOME_PICKS = [[/^Oman TV( \(|$)/i, /oman tv(?! (cultural|mubashir|live|sport))/i], [/^Oman TV (Mubashir|Live)/i, /oman.*(mubashir|live|مباشر)/i],
+const HOME_PICKS = [[/^(Al Quran Al Kareem|Saudi Quran|Quran Kareem)/i, /قرآن|القرآن|quran|makkah|مكة/i], [/^Oman TV( \(|$)/i, /oman tv(?! (cultural|mubashir|live|sport))/i], [/^Oman TV (Mubashir|Live)/i, /oman.*(mubashir|live|مباشر)/i],
   [/^Al Jazeera( \(|$)/i, /jazeera|الجزيرة/i], [/^MBC 1\b/i, /\bmbc ?1\b|mbc$/i], [/^Oman Sports?/i, /oman sports?|عمان الرياضية/i]];
 const PICKS = [/^Oman TV\b/i, /^Oman TV Cultural/i, /^Oman TV Mubashir/i, /^Oman Sports?/i, /^MBC 1\b/i, /^MBC Drama/i, /^MBC 4\b/i, /^MBC 5\b/i, /^MBC Action/i, /^MBC Masr\b/i, /^Al Quran Al Kareem/i, /^Al Sunnah/i, /^Iqraa Quran/i, /^Al Jazeera( |$)/i, /^Al Arabiya( |$)/i, /^Dubai Sports/i, /^Abu Dhabi Sports/i, /^Sharjah Sports/i];
 function liveUi() {
@@ -633,19 +679,31 @@ const TVRULES = [   // the same rights as DriveCast's match-channels.ts (2026/27
   [/الإنجليزي|الإسباني|الفرنسي|التركي|أبطال|الأوروبي|كونفرنس|آسيا|إفريقيا|أفريقيا|كأس الرابطة|كأس الاتحاد|العالم|الأمم/, 'beIN SPORTS', /bein/i],
 ];
 let NEXTM = null;
-async function loadNext() {
-  const now = await getJ('https://studio.c-p.workers.dev/now?lang=27');
-  const isl = arr(now?.teams).filter(t => t.island).map(t => t.id);
-  let m = arr(now?.matches).find(x => x.favorite && x.status === 'live');
-  if (!m && isl.length) {
-    const d = await getJ('https://webws.365scores.com/web/games/fixtures/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&competitors=' + isl.join(','));
-    const g = arr(d?.games).filter(g => g.statusGroup !== 4 && !/postpon|cancel|مؤجل|ملغ/i.test(g.statusText || '')).sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
-    if (g) m = { status: g.statusGroup === 3 ? 'live' : 'upcoming', timestamp: Date.parse(g.startTime) / 1000, league: { name: g.competitionDisplayName || '' },
-      home: { name: g.homeCompetitor.name, logo: LOGO(g.homeCompetitor.id) }, away: { name: g.awayCompetitor.name, logo: LOGO(g.awayCompetitor.id) },
-      score: { home: g.homeCompetitor.score, away: g.awayCompetitor.score }, elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null };
-  }
-  if (!m) m = arr(now?.matches).find(x => x.favorite && x.status === 'upcoming');
-  NEXTM = m || null; nextUi();
+// sometimes an API hiccups (no answer, a slow TV on Wi-Fi): keep the last match we had, and try again a little later
+async function loadNext(tries = 0) {
+  let m = null, ok = false;
+  try {
+    const now = await getJ('https://studio.c-p.workers.dev/now?lang=27');
+    ok = !!now;
+    const isl = arr(now?.teams).filter(t => t.island).map(t => t.id);
+    m = arr(now?.matches).find(x => x.favorite && x.status === 'live');
+    if (!m && isl.length) {
+      const d = await getJ('https://webws.365scores.com/web/games/fixtures/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&competitors=' + isl.join(','));
+      if (d) ok = true;
+      const g = arr(d?.games).filter(g => g && g.homeCompetitor && g.awayCompetitor && g.statusGroup !== 4 && !/postpon|cancel|مؤجل|ملغ/i.test(g.statusText || ''))
+        .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
+      if (g) m = { status: g.statusGroup === 3 ? 'live' : 'upcoming', timestamp: Date.parse(g.startTime) / 1000, league: { name: g.competitionDisplayName || '' },
+        home: { name: g.homeCompetitor.name, logo: LOGO(g.homeCompetitor.id) }, away: { name: g.awayCompetitor.name, logo: LOGO(g.awayCompetitor.id) },
+        score: { home: g.homeCompetitor.score, away: g.awayCompetitor.score }, elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null };
+    }
+    if (!m) m = arr(now?.matches).find(x => x.favorite && x.status === 'upcoming');
+  } catch (e) { m = null; }
+  if (m) { NEXTM = m; try { localStorage.nextm = JSON.stringify(m); } catch (e) {} }
+  else if (!ok) {
+    if (!NEXTM) try { const c = JSON.parse(localStorage.nextm || 'null'); if (c && c.timestamp * 1000 > Date.now() - 3 * 3600e3) NEXTM = c; } catch (e) {}
+    if (tries < 4) setTimeout(() => loadNext(tries + 1), 20000 * (tries + 1));
+  } else NEXTM = null;
+  nextUi();
 }
 function nextUi() {
   const el = $('#nextm'), m = NEXTM;
@@ -671,11 +729,16 @@ function playChannel(list, i) {
   const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
   if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
-function playMatchChannel() {
+// OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
+async function playMatchChannel(other) {
   const rule = NEXTM && TVRULES.find(r => r[0].test(NEXTM.league?.name || ''));
-  const pool = [...IFAV, ...ILIST], i = rule ? pool.findIndex(c => rule[2].test(c.name)) : -1;
-  if (i < 0) return show('matches');
-  return playChannel(pool.filter(c => rule[2].test(c.name)), 0);
+  if (!rule) return show('matches');
+  if (!ILIST.length && !IFAV.length) { listsAt = 0; await loadLists(); }
+  const pool = [...IFAV, ...ILIST].filter(c => rule[2].test(c.name) && !/geo-blocked/i.test(c.name));
+  if (pool.length) return other && TV.external ? TV.external(pool[0].url) : playChannel(pool, 0);
+  const app = APPS.find(a => rule[2].test(a.label) || rule[2].test(a.pkg) || a.label.includes(rule[1].split(' ')[0]));
+  if (app) return TV.open(app.pkg);
+  show('matches');
 }
 
 // ---- shelves
@@ -711,16 +774,17 @@ async function loadMatches() {
 
 // ---- pages and settings
 // ---- «لوحتي»
-let BOARD = { bg: 'blush', items: [] };
+let BOARD = { bg: 'white', items: [] };
 function loadBoard() {
   let t = ''; try { t = TV.board ? TV.board() : (localStorage.board || ''); } catch (e) {}
-  try { BOARD = Object.assign({ bg: 'blush', items: [] }, JSON.parse(t || '{}')); } catch (e) {}
+  try { BOARD = Object.assign({ bg: 'white', items: [] }, JSON.parse(t || '{}')); } catch (e) {}
+  if (!BOARD.v2) { if (BOARD.bg === 'blush') BOARD.bg = 'white'; BOARD.v2 = 1; }   // the board is white now (the old pink was the default, not a choice)
   boardUi();
 }
 function saveBoard() { const j = JSON.stringify(BOARD); try { TV.saveBoard ? TV.saveBoard(j) : (localStorage.board = j); } catch (e) {} }
 const tilt = id => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) | 0; return ((Math.abs(h) % 9) - 4) * 0.8; };
 function boardUi() {
-  const bg = $('#boardBg'); bg.className = 'boardBg ' + (BOARD.bg === 'custom' && BOARD.bgImg ? 'custom' : BOARD.bg || 'blush');
+  const bg = $('#boardBg'); bg.className = 'boardBg ' + (BOARD.bg === 'custom' && BOARD.bgImg ? 'custom' : BOARD.bg || 'white');
   bg.style.backgroundImage = BOARD.bg === 'custom' && BOARD.bgImg ? `url(${BOARD.bgImg})` : '';
   $('#bdate').textContent = NOW().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
   const items = BOARD.items || [];
@@ -736,11 +800,11 @@ function boardUi() {
   }
   $('#board').style.height = Math.max(860, ...items.map(it => it.y + (SIZE[it.type] || SIZE.note)[1] * (it.s || 1) + 120)) + 'px';
   $('#board').innerHTML = items.map((it, n) => {
-    const c = 'c-' + (it.color || 'butter'), t = esc(it.text || '');
+    const c = 'c-' + (it.color || 'butter') + (it.vivid ? '' : ' soft'), t = esc(it.text || '');
     const st = `left:${it.x}px;top:${it.y}px;z-index:${n + 1};--r:${tilt(it.id)}deg;--s:${it.s || 1}`;
     if (it.type === 'reminder') return `<button class="bi f reminder ${c} ${it.done ? 'done' : ''}" style="${st}" data-bid="${it.id}"><span class="k">تذكير</span><div class="when"><i>⏰</i>${it.time ? AR(fmt(it.time)) : ''}</div><div class="t">${t}</div></button>`;
     if (it.type === 'quote') return `<button class="bi f quote ${c}" style="${st}" data-bid="${it.id}"><div class="t">${t}</div></button>`;
-    if (it.type === 'sticker') return `<button class="bi f sticker" style="${st}" data-bid="${it.id}"><div class="disc ${c}">${esc(it.emoji || '🌿')}</div>${t ? `<div class="t">${t}</div>` : ''}</button>`;
+    if (it.type === 'sticker') return `<button class="bi f sticker ${it.vivid ? '' : 'soft'}" style="${st}" data-bid="${it.id}"><div class="disc ${c}">${esc(it.emoji || '🌿')}</div>${t ? `<div class="t">${t}</div>` : ''}</button>`;
     if (it.type === 'drawing' || it.type === 'photo') return `<button class="bi f ${it.type}" style="${st}" data-bid="${it.id}"><img src="${esc(it.img)}" alt="">${t ? `<div class="t">${t}</div>` : ''}</button>`;
     return `<button class="bi f note ${c}" style="${st}" data-bid="${it.id}"><span class="k">ملاحظة</span><div class="t">${t}</div></button>`;
   }).join('');
@@ -817,7 +881,7 @@ function editAct(a) {
   if (a === 'smaller') items[i].s = Math.max(.6, Math.round(((items[i].s || 1) - .15) * 100) / 100);
   if (a === 'done') { items[i].done = !items[i].done; EDIT.done = items[i].done; $('#beDone').textContent = items[i].done ? '↺ لم ينتهِ' : '✓ انتهى'; }
   if (a === 'save') {
-    Object.assign(items[i], { text: $('#beText').value.trim(), color: EDIT.color, emoji: EDIT.emoji });
+    Object.assign(items[i], { text: $('#beText').value.trim(), color: EDIT.color, emoji: EDIT.emoji, vivid: true });
     if (items[i].type === 'reminder') items[i].time = $('#beTime').value;
     saveBoard(); boardUi(); return editClose(id);
   }
@@ -851,12 +915,13 @@ document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.datase
 function numberKey(n) {
   const t = document.querySelector(`.tabs .tab[data-n="${n}"]`); if (!t) return false;
   if (document.body.classList.contains('ambient')) ambient(false);
+  if (YTP) ytClose();
   if ($('#bedit').classList.contains('on')) return true;
   if (t.dataset.act === 'settings') { settings(true); return true; }
   show(t.dataset.page); t.focus(); return true;
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 window.onTvResume = () => { loadApps(); loadPrayers(); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
@@ -883,6 +948,10 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'phone') return settings(true);
   if (b.dataset.wall) { try { localStorage.wall = b.dataset.wall; } catch (x) {} applyWall(); return settings(true); }
   if (b.dataset.yt) return TV.youtube(b.dataset.yt);
+  if (b.dataset.rname) return ytPick(b.dataset.rname);
+  if (b.dataset.yts) return ytSearch(+b.dataset.yts);
+  if (b.dataset.ytq) return TV.link('https://www.youtube.com/results?search_query=' + encodeURIComponent(b.dataset.ytq));
+  if (b.dataset.act === 'ytclose') return ytClose();
   if (b.dataset.ch) return TV.channel ? TV.channel(b.dataset.ch) : TV.link('https://www.youtube.com/channel/' + b.dataset.ch);
   if (b.dataset.rec) { try { localStorage.rec = b.dataset.rec; } catch (x) {} if (playing) playSurah(playing); return quranUi(); }
   if (b.dataset.sura) return playSurah(+b.dataset.sura);
@@ -911,7 +980,7 @@ function ambient(on) {
 function move(dir) {
   if (MOVING) return moveStep(dir);
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
-  const scope = $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
+  const scope = $('#ytp').classList.contains('on') ? $('#ytp') : $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
   const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
   if (!all.includes(cur)) return all[0]?.focus();
   const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
@@ -930,6 +999,24 @@ function move(dir) {
   if (best.classList.contains('tab')) { document.querySelectorAll('.scroll').forEach(s => s.scrollTo({ top: 0, behavior: 'smooth' })); return; }
   best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'smooth' });
 }
+let HOLD = null;
+function holdPlay(b) {
+  if (b.dataset.act === 'nextm') return playMatchChannel(true);
+  const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown, c = list && list[+b.dataset.i];
+  if (c) TV.external ? TV.external(c.url) : TV.link(c.url);
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm')) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (HOLD) return;   // the repeats of an OK being held
+  HOLD = setTimeout(() => { HOLD = 'done'; holdPlay(b); }, 650);
+}, true);
+document.addEventListener('keyup', e => {
+  if (e.key !== 'Enter' || !HOLD) return;
+  e.preventDefault();
+  if (HOLD !== 'done') { clearTimeout(HOLD); HOLD = null; document.activeElement?.click(); } else HOLD = null;
+}, true);
 document.addEventListener('keydown', e => {
   if (/^[0-9]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '') && numberKey(e.key)) { e.preventDefault(); return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];

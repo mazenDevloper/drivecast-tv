@@ -33,13 +33,20 @@ import java.util.Calendar;
 import java.util.Locale;
 
 /**
- * The adhan at each prayer time for the city in gradle.properties. With the home screen up and nothing playing it plays the adhan in
- * res/raw (tools/fetch-adhan.sh) under a banner; while a film, a channel or HDMI is on it only shows the banner, so nothing is
- * cut off. Fajr is banner only: most adhan recordings lack «الصلاة خير من النوم».
+ * The adhan at each prayer time, then the iqamah after DriveCast's iqamah gap. With the home screen up and nothing playing they are
+ * heard — the Masjid al-Haram adhan (its own Fajr adhan at Fajr) and a Haram iqamah, fetched once from the Internet Archive into the
+ * app's files (Music/adhan.mp3 on the TV, if there is one, still wins); while a film, a channel or HDMI is on only the banner
+ * shows, so nothing is cut off.
  * Adapted from noor-tv (MIT, majedphotos): the city now comes from the home screen's settings (City).
  */
 public class Adhan extends BroadcastReceiver {
-    static final String FIRE = "app.drivecast.tv.ADHAN";
+    static final String FIRE = "app.drivecast.tv.ADHAN", IQAMA = "app.drivecast.tv.IQAMA";
+    // the Haram recordings (Internet Archive): downloaded once in the background, kept in the app's files
+    private static final String[][] SOUNDS = {
+        {"adhan.mp3", "https://archive.org/download/Mp3CollectionAdzan/Adzan%20Makkah.mp3"},
+        {"adhan-fajr.mp3", "https://archive.org/download/Mp3CollectionAdzan/Adzan-SubuhMakkah1.mp3"},
+        {"iqama.mp3", "https://archive.org/download/IqamaMakkahIsha3111434SheikhMajedAbbas/Iqama%20-%20Makkah%20Isha%20%5B3-11-1434%5D%20Sheikh%20Majed%20Abbas.mp3"}};
+    private static final int[] IQAMA_MIN = {25, 20, 20, 10, 20};
     static final String HOME = "app.drivecast.tv";   // this app is the home screen
     private static final String[] KEYS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
     private static final String[] NAMES = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
@@ -50,6 +57,7 @@ public class Adhan extends BroadcastReceiver {
     static void schedule(Context c) {
         Context app = c.getApplicationContext();
         new Thread(() -> {
+            sounds(app);
             Calendar now = Calendar.getInstance();
             for (int dayOffset = 0; dayOffset < 2; dayOffset++) {
                 Calendar day = (Calendar) now.clone();
@@ -70,6 +78,65 @@ public class Adhan extends BroadcastReceiver {
                 }
             }
         }, "adhan").start();
+    }
+
+    /** fetch the Haram adhan / iqamah once (and again only if a file is missing or broken) */
+    static void sounds(Context c) {
+        for (String[] s : SOUNDS) {
+            java.io.File f = new java.io.File(c.getFilesDir(), s[0]);
+            if (f.length() > 50_000) continue;
+            java.io.File tmp = new java.io.File(c.getFilesDir(), s[0] + ".part");
+            try {
+                HttpURLConnection con = (HttpURLConnection) new URL(s[1]).openConnection();
+                con.setInstanceFollowRedirects(true); con.setConnectTimeout(15000); con.setReadTimeout(30000);
+                con.setRequestProperty("User-Agent", "Mozilla/5.0 DriveCastTV");
+                int code = con.getResponseCode(), hops = 0;
+                while ((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) && hops++ < 5) {   // archive.org → its file server
+                    String loc = con.getHeaderField("Location"); con.disconnect();
+                    con = (HttpURLConnection) new URL(new URL(s[1]), loc).openConnection();
+                    con.setConnectTimeout(15000); con.setReadTimeout(30000); code = con.getResponseCode();
+                }
+                try (InputStream in = con.getInputStream(); java.io.FileOutputStream o = new java.io.FileOutputStream(tmp)) {
+                    byte[] buf = new byte[16384]; int n; while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                }
+                if (tmp.length() > 50_000) tmp.renameTo(f); else tmp.delete();
+            } catch (Exception e) { tmp.delete(); }
+        }
+    }
+
+    /** the sound for this moment: the user's own Music/adhan.mp3 first, then the Haram recordings */
+    private static java.io.File sound(Context c, boolean iqama, int prayer) {
+        if (!iqama) {
+            java.io.File mine = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "adhan.mp3");
+            if (mine.canRead()) return mine;
+            java.io.File fajr = new java.io.File(c.getFilesDir(), "adhan-fajr.mp3");
+            if (prayer == 0 && fajr.length() > 50_000) return fajr;
+        }
+        java.io.File f = new java.io.File(c.getFilesDir(), iqama ? "iqama.mp3" : "adhan.mp3");
+        return f.length() > 50_000 ? f : null;
+    }
+
+    /** DriveCast's iqamah gap for the prayer (master bin prayerSettings: offset + duration), else the usual Oman gaps */
+    private static int iqamaMinutes(int prayer) {
+        try {
+            JSONObject m = new JSONObject(get("https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a"));
+            org.json.JSONArray a = m.optJSONArray("prayerSettings");
+            String id = new String[]{"fajr", "dhuhr", "asr", "maghrib", "isha"}[prayer];
+            for (int k = 0; a != null && k < a.length(); k++) {
+                JSONObject r = a.optJSONObject(k);
+                if (r != null && id.equals(r.optString("id")) && r.has("iqamahDuration")) return r.optInt("iqamahDuration", IQAMA_MIN[prayer]);
+            }
+        } catch (Exception ignored) { }
+        return IQAMA_MIN[prayer];
+    }
+
+    private static void setIqama(Context c, int prayer) {
+        new Thread(() -> {
+            long when = System.currentTimeMillis() + iqamaMinutes(prayer) * 60_000L;
+            Intent fire = new Intent(c, Adhan.class).setAction(IQAMA).putExtra("p", prayer);
+            PendingIntent pi = PendingIntent.getBroadcast(c, 2, fire, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            c.getSystemService(AlarmManager.class).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
+        }, "iqama").start();
     }
 
     private static void set(Context c, long when, int prayer) {
@@ -128,28 +195,35 @@ public class Adhan extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context c, Intent i) {
-        if (!FIRE.equals(i.getAction())) return;
+        boolean iqama = IQAMA.equals(i.getAction());
+        if (!FIRE.equals(i.getAction()) && !iqama) return;
         Context app = c.getApplicationContext();
         int prayer = i.getIntExtra("p", 1);
-        schedule(app);
+        if (!iqama) { schedule(app); setIqama(app, prayer); }
         if (!app.getSystemService(PowerManager.class).isInteractive()) return; // TV is off
-        boolean idle = prayer != 0 && HOME.equals(topApp(app))
-                && !app.getSystemService(AudioManager.class).isMusicActive();
-        fire(app, prayer, idle);
+        fire(app, prayer, idle(app), iqama);
+    }
+
+    /** the home screen is in front and nothing else is playing (usage access may be missing: then the home screen's own word) */
+    static boolean idle(Context app) {
+        String top = topApp(app);
+        boolean home = HOME.equals(top) || (top == null && HomeActivity.front != null);
+        return home && !app.getSystemService(AudioManager.class).isMusicActive();
     }
 
     /** Banner always; the adhan itself only when play is true. */
-    static void fire(Context app, int prayer, boolean play) {
-        String text = "🕌 حان الآن موعد أذان " + NAMES[prayer];
+    static void fire(Context app, int prayer, boolean play) { fire(app, prayer, play, false); }
+
+    static void fire(Context app, int prayer, boolean play, boolean iqama) {
+        String text = iqama ? "🕌 أُقيمت صلاة " + NAMES[prayer] : "🕌 حان الآن موعد أذان " + NAMES[prayer];
         if (!play) {
-            banner(app, text, 30_000);
+            banner(app, text, iqama ? 15_000 : 30_000);
             return;
         }
-        // the adhan the setup put on the TV (tools/fetch-adhan.sh pushes it to Music/adhan.mp3); none = banner only
         stop();
-        java.io.File f = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "adhan.mp3");
+        java.io.File f = sound(app, iqama, prayer);
         try {
-            if (f.canRead()) {
+            if (f != null) {
                 player = new MediaPlayer();
                 player.setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
@@ -186,7 +260,7 @@ public class Adhan extends BroadcastReceiver {
         }, 1500);
     }
 
-    private static void stop() {
+    static void stop() {
         if (player == null) return;
         try {
             player.stop();
