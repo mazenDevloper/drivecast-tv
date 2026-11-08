@@ -61,7 +61,7 @@ curl -fsS -m 10 http://127.0.0.1:18080/board > "$OUT/board-before.json" 2>/dev/n
 curl -fsS -m 10 -X POST --data '{"bg":"paper","items":[{"id":"t1","type":"quote","color":"lav","text":"وقل ربّ زدني علماً"},{"id":"t2","type":"reminder","color":"pink","text":"موعد","time":"16:30"},{"id":"t3","type":"sticker","color":"butter","emoji":"☕"},{"id":"t4","type":"note","color":"mint","text":"ملاحظة"}]}' http://127.0.0.1:18080/board | grep -q ok && ok "board saved from the phone" || bad "board not saved"
 curl -fsS -m 10 -X POST --data 'board' http://127.0.0.1:18080/key >/dev/null; sleep 3; shot 11-board "«لوحتي» with a sample board"
 key KEYCODE_DPAD_DOWN 1; shot 12-board-focus "a board card in focus"
-key KEYCODE_DPAD_CENTER 1.5; shot 13-board-edit "OK on a card: the edit panel"; key KEYCODE_BACK 1
+key KEYCODE_DPAD_CENTER 1.5; shot 13-board-edit "OK on a card: the edit panel"; key KEYCODE_BACK 1; key KEYCODE_BACK 1
 for n in 1 2 3 4 5 6 7; do a shell input keyevent KEYCODE_$n; sleep 1.2; done; shot 14-number-7 "number 7: the 7th tab"; key KEYCODE_1
 curl -fsS -m 10 -X POST --data-binary @"$OUT/board-before.json" http://127.0.0.1:18080/board >/dev/null
 key KEYCODE_HOME 2
