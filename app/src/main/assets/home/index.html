@@ -95,6 +95,19 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
 [hidden]{display:none!important}
+/* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
+.mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
+body.ambient .mini{display:flex}
+body.ambient .page,body.ambient .player{display:none!important}
+body.ambient .wall{transform:none}
+body.ambient .veil{background:linear-gradient(180deg,rgba(10,14,19,.45) 0%,rgba(10,14,19,0) 22%,rgba(10,14,19,0) 70%,rgba(10,14,19,.55) 100%)}
+body.ambient .clock b{font-size:64px}
+.pill{flex:1;min-width:0;height:96px;border-radius:999px;display:flex;align-items:center;gap:20px;padding:0 34px;position:relative;overflow:hidden}
+.pill b{font-size:30px;white-space:nowrap}.pill span{font-size:22px;color:#d6dbe1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill .dot{width:14px;height:14px;border-radius:50%;background:var(--accent);flex:none}
+.pill img{width:52px;height:52px;object-fit:contain;flex:none}
+.pill .pb{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.08)}.pill .pb i{display:block;height:100%;background:var(--accent)}
+.pill .gold{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -145,6 +158,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div></div></section>
 
+  <div class="mini" id="mini"><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
 
   <div class="panel" id="panel"><div class="box">
@@ -220,7 +234,10 @@ function prayersUi() {
   $('#nextSub').textContent = (P.city ? P.city + ' · ' : '') + 'الأذان يتنبّه إذا كان فيلم يعمل، ولا يقطعه';
   $('#times').innerHTML = list.map(x => `<div class="p ${x.i === hot ? 'next' : x.q <= now ? 'past' : ''}"><span>${NAMES[x.i]}</span><b>${AR(fmtD(x.d))}</b><em>إقامة ${AR(fmtD(x.q))}</em></div>`).join('');
   const from = iqNow ? iqNow.d : prev ? prev.d : at(t[0]), to = iqNow ? iqNow.q : n.d;
-  $('#prog').style.width = Math.max(0, Math.min(100, (now - from) / (to - from) * 100)) + '%';
+  const pct = Math.max(0, Math.min(100, (now - from) / (to - from) * 100));
+  $('#prog').style.width = pct + '%';
+  const h = list[hot] || list[0];
+  $('#miniP').innerHTML = `<i class="dot"></i><b>${$('#next').textContent}</b><span>${NAMES[h.i]} ${AR(fmtD(h.d))} · إقامة ${AR(fmtD(h.q))}</span><div class="pb"><i style="width:${pct}%"></i></div>`;
 }
 const fmtD = d => fmt(d.getHours() + ':' + d.getMinutes());
 const fmt = hm => { let [h, m] = hm.split(':').map(Number); h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
@@ -381,7 +398,8 @@ async function loadNext() {
 }
 function nextUi() {
   const el = $('#nextm'), m = NEXTM;
-  if (!m) { el.innerHTML = '<small>أقرب مباراة</small><div class="empty">لا مباريات قريبة لفرقك المميّزة بالجزيرة في DriveCast</div>'; return; }
+  if (!m) { el.innerHTML = '<small>أقرب مباراة</small><div class="empty">لا مباريات قريبة لفرقك المميّزة بالجزيرة في DriveCast</div>'; $('#miniM').hidden = true; return; }
+  $('#miniM').hidden = false;
   const rule = TVRULES.find(r => r[0].test(m.league?.name || '')), d = new Date(m.timestamp * 1000), live = m.status === 'live';
   const today = new Date(), tom = new Date(); tom.setDate(tom.getDate() + 1);
   const day = d.toDateString() === today.toDateString() ? 'اليوم' : d.toDateString() === tom.toDateString() ? 'غداً' : d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -389,6 +407,7 @@ function nextUi() {
   const mid = live ? `${AR(m.score?.home ?? 0)} - ${AR(m.score?.away ?? 0)}<i>● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}</i>`
     : `${AR(fmtD(d))}<i>${day}${mins > 0 && mins < 600 ? ' · بعد ' + (mins < 60 ? AR(mins) + ' د' : AR(Math.floor(mins / 60)) + ' س') : ''}</i>`;
   const tm = t => `<div class="tm"><img src="${esc(t.logo)}" alt="">${esc(t.name)}</div>`;
+  $('#miniM').innerHTML = `<img src="${esc(m.home?.logo)}" alt=""><b>${live ? AR(m.score?.home ?? 0) + ' - ' + AR(m.score?.away ?? 0) : AR(fmtD(d))}</b><img src="${esc(m.away?.logo)}" alt=""><span>${esc(m.home?.name)} × ${esc(m.away?.name)} · ${live ? '● مباشر' : day}</span><span class="gold">📺 ${rule ? rule[1] : ''}</span>`;
   el.innerHTML = `<small>${live ? 'مباراة فرقك الآن' : 'أقرب مباراة'}</small><div class="lg">${esc(m.league?.name || '')}</div>
     <div class="vs">${tm(m.home || {})}<div class="mid">${mid}</div>${tm(m.away || {})}</div>
     <div class="tv">📺 ${rule ? rule[1] : 'القناة الناقلة غير معروفة'}</div>`;
@@ -453,7 +472,7 @@ function settings(on) {
   $('#cities .f')?.focus();
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 window.onTvResume = () => { loadApps(); loadPrayers(); };
 
 document.addEventListener('click', e => {
@@ -481,7 +500,13 @@ document.addEventListener('click', e => {
 
 // ---- the remote: arrows move to the nearest visible button in that direction
 function visible(el) { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+function ambient(on) {
+  document.body.classList.toggle('ambient', on);
+  if (on) { document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
+  else $('.tab.on')?.focus();
+}
 function move(dir) {
+  if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
   const scope = $('#panel').classList.contains('on') ? $('#panel') : document;
   const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
   if (!all.includes(cur)) return all[0]?.focus();
@@ -496,7 +521,7 @@ function move(dir) {
     const d = main + side * 2.5;
     if (d < bd) { bd = d; best = el; }
   }
-  if (!best) return;
+  if (!best) { if (dir === 'up' && cur.classList.contains('tab') && !$('#panel').classList.contains('on')) ambient(true); return; }
   best.focus();
   if (best.classList.contains('tab')) { document.querySelectorAll('.scroll').forEach(s => s.scrollTo({ top: 0, behavior: 'smooth' })); return; }
   best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'smooth' });
@@ -504,6 +529,7 @@ function move(dir) {
 document.addEventListener('keydown', e => {
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
   if (k) { e.preventDefault(); move(k); }
+  if (document.body.classList.contains('ambient') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ambient(false); }
   if (e.key === 'Escape' || e.key === 'GoBack') { e.preventDefault(); window.onTvBack(); }
 });
 
