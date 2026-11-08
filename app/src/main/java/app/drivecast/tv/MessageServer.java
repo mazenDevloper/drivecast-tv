@@ -95,9 +95,20 @@ public class MessageServer extends Service {
         String first = head.split("\r\n", 2)[0];
         if (!first.startsWith("POST ")) {
             if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
+            else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else reply(s.getOutputStream(), "text/html", page());
+            return;
+        }
+        if (first.startsWith("POST /board")) {   // «لوحتي»: the whole board (notes, reminders, quotes, stickers, drawings) as JSON
+            byte[] j = readBytes(in, head, 12 << 20);
+            boolean ok = j.length > 1 && j[0] == '{';
+            if (ok) {
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "board.json"))) { o.write(j); }
+                main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadBoard && loadBoard()"); });
+            }
+            reply(s.getOutputStream(), "text/plain", ok ? "ok" : "bad");
             return;
         }
         if (first.startsWith("POST /font")) {   // the user's own font file (e.g. Thmanyah from its official page), kept on the TV only
@@ -237,7 +248,7 @@ public class MessageServer extends Service {
         MouseService m = MouseService.on;
         if (m != null && k.equals("back")) { m.command("b"); return; }
         // another app is open: the shortcuts first bring the home screen back
-        if (k.equals("ambient") || k.equals("quran") || k.equals("live") || k.equals("match")) {
+        if (k.equals("ambient") || k.equals("board") || k.equals("quran") || k.equals("live") || k.equals("match")) {
             try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
             main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.remote(k); }, 900);
         }

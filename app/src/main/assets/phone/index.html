@@ -11,7 +11,7 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family
 .c{max-width:560px;margin:0 auto}
 h1{font-size:22px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center}
 h1 small{font-size:13px;color:var(--dim);font-weight:500}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:24px;background:var(--card);margin-bottom:14px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border-radius:24px;background:var(--card);margin-bottom:14px}
 .tabs button{border:0;background:none;color:var(--dim);font:600 15px inherit;font-family:inherit;padding:10px 0;border-radius:999px}
 .tabs button.on{background:var(--ink);color:#0b1411}
 .hide{display:none!important}
@@ -40,11 +40,21 @@ canvas{width:100%;aspect-ratio:16/9;background:var(--card);border-radius:18px;bo
 .zk .n{min-width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;background:rgba(255,255,255,.06)}
 .zk.done .n{background:var(--acc);color:#fff}.zk .sp{border:0;background:rgba(255,255,255,.06);color:var(--dim);width:38px;height:38px;border-radius:50%;font-size:16px}
 .zhead{display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:var(--dim);font-size:14px}.zhead button{border:1px solid #5a2a2a;background:#2a1414;color:#f3a3a3;border-radius:999px;padding:8px 14px;font-size:13px}
+/* «لوحتي» on the phone: pastel picks */
+.types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.types button{height:46px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--dim);font:600 14px inherit;font-family:inherit}
+.types button.on{background:var(--ink);color:#0b1411}
+.sw{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.sw i{width:36px;height:36px;border-radius:50%;border:3px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}.sw i.on{border-color:#fff}
+.emo{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin-top:10px}.emo button{height:42px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:22px}.emo button.on{background:#2c3f38;border-color:var(--acc)}
+input.in,textarea.in{width:100%;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:12px 14px;margin-top:8px}
+#bcv{background:#fff;margin-top:10px}
+.bl{margin-top:14px;display:flex;flex-direction:column;gap:8px}.bl div{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);font-size:15px}
+.bl div span{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bl div b{width:22px;height:22px;border-radius:7px;flex:none}.bl button{border:0;background:rgba(255,255,255,.06);color:var(--dim);width:34px;height:34px;border-radius:10px;font-size:15px}
+.bgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}.bgs button{height:52px;border-radius:14px;border:2px solid transparent;font:600 13px inherit;font-family:inherit;color:#2f2b3a}.bgs button.on{border-color:#fff}
 p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 .warn{background:#2a2414;border:1px solid #5a4a20;color:#f2d98a;border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.6;margin-bottom:10px}
 </style></head><body><div class="c">
 <h1>📺 التلفزيون <small id="st">متصل</small></h1>
-<div class="tabs"><button data-t="r" class="on">🎮 ريموت</button><button data-t="m">🖱️ ماوس</button><button data-t="q">📖 القرآن</button><button data-t="z">📿 الأذكار</button><button data-t="w">✍️ اكتب</button><button data-t="d">🎨 ارسم</button></div>
+<div class="tabs"><button data-t="r" class="on">🎮 ريموت</button><button data-t="m">🖱️ ماوس</button><button data-t="q">📖 القرآن</button><button data-t="z">📿 الأذكار</button><button data-t="b">📌 اللوحة</button><button data-t="w">✍️ اكتب</button><button data-t="d">🎨 ارسم</button></div>
 
 <section id="r">
   <div class="pad"><i></i><button data-k="up">▲</button><i></i><button data-k="right">▶</button><button class="ok" data-k="ok">OK</button><button data-k="left">◀</button><i></i><button data-k="down">▼</button><i></i></div>
@@ -79,6 +89,23 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div id="zlist"></div>
 </section>
 
+<section id="b" class="hide">
+  <div class="types"><button data-bt="note" class="on">📝 ملاحظة</button><button data-bt="reminder">⏰ تذكير</button><button data-bt="quote">❝ عبارة</button><button data-bt="sticker">🌸 ملصق</button><button data-bt="drawing">🎨 رسمة</button><button data-bt="photo">🖼 صورة</button></div>
+  <textarea class="in" id="btx" rows="3" maxlength="160" placeholder="اكتب هني…"></textarea>
+  <input class="in" type="time" id="btime" style="display:none">
+  <div class="emo" id="bemo" style="display:none"></div>
+  <div id="bdraw" style="display:none"><canvas id="bcv"></canvas><div class="row"><button id="bclr">امسح الرسمة</button></div></div>
+  <input type="file" id="bimg" accept="image/*" style="display:none;margin-top:10px;color:var(--dim)">
+  <div class="sw" id="bsw"></div>
+  <button class="big" id="badd">＋ أضف للوحة</button>
+  <label>الخلفية</label>
+  <div class="bgs" id="bbgs"></div>
+  <label>أو صورة من جوالك خلفيةً للوحة</label>
+  <input type="file" id="bbgimg" accept="image/*" style="margin-top:8px;color:var(--dim)">
+  <div class="row"><button data-k="board">📺 افتح اللوحة على التلفزيون</button></div>
+  <label>على اللوحة الحين</label><div class="bl" id="blist"></div>
+</section>
+
 <section id="w" class="hide">
   <label>عبارة وضع الصورة (تبقى على الشاشة كل مرة، بخط ثمانية)</label>
   <div class="row" style="margin-top:8px"><input id="ph" maxlength="120" placeholder="مثلاً: ﴿ألا بذكر الله تطمئن القلوب﴾" style="flex:3;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px"><button id="phs" style="flex:1">احفظ</button></div>
@@ -97,8 +124,8 @@ const buzz = () => navigator.vibrate && navigator.vibrate(10);
 let cur = 'r';
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   cur = b.dataset.t; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['r', 'm', 'q', 'z', 'w', 'd'].forEach(t => $(t).classList.toggle('hide', t !== cur));
-  if (cur === 'd') fit(); if (cur === 'q') reciters(); if (cur === 'z') azkar(); if (cur === 'm') status();
+  ['r', 'm', 'q', 'z', 'b', 'w', 'd'].forEach(t => $(t).classList.toggle('hide', t !== cur));
+  if (cur === 'd') fit(); if (cur === 'q') reciters(); if (cur === 'z') azkar(); if (cur === 'b') boardLoad(); if (cur === 'm') status();
   try { localStorage.tab = cur; } catch (e) {}
 });
 document.addEventListener('click', e => {
@@ -198,5 +225,59 @@ document.addEventListener('click', e => {
   azkar();
 });
 $('zreset').onclick = () => { if (zcat === 'general') (zgeneral || []).forEach(a => delete zcounts[a.id]); else AZKAR.filter(a => a.cat === zcat).forEach(a => delete zcounts[a.id]); zsave(); azkar(); };
+// ---- «لوحتي»: add pastel cards to the TV's board
+const PAL = { butter: '#fff2c6', pink: '#fde2e8', mint: '#d6f2df', sky: '#dbe9ff', lav: '#e8ddff', peach: '#ffe2cc', pista: '#e4f1c9', sand: '#f1e5d6' };
+const BGS = { paper: ['ورق', '#f7f2e8'], blush: ['وردي', 'linear-gradient(135deg,#fde3ea,#f6f0e8)'], mint: ['نعناعي', 'linear-gradient(135deg,#dcf3e8,#f7f4ea)'], sky: ['سماوي', 'linear-gradient(135deg,#dfeaff,#f8f1f4)'], lavender: ['لافندر', 'linear-gradient(160deg,#e9e0ff,#fdeee6)'], dusk: ['غروب', 'linear-gradient(160deg,#e6e2f5,#fbe6d4)'] };
+const EMO = ['🌸', '🌿', '☕', '🌙', '⭐', '💛', '🕌', '📖', '🎈', '🍰', '🌷', '🦋', '☀️', '🍋', '🫖', '🎁', '✈️', '🏃', '💊', '🛒', '📚', '🎂', '🌈', '🤲'];
+let BRD = { bg: 'paper', items: [] }, btype = 'note', bcolor = 'butter', bemoji = '🌸';
+$('bsw').innerHTML = Object.entries(PAL).map(([k, c]) => `<i data-bc="${k}" style="background:${c}" class="${k === bcolor ? 'on' : ''}"></i>`).join('');
+$('bemo').innerHTML = EMO.map(e => `<button data-be="${e}" class="${e === bemoji ? 'on' : ''}">${e}</button>`).join('');
+function boardLoad() { fetch('/board').then(r => r.json()).then(j => { BRD = Object.assign({ bg: 'paper', items: [] }, j); blist(); }).catch(() => blist()); }
+function boardSave(msg) { return post('/board', JSON.stringify(BRD)).then(r => { if (r) { $('s').textContent = msg; blist(); } }); }
+const bname = it => ({ note: '📝', reminder: '⏰', quote: '❝', sticker: it.emoji || '🌸', drawing: '🎨', photo: '🖼' }[it.type] || '•') + ' ' + (it.text || (it.time || '') || ({ drawing: 'رسمة', photo: 'صورة', sticker: 'ملصق' }[it.type] || ''));
+function blist() {
+  $('bbgs').innerHTML = Object.entries(BGS).map(([k, v]) => `<button data-bbg="${k}" class="${BRD.bg === k ? 'on' : ''}" style="background:${v[1]}">${v[0]}</button>`).join('');
+  $('blist').innerHTML = (BRD.items || []).map((it, i) => `<div><b style="background:${PAL[it.color] || '#fff'}"></b><span>${bname(it).replace(/</g, '&lt;')}</span><button data-bup="${i}">↑</button><button data-bdel="${i}">✕</button></div>`).join('') || '<p class="s">ما فيه شي بعد</p>';
+}
+function btypeUi() {
+  document.querySelectorAll('[data-bt]').forEach(b => b.classList.toggle('on', b.dataset.bt === btype));
+  $('btime').style.display = btype === 'reminder' ? '' : 'none';
+  $('bemo').style.display = btype === 'sticker' ? '' : 'none';
+  $('bdraw').style.display = btype === 'drawing' ? '' : 'none'; if (btype === 'drawing') bfit();
+  $('bimg').style.display = btype === 'photo' ? '' : 'none';
+  $('btx').placeholder = { note: 'اكتب ملاحظة…', reminder: 'شو تبي تتذكر؟', quote: 'عبارة تحبها…', sticker: 'كلمة صغيرة تحت الملصق (اختياري)', drawing: 'عنوان للرسمة (اختياري)', photo: 'عنوان للصورة (اختياري)' }[btype];
+}
+// a small canvas for a drawing (pastel ink on white)
+const bcv = $('bcv'), bcx = bcv.getContext('2d'); let blast = null, bdrawn = false;
+function bfit() { const r = bcv.getBoundingClientRect(); if (!r.width) return; bcv.width = 800; bcv.height = Math.round(800 * r.height / r.width) || 600; bcx.fillStyle = '#fff'; bcx.fillRect(0, 0, bcv.width, bcv.height); bdrawn = false; }
+bcv.style.aspectRatio = '4/3';
+const bpt = e => { const r = bcv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * bcv.width, (e.clientY - r.top) / r.height * bcv.height]; };
+const INK = { butter: '#d9a520', pink: '#e2708f', mint: '#3fa77a', sky: '#4b86d8', lav: '#8a6bd6', peach: '#e48a4f', pista: '#7aa83a', sand: '#9c7b5a' };
+bcv.onpointerdown = e => { bcv.setPointerCapture(e.pointerId); blast = bpt(e); };
+bcv.onpointermove = e => { if (!blast) return; const p = bpt(e); bcx.strokeStyle = INK[bcolor]; bcx.lineWidth = 9; bcx.lineCap = bcx.lineJoin = 'round'; bcx.beginPath(); bcx.moveTo(...blast); bcx.lineTo(...p); bcx.stroke(); blast = p; bdrawn = true; };
+bcv.onpointerup = bcv.onpointercancel = () => { blast = null; };
+$('bclr').onclick = bfit;
+// a picture from the phone, made small enough for the TV
+function shrink(file, max, q) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => { const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', q)); }; im.onerror = rej; im.src = URL.createObjectURL(file); }); }
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-bt]'); if (t) { btype = t.dataset.bt; return btypeUi(); }
+  const c = e.target.closest('[data-bc]'); if (c) { bcolor = c.dataset.bc; document.querySelectorAll('[data-bc]').forEach(x => x.classList.toggle('on', x === c)); return; }
+  const m = e.target.closest('[data-be]'); if (m) { bemoji = m.dataset.be; document.querySelectorAll('[data-be]').forEach(x => x.classList.toggle('on', x === m)); return; }
+  const g = e.target.closest('[data-bbg]'); if (g) { BRD.bg = g.dataset.bbg; return boardSave('تغيّرت الخلفية ✅'); }
+  const d = e.target.closest('[data-bdel]'); if (d) { BRD.items.splice(+d.dataset.bdel, 1); return boardSave('انشال من اللوحة'); }
+  const u = e.target.closest('[data-bup]'); if (u) { const i = +u.dataset.bup; if (i > 0) { [BRD.items[i - 1], BRD.items[i]] = [BRD.items[i], BRD.items[i - 1]]; boardSave('تغيّر الترتيب'); } return; }
+});
+$('bbgimg').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('s').textContent = 'جارٍ تجهيز الخلفية…'; BRD.bgImg = await shrink(f, 1920, .82); BRD.bg = 'custom'; boardSave('صارت صورتك خلفية اللوحة ✅'); };
+$('badd').onclick = async () => {
+  const it = { id: Date.now().toString(36), type: btype, color: bcolor, text: $('btx').value.trim(), at: Date.now() };
+  if (btype === 'reminder') it.time = $('btime').value;
+  if (btype === 'sticker') it.emoji = bemoji;
+  if (btype === 'drawing') { if (!bdrawn) return $('s').textContent = 'ارسم شي أول'; it.img = bcv.toDataURL('image/png'); }
+  if (btype === 'photo') { const f = $('bimg').files[0]; if (!f) return $('s').textContent = 'اختر صورة أول'; it.img = await shrink(f, 900, .8); }
+  if (['note', 'reminder', 'quote'].includes(btype) && !it.text) return $('s').textContent = 'اكتب شي أول';
+  buzz(); BRD.items = [...(BRD.items || []), it];
+  await boardSave('انضاف للوحة ✅'); $('btx').value = ''; if (btype === 'drawing') bfit();
+};
+btypeUi();
 try { const t = localStorage.tab; if (t) document.querySelector(`.tabs [data-t="${t}"]`).click(); } catch (e) {}
 </script></body></html>

@@ -33,7 +33,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .clock b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
 .clock span{font-size:20px;color:var(--dim)}
 .tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
-.tab{padding:12px 28px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
+.tab{padding:12px 22px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
 .wx{font-size:24px;color:#d6dbe1;min-width:180px;text-align:left}
 .f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
@@ -105,6 +105,49 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
 [hidden]{display:none!important}
+/* ---- «لوحتي»: a pastel mood board — notes, reminders, quotes, die-cut stickers, polaroid drawings, dashed arrows */
+.boardBg{position:fixed;inset:0;z-index:-1;display:none;background:#f6f1e7}
+body.board .boardBg{display:block}body.board .wall,body.board .veil{display:none}
+.boardBg.paper{background:#f7f2e8 radial-gradient(rgba(120,96,70,.16) 1.4px,transparent 1.6px) 0 0/30px 30px}
+.boardBg.blush{background:linear-gradient(135deg,#fde3ea 0%,#fbeee4 55%,#f6f0e8 100%)}
+.boardBg.mint{background:linear-gradient(135deg,#dcf3e8 0%,#eef6e2 60%,#f7f4ea 100%)}
+.boardBg.sky{background:linear-gradient(135deg,#dfeaff 0%,#ece6fb 60%,#f8f1f4 100%)}
+.boardBg.lavender{background:linear-gradient(160deg,#e9e0ff 0%,#f6e6f3 55%,#fdeee6 100%)}
+.boardBg.dusk{background:linear-gradient(160deg,#e6e2f5 0%,#f3e1e4 50%,#fbe6d4 100%)}
+.boardBg.custom{background-size:cover;background-position:center}.boardBg.custom::after{content:"";position:absolute;inset:0;background:rgba(255,252,246,.18)}
+body.board .tabs{background:rgba(255,255,255,.62);border-color:rgba(60,50,80,.08);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+body.board .tab{color:#5b5668}body.board .tab.on{background:#2f2b3a;color:#fff}
+body.board .clock b,body.board .wx,body.board .sal{color:#2f2b3a;text-shadow:none}body.board .clock span{color:#6c6678}body.board .line{color:#b07a2a}
+.bhead{display:flex;align-items:baseline;gap:18px;padding:6px 8px 0;color:#2f2b3a}
+.bhead b{font-family:"Thmanyah Serif Display","Thmanyah Sans","UserFont","Noto Naskh Arabic",serif;font-size:54px;font-weight:700}
+.bhead span{font-size:22px;color:#7a7386}
+.board{position:relative;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:118px;grid-auto-flow:dense;gap:62px 66px;padding:34px 30px 160px}
+.board svg.links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2;filter:drop-shadow(0 2px 2px rgba(255,255,255,.8))}
+.bi{position:relative;z-index:1;border:0;padding:26px 28px;border-radius:30px;color:#2f2b3a;font-family:"Thmanyah Sans","UserFont","Noto Sans Arabic",sans-serif;
+  text-align:right;display:flex;flex-direction:column;gap:10px;transform:rotate(var(--r,0deg));box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 14px 30px rgba(70,50,90,.12),0 3px 8px rgba(70,50,90,.08);transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+.bi.f:focus{transform:rotate(0) scale(1.06);box-shadow:0 0 0 6px #fff,0 30px 60px rgba(70,50,90,.28);z-index:3}
+.bi .k{font-size:17px;font-weight:600;letter-spacing:.2px;opacity:.62}
+.bi .t{font-size:30px;line-height:1.45;font-weight:500;overflow:hidden}
+.bi.note{grid-column:span 2;grid-row:span 2}
+.bi.note::before{content:"";position:absolute;top:-14px;left:50%;width:120px;height:30px;margin-left:-60px;background:rgba(255,255,255,.55);border-radius:6px;transform:rotate(-3deg);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.bi.reminder{grid-column:span 2;grid-row:span 2}
+.bi.reminder .when{display:flex;align-items:center;gap:12px;font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
+.bi.reminder .when i{width:54px;height:54px;border-radius:18px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:28px}
+.bi.reminder::after{content:"";position:absolute;top:16px;left:18px;width:16px;height:16px;border-radius:50%;background:#e8798f;box-shadow:0 3px 0 rgba(0,0,0,.12),inset -3px -3px 0 rgba(0,0,0,.12)}
+.bi.reminder.done .t,.bi.reminder.done .when{text-decoration:line-through;text-decoration-thickness:3px;opacity:.5}
+.bi.quote{grid-column:span 3;grid-row:span 2;justify-content:center;align-items:center;text-align:center;padding:30px 50px}
+.bi.quote .t{font-family:"Thmanyah Serif Display","Thmanyah Sans","UserFont","Noto Naskh Arabic",serif;font-size:42px;line-height:1.5}
+.bi.quote::before,.bi.quote::after{position:absolute;font-family:Georgia,serif;font-size:120px;line-height:1;opacity:.18}
+.bi.quote::before{content:"”";top:6px;right:24px}.bi.quote::after{content:"“";bottom:-40px;left:24px}
+.bi.sticker{grid-column:span 1;grid-row:span 2;background:none!important;box-shadow:none;align-items:center;justify-content:center;padding:0}
+.bi.sticker .disc{width:168px;height:168px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:100px;border:10px solid #fff;box-shadow:0 12px 26px rgba(70,50,90,.18)}
+.bi.sticker .t{font-size:20px;text-align:center;margin-top:6px}
+.bi.drawing,.bi.photo{grid-column:span 2;grid-row:span 3;background:#fff!important;padding:16px 16px 18px;border-radius:14px}
+.bi.drawing img,.bi.photo img{width:100%;flex:1;min-height:0;object-fit:cover;border-radius:6px;background:var(--bgc,#fff)}
+.bi.drawing .t,.bi.photo .t{font-size:22px;text-align:center}
+.bempty{display:none;margin:120px auto;max-width:900px;text-align:center;font-size:28px;line-height:1.8;color:#6c6678}
+.c-pink{background:#fde2e8}.c-butter{background:#fff2c6}.c-mint{background:#d6f2df}.c-sky{background:#dbe9ff}
+.c-lav{background:#e8ddff}.c-peach{background:#ffe2cc}.c-pista{background:#e4f1c9}.c-sand{background:#f1e5d6}
 /* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
@@ -133,12 +176,13 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
     <nav class="tabs" id="tabs">
       <button class="tab f on" data-page="home">الرئيسية</button>
+      <button class="tab f" data-page="board">لوحتي</button>
       <button class="tab f" data-page="quran">القرآن</button>
       <button class="tab f" data-page="subs">الاشتراكات</button>
       <button class="tab f" data-page="iptv">القنوات</button>
@@ -178,6 +222,11 @@ body.ambient .phrase.on{display:block}
     <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
+  <section class="page" id="p-board"><div class="scroll" id="boardScroll">
+    <div class="bhead"><b>لوحتي</b><span id="bdate"></span></div>
+    <div class="board" id="board"></div>
+    <div class="bempty" id="bempty">اللوحة فاضية — من الجوال: صفحة التلفزيون ← «📌 اللوحة» ← أضف ملاحظة، تذكير، عبارة، ملصق أو رسمة</div>
+  </div></section>
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div></div></section>
 
   <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span></div>
@@ -205,6 +254,8 @@ const FAKE = {   // in a browser (preview) the page still shows, with sample dat
   setCity: () => {}, phoneUrl: () => 'http://192.168.1.20:8080', canOverlay: () => true, settings: () => {},
 };
 const TV = window.TV || FAKE;
+// one clock for the whole page (a test can move it: window.__simTime)
+const NOW = () => window.__simTime ? window.__simTime() : new Date();
 const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 const NAMES = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
 // noor-tv's videos (MIT, majedphotos): Surat Al-Kahf, Al-Baqara, morning and evening adhkar, ruqya
@@ -223,7 +274,7 @@ const CITIES = [
 
 // ---- clock, hijri date, weather
 function tick() {
-  const d = new Date();
+  const d = NOW();
   $('#time').textContent = d.toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
   $('#date').textContent = d.toLocaleDateString('ar', { weekday: 'long' }) + ' · ' + hijri + ' · ' + d.toLocaleDateString('ar', { day: 'numeric', month: 'long' });
@@ -247,14 +298,14 @@ function loadFont() {
 }
 function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } prayersUi(); weather(); }
 async function loadSettings() { const ms = await getJ('https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a'); if (ms && Array.isArray(ms.prayerSettings)) { PSET = ms.prayerSettings; prayersUi(); } }
-function at(hm, plusDay) { const [h, m] = hm.split(':').map(Number), d = new Date(); d.setHours(h, m, 0, 0); if (plusDay) d.setDate(d.getDate() + 1); return d; }
+function at(hm, plusDay) { const [h, m] = hm.split(':').map(Number), d = NOW(); d.setHours(h, m, 0, 0); if (plusDay) d.setDate(d.getDate() + 1); return d; }
 // iqamah = adhan + DriveCast's own setting (master bin prayerSettings), else the usual Oman gaps
 let PSET = [];
 const PID = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'], IQ = [25, 20, 20, 10, 20];
 const pset = i => PSET.find(x => x && x.id === PID[i]) || {};
 function prayersUi() {
   const t = P.today; if (!t) { $('#next').textContent = 'المواقيت عند أول اتصال'; return; }
-  const now = new Date(), list = t.map((x, i) => {
+  const now = NOW(), list = t.map((x, i) => {
     const d = at(x); d.setMinutes(d.getMinutes() + (+pset(i).offsetMinutes || 0));
     const iq = pset(i).iqamahDuration ?? IQ[i];
     return { i, d, q: new Date(d.getTime() + iq * 60000) };
@@ -262,7 +313,7 @@ function prayersUi() {
   const iqNow = list.find(x => x.d <= now && x.q > now);
   let n = list.find(x => x.d > now), prev = [...list].reverse().find(x => x.d <= now);
   if (!n) n = { i: 0, d: at((P.tomorrow || t)[0], true) };
-  const left = ms => { const m = Math.max(1, Math.ceil(ms / 60000)); return m < 60 ? AR(m) + ' دقيقة' : AR(Math.floor(m / 60)) + ' س ' + AR(m % 60) + ' د'; };
+  const left = ms => { const m = Math.max(1, Math.ceil(ms / 60000)); return m < 60 ? minutesAr(m) : AR(Math.floor(m / 60)) + ' س ' + AR(m % 60) + ' د'; };
   if (iqNow) {
     $('#heroSmall').textContent = 'أُذّن ' + NAMES[iqNow.i] + ' · ' + AR(fmtD(iqNow.d));
     $('#next').textContent = 'الإقامة بعد ' + left(iqNow.q - now);
@@ -279,6 +330,8 @@ function prayersUi() {
   const h = list[hot] || list[0];
   $('#miniP').innerHTML = `<i class="dot"></i><b>${$('#next').textContent}</b><span>${NAMES[h.i]} ${AR(fmtD(h.d))} · إقامة ${AR(fmtD(h.q))}</span><div class="pb"><i style="width:${pct}%"></i></div>`;
 }
+// Arabic counting: دقيقة / دقيقتان / ٣–١٠ دقائق / ١١+ دقيقة
+const minutesAr = m => m === 1 ? 'دقيقة' : m === 2 ? 'دقيقتان' : m <= 10 ? AR(m) + ' دقائق' : AR(m) + ' دقيقة';
 const fmtD = d => fmt(d.getHours() + ':' + d.getMinutes());
 const fmt = hm => { let [h, m] = hm.split(':').map(Number); h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
 let wxAt = 0;
@@ -293,7 +346,7 @@ function weather() {
 const WALLS = [['rawas', 'جامع عمر الرواس (يتغيّر مع الشمس)'], ['awqat', 'أوقات اليوم'], ['zakhrafa', 'الزخرفة'], ['masjid-layl', 'مسجد الليل'], ['none', 'بلا خلفية']];
 function getWall() { try { return localStorage.wall || 'rawas'; } catch (e) { return 'rawas'; } }
 function applyWall() {
-  const w = getWall(), h = new Date().getHours();
+  const w = getWall(), h = NOW().getHours();
   const f = w === 'none' ? '' : w === 'awqat' ? (h >= 5 && h < 15 ? 'awqat-morning' : h >= 15 && h < 19 ? 'awqat-evening' : 'awqat-night') : w;
   $('#wDay').style.backgroundImage = f ? `url(wall/${f}.jpg)` : 'none';
   $('#veil').style.display = f ? '' : 'none';
@@ -368,7 +421,7 @@ function nightPhoto(now) {
   if (t <= rise - 60 * 6e4) return clamp((rise - 60 * 6e4 - t) / F);
   return 0;
 }
-function hijriDay() { try { return Math.min(30, Math.max(1, +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(new Date()).replace(/\D/g, '') || 1)); } catch (e) { return 15; } }
+function hijriDay() { try { return Math.min(30, Math.max(1, +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(NOW()).replace(/\D/g, '') || 1)); } catch (e) { return 15; } }
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 function liveSky() {
   const now = window.__simTime ? window.__simTime() : new Date(), { alt, az } = sunPos(now, MOSQUE[0], MOSQUE[1]);
@@ -408,7 +461,7 @@ function liveSky() {
 }
 // the line over the clock (noor-tv): Friday, the white days (13-15 of the hijri month), in gold
 function dayLine() {
-  const d = new Date(); let hd = 0;
+  const d = NOW(); let hd = 0;
   try { hd = +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(d).replace(/\D/g, ''); } catch (e) {}
   const parts = [];
   if (d.getDay() === 5) parts.push('جمعة مباركة 🌿');
@@ -562,7 +615,7 @@ function nextUi() {
   if (!m) { el.innerHTML = '<small>أقرب مباراة</small><div class="empty">لا مباريات قريبة لفرقك المميّزة بالجزيرة في DriveCast</div>'; $('#miniM').hidden = true; return; }
   $('#miniM').hidden = false;
   const rule = TVRULES.find(r => r[0].test(m.league?.name || '')), d = new Date(m.timestamp * 1000), live = m.status === 'live';
-  const today = new Date(), tom = new Date(); tom.setDate(tom.getDate() + 1);
+  const today = NOW(), tom = NOW(); tom.setDate(tom.getDate() + 1);
   const day = d.toDateString() === today.toDateString() ? 'اليوم' : d.toDateString() === tom.toDateString() ? 'غداً' : d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
   const mins = Math.round((d - today) / 60000);
   const mid = live ? `${AR(m.score?.home ?? 0)} - ${AR(m.score?.away ?? 0)}<i>● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}</i>`
@@ -613,7 +666,58 @@ async function loadMatches() {
 }
 
 // ---- pages and settings
+// ---- «لوحتي»
+let BOARD = { bg: 'paper', items: [] };
+function loadBoard() {
+  let t = ''; try { t = TV.board ? TV.board() : (localStorage.board || ''); } catch (e) {}
+  try { BOARD = Object.assign({ bg: 'paper', items: [] }, JSON.parse(t || '{}')); } catch (e) {}
+  boardUi();
+}
+function saveBoard() { const j = JSON.stringify(BOARD); try { TV.saveBoard ? TV.saveBoard(j) : (localStorage.board = j); } catch (e) {} }
+const tilt = id => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) | 0; return ((Math.abs(h) % 9) - 4) * 0.8; };
+function boardUi() {
+  const bg = $('#boardBg'); bg.className = 'boardBg ' + (BOARD.bg === 'custom' && BOARD.bgImg ? 'custom' : BOARD.bg || 'paper');
+  bg.style.backgroundImage = BOARD.bg === 'custom' && BOARD.bgImg ? `url(${BOARD.bgImg})` : '';
+  $('#bdate').textContent = NOW().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
+  const items = BOARD.items || [];
+  $('#bempty').style.display = items.length ? 'none' : 'block';
+  $('#board').innerHTML = items.map(it => {
+    const c = 'c-' + (it.color || 'butter'), r = `--r:${tilt(it.id)}deg`, t = esc(it.text || '');
+    if (it.type === 'reminder') return `<button class="bi f reminder ${c} ${it.done ? 'done' : ''}" style="${r}" data-bid="${it.id}"><span class="k">تذكير</span><div class="when"><i>⏰</i>${it.time ? AR(fmt(it.time)) : ''}</div><div class="t">${t}</div></button>`;
+    if (it.type === 'quote') return `<button class="bi f quote ${c}" style="${r}" data-bid="${it.id}"><div class="t">${t}</div></button>`;
+    if (it.type === 'sticker') return `<button class="bi f sticker" style="${r}" data-bid="${it.id}"><div class="disc ${c}">${esc(it.emoji || '🌿')}</div>${t ? `<div class="t">${t}</div>` : ''}</button>`;
+    if (it.type === 'drawing' || it.type === 'photo') return `<button class="bi f ${it.type}" style="${r}" data-bid="${it.id}"><img src="${esc(it.img)}" alt="">${t ? `<div class="t">${t}</div>` : ''}</button>`;
+    return `<button class="bi f note ${c}" style="${r}" data-bid="${it.id}"><span class="k">ملاحظة</span><div class="t">${t}</div></button>`;
+  }).join('');
+  requestAnimationFrame(boardLinks);
+}
+// dashed, slightly curved arrows from each card to the next one in the board's order (skipping long jumps)
+function boardLinks() {
+  const b = $('#board'), cards = [...b.querySelectorAll('.bi')], br = b.getBoundingClientRect();
+  const z = parseFloat(document.body.style.zoom || 1) || 1;
+  const P = el => { const r = el.getBoundingClientRect(); return { x: (r.left + r.width / 2 - br.left) / z, y: (r.top + r.height / 2 - br.top) / z, w: r.width / z, h: r.height / z }; };
+  const COLS = ['#b9a3e3', '#f0a3b5', '#8fcfb0', '#f2b98b', '#9ab9ee'];
+  let paths = '';
+  for (let i = 0; i + 1 < cards.length; i++) {
+    const a = P(cards[i]), c = P(cards[i + 1]), dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy);
+    if (d > 900 || d < 60) continue;
+    const ux = dx / d, uy = dy / d, edge = (q, k) => Math.min(Math.abs(q.w / 2 / (ux || 1e-6)), Math.abs(q.h / 2 / (uy || 1e-6))) + k;   // where the line leaves the card
+    const ra = edge(a, -16), rc = edge(c, 4);   // starts a little over its card, like a hand-drawn arrow
+    if (ra + rc > d - 24) continue;
+    const x1 = a.x + ux * ra, y1 = a.y + uy * ra, x2 = c.x - ux * rc, y2 = c.y - uy * rc;
+    const bend = (i % 2 ? 1 : -1) * Math.min(80, d * .18), mx = (x1 + x2) / 2 - uy * bend, my = (y1 + y2) / 2 + ux * bend;
+    const col = COLS[i % COLS.length];
+    // the arrow head points along the curve's last part
+    const tx = x2 - mx, ty = y2 - my, tl = Math.hypot(tx, ty) || 1, hx = tx / tl, hy = ty / tl, s = 16;
+    paths += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="2 14"/>`
+      + `<path d="M${(x2 - hx * s - hy * s * .7).toFixed(1)},${(y2 - hy * s + hx * s * .7).toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} L${(x2 - hx * s + hy * s * .7).toFixed(1)},${(y2 - hy * s - hx * s * .7).toFixed(1)}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  b.insertAdjacentHTML('afterbegin', `<svg class="links" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`);
+}
+
 function show(page) {
+  document.body.classList.toggle('board', page === 'board');
+  if (page === 'board') loadBoard();
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + page));
   document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
   document.body.classList.toggle('deep', page !== 'home' || $('#homeScroll').scrollTop > 60);
@@ -647,6 +751,7 @@ window.onRemote = k => {
   if (k === 'live') { ambient(false); show('iptv'); return $('.tab[data-page="iptv"]').focus(); }
   if (k === 'match') return playMatchChannel();
   if (k === 'stop') return closePlayer();
+  if (k === 'board') { ambient(false); show('board'); return $('.tab[data-page="board"]').focus(); }
 };
 
 document.addEventListener('click', e => {
@@ -668,6 +773,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown; if (TV.watch) TV.watch(JSON.stringify(list.map(c => c.url)), JSON.stringify(list.map(c => c.name)), +b.dataset.i); else TV.link(list[+b.dataset.i].url); return; }
+  if (b.dataset.bid) { const it = (BOARD.items || []).find(x => x.id === b.dataset.bid); if (it && it.type === 'reminder') { it.done = !it.done; saveBoard(); boardUi(); $(`[data-bid="${it.id}"]`)?.focus(); } return; }
   if (b.dataset.pkg) { let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (x) {} use[b.dataset.pkg] = (use[b.dataset.pkg] || 0) + 1; try { localStorage.use = JSON.stringify(use); } catch (x) {} return TV.open(b.dataset.pkg); }
   if (b.dataset.city) { const c = CITIES.find(x => x[0] === b.dataset.city); TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); setTimeout(() => { loadPrayers(); settings(true); }, 1500); }
 });

@@ -2,6 +2,7 @@ package app.drivecast.tv;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -71,6 +72,17 @@ public class HomeActivity extends Activity {
     protected void onPause() {
         if (front == this) front = null;
         super.onPause();
+    }
+
+    /** «لوحتي» as JSON (an empty board when none yet) */
+    static String readBoard(Context c) {
+        java.io.File f = new java.io.File(c.getFilesDir(), "board.json");
+        if (!f.exists()) return "{\"bg\":\"paper\",\"items\":[]}";
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            byte[] b = new byte[(int) f.length()]; int got = 0, r;
+            while (got < b.length && (r = in.read(b, got, b.length - got)) > 0) got += r;
+            return new String(b, 0, got, "UTF-8");
+        } catch (Exception e) { return "{\"items\":[]}"; }
     }
 
     /** a line of the page's script (the phone remote's Quran) */
@@ -191,6 +203,12 @@ public class HomeActivity extends Activity {
         }
 
         /** a text from the internet without the page's CORS limits (IPTV lists, DriveCast's data); answers cb(text|null) */
+        @JavascriptInterface public String board() { return readBoard(HomeActivity.this); }
+        @JavascriptInterface public void saveBoard(String json) {
+            if (json == null || !json.startsWith("{")) return;
+            try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "board.json"))) { o.write(json.getBytes("UTF-8")); } catch (Exception ignored) { }
+        }
+
         /** the line the user wrote for the photo view (phone page → «اكتب») */
         @JavascriptInterface
         public String phrase() { return getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""); }
