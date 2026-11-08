@@ -181,7 +181,10 @@ public class HomeActivity extends Activity {
                 try {
                     java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
                     c.setConnectTimeout(12000); c.setReadTimeout(30000);
-                    c.setRequestProperty("User-Agent", "VLC/3.0.20");
+                    if (url.contains("365scores.com")) {   // the fixtures API answers a browser
+                        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36");
+                        c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
+                    } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
                     java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
                     in.mark(2);
                     int b0 = in.read(), b1 = in.read();
