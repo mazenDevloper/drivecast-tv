@@ -16,10 +16,12 @@ a install -r -g "$APK" >/dev/null && ok "installed" || { bad "install failed"; e
 a shell appops set $PKG SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
 a shell cmd alarm set-timezone Asia/Muscat >/dev/null 2>&1 || a shell setprop persist.sys.timezone Asia/Muscat >/dev/null 2>&1
 a shell settings put secure enabled_accessibility_services $PKG/$PKG.MouseService; a shell settings put secure accessibility_enabled 1
-a shell cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
+a shell cmd role add-role-holder --user 0 android.app.role.HOME $PKG >/dev/null 2>&1 || a shell cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
+a shell cmd role get-role-holders --user 0 android.app.role.HOME 2>/dev/null | tr -d '\r' | sed 's/^/- home role: /' >> "$OUT/report.md"
 a logcat -c
 key KEYCODE_HOME 8
-[ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ] && ok "home screen is DriveCast TV" || bad "home screen is not DriveCast TV"
+if [ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ]; then ok "HOME opens DriveCast TV"
+else bad "HOME opens another launcher"; a shell am start -n $PKG/.HomeActivity >/dev/null; sleep 8; fi
 shot 01-home "the home page after HOME"
 
 # the remote: every row of the home page, then the pages
@@ -31,7 +33,7 @@ key KEYCODE_DPAD_UP 3; shot 05-ambient "UP from the tabs: the photo, the day, pr
 key KEYCODE_DPAD_DOWN 1
 for p in 1 2 3 4 5; do key KEYCODE_DPAD_LEFT 0.4; key KEYCODE_DPAD_CENTER 3; shot "06-page-$p" "tab $p"; done
 key KEYCODE_MENU 1.5; shot 07-settings "MENU: settings panel"; key KEYCODE_BACK
-key KEYCODE_BACK; key KEYCODE_HOME 2
+key KEYCODE_BACK; key KEYCODE_HOME 3; shot 07b-after-home "after BACK + HOME"
 pid=$(a shell pidof $PKG | tr -d '\r'); [ -n "$pid" ] && ok "still running after BACK / HOME (pid $pid)" || bad "the app is not running"
 
 # the phone page (port 8080 on the TV)

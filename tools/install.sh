@@ -19,7 +19,10 @@ case "$CUR" in *app.drivecast.tv/*) ;; null|"") adb -s "$D" shell settings put s
 adb -s "$D" shell settings put secure accessibility_enabled 1
 adb -s "$D" shell pm grant app.drivecast.tv android.permission.READ_MEDIA_AUDIO 2>/dev/null || adb -s "$D" shell pm grant app.drivecast.tv android.permission.READ_EXTERNAL_STORAGE 2>/dev/null || true
 # the home button now opens DriveCast TV (the old launcher stays installed; setup may disable it afterwards)
-adb -s "$D" shell cmd package set-home-activity app.drivecast.tv/.HomeActivity >/dev/null 2>&1 || echo "⚠️ choose «DriveCast TV» when the TV asks for the home app"
+# Android 10+ keeps the home app as a «role»; older ones as the preferred home activity
+adb -s "$D" shell cmd role add-role-holder --user 0 android.app.role.HOME app.drivecast.tv >/dev/null 2>&1 \
+  || adb -s "$D" shell cmd package set-home-activity app.drivecast.tv/.HomeActivity >/dev/null 2>&1 \
+  || echo "⚠️ choose «DriveCast TV» when the TV asks for the home app"
 sleep 6
 adb -s "$D" shell am broadcast -n app.drivecast.tv/.Reminder >/dev/null
 adb -s "$D" shell input keyevent KEYCODE_HOME
