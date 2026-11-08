@@ -35,6 +35,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .tab{padding:12px 22px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
+.tab[data-n]::before{content:attr(data-n);display:inline-block;min-width:24px;margin-inline-end:8px;font-size:16px;font-weight:700;opacity:.45;font-variant-numeric:tabular-nums}
 .wx{font-size:24px;color:#d6dbe1;min-width:180px;text-align:left}
 .f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
 .f:focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 26px 50px rgba(0,0,0,.55);z-index:2}
@@ -77,7 +78,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .appgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px;padding:12px 4px 20px}
 .appgrid .app{width:auto;height:160px}
 .empty{font-size:22px;color:var(--dim);padding:20px 4px}
-.panel{position:absolute;inset:0;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
+.panel{position:fixed;inset:0;z-index:20;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
 .panel.on{display:flex}
 .panel .box{width:1100px;max-height:1000px;overflow:auto;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
 .panel h3{margin:0;font-size:46px}
@@ -146,6 +147,16 @@ body.board .clock b,body.board .wx,body.board .sal{color:#2f2b3a;text-shadow:non
 .bi.drawing img,.bi.photo img{width:100%;flex:1;min-height:0;object-fit:cover;border-radius:6px;background:var(--bgc,#fff)}
 .bi.drawing .t,.bi.photo .t{font-size:22px;text-align:center}
 .bempty{display:none;margin:120px auto;max-width:900px;text-align:center;font-size:28px;line-height:1.8;color:#6c6678}
+.panel.bedit{background:rgba(40,30,55,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.panel.bedit .box{width:1000px;background:#fbf8f2;border:0;color:#2f2b3a;box-shadow:0 40px 90px rgba(40,30,60,.35)}
+.panel.bedit .note{color:#6c6678}.panel.bedit h3{font-size:40px}
+.bin{width:100%;border-radius:22px;border:2px solid #e6dfd2;background:#fff;color:#2f2b3a;font:500 30px "Thmanyah Sans","UserFont","Noto Sans Arabic",sans-serif;padding:16px 22px;resize:none}
+.bin:focus{border-color:#8a6bd6;box-shadow:0 0 0 5px rgba(138,107,214,.25)}
+.bcolors{display:flex;gap:16px;flex-wrap:wrap}
+.bcolors button{width:70px;height:70px;border-radius:50%;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.12);font-size:34px;background:#fff}
+.bcolors button.on{outline:4px solid #2f2b3a;outline-offset:3px}
+.beRow{display:flex;gap:14px;flex-wrap:wrap}.panel.bedit .btn{color:#2f2b3a;border-color:#e0d8ca;background:#fff;padding:0 30px}
+.panel.bedit .btn.bsave{background:#2f2b3a;color:#fff}.panel.bedit .btn.bdel{color:#c2415c}
 .c-pink{background:#fde2e8}.c-butter{background:#fff2c6}.c-mint{background:#d6f2df}.c-sky{background:#dbe9ff}
 .c-lav{background:#e8ddff}.c-peach{background:#ffe2cc}.c-pista{background:#e4f1c9}.c-sand{background:#f1e5d6}
 /* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
@@ -234,6 +245,15 @@ body.ambient .phrase.on{display:block}
   <div class="mini" id="mini"><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
 
+  <div class="panel bedit" id="bedit"><div class="box">
+    <h3 id="beTitle">تعديل الكرت</h3>
+    <textarea class="f bin" id="beText" rows="3" maxlength="160" placeholder="اكتب هنا…"></textarea>
+    <input class="f bin" id="beTime" type="time">
+    <div class="note">اللون:</div><div class="bcolors" id="beColors"></div>
+    <div class="note" id="beEmoL">الملصق:</div><div class="bcolors" id="beEmo"></div>
+    <div class="beRow"><button class="btn f" data-be="up">→ قدّمه</button><button class="btn f" data-be="down">أخّره ←</button><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
+    <div class="beRow"><button class="btn f bsave" data-be="save">حفظ</button><button class="btn f" data-be="close">إغلاق</button></div>
+  </div></div>
   <div class="panel" id="panel"><div class="box">
     <h3>الإعدادات</h3>
     <div class="note">مدينة مواقيت الصلاة:</div>
@@ -565,12 +585,19 @@ async function loadLists() {
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
   liveUi(); iptvUi();
 }
-// the home shelf: your DriveCast favourites first, then Oman, MBC, Quran and news
+// the home shelf: Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
+// does not have it; then your other DriveCast favourites
+const HOME_PICKS = [[/^Oman TV( \(|$)/i, /oman tv(?! (cultural|mubashir|live|sport))/i], [/^Oman TV (Mubashir|Live)/i, /oman.*(mubashir|live|مباشر)/i],
+  [/^Al Jazeera( \(|$)/i, /jazeera|الجزيرة/i], [/^MBC 1\b/i, /\bmbc ?1\b|mbc$/i], [/^Oman Sports?/i, /oman sports?|عمان الرياضية/i]];
 const PICKS = [/^Oman TV\b/i, /^Oman TV Cultural/i, /^Oman TV Mubashir/i, /^Oman Sports?/i, /^MBC 1\b/i, /^MBC Drama/i, /^MBC 4\b/i, /^MBC 5\b/i, /^MBC Action/i, /^MBC Masr\b/i, /^Al Quran Al Kareem/i, /^Al Sunnah/i, /^Iqraa Quran/i, /^Al Jazeera( |$)/i, /^Al Arabiya( |$)/i, /^Dubai Sports/i, /^Abu Dhabi Sports/i, /^Sharjah Sports/i];
 function liveUi() {
-  const base = n => n.replace(/\s*[\(\[].*$/, '').trim().toLowerCase(), have = new Set(IFAV.map(c => base(c.name)));
-  LIVE = [...IFAV];
-  for (const re of PICKS) for (const c of ILIST) if (re.test(c.name) && !/geo-blocked|radio|\bFM\b/i.test(c.name) && !have.has(base(c.name))) { have.add(base(c.name)); LIVE.push(c); break; }
+  const usable = c => !/geo-blocked|radio|\bFM\b/i.test(c.name);
+  const picks = [];
+  for (const [inList, inFav] of HOME_PICKS) {
+    const c = ILIST.find(x => inList.test(x.name) && usable(x)) || IFAV.find(x => inFav.test(x.name));
+    if (c && !picks.includes(c)) picks.push(c);
+  }
+  LIVE = [...picks, ...IFAV.filter(c => !picks.includes(c))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 async function loadIptv() {
@@ -626,12 +653,19 @@ function nextUi() {
     <div class="vs">${tm(m.home || {})}<div class="mid">${mid}</div>${tm(m.away || {})}</div>
     <div class="tv">📺 ${rule ? rule[1] : 'القناة الناقلة غير معروفة'}</div>`;
 }
+// a channel: a YouTube link opens in YouTube; a stream plays full screen (up / down = the next streams of the same list)
+const ytId = u => (String(u).match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/)([\w-]{11})/) || [])[1];
+function playChannel(list, i) {
+  const c = list[i]; if (!c) return;
+  if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
+  const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
+  if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
+}
 function playMatchChannel() {
   const rule = NEXTM && TVRULES.find(r => r[0].test(NEXTM.league?.name || ''));
   const pool = [...IFAV, ...ILIST], i = rule ? pool.findIndex(c => rule[2].test(c.name)) : -1;
   if (i < 0) return show('matches');
-  const list = pool.filter(c => rule[2].test(c.name));
-  TV.watch ? TV.watch(JSON.stringify(list.map(c => c.url)), JSON.stringify(list.map(c => c.name)), 0) : TV.link(list[0].url);
+  return playChannel(pool.filter(c => rule[2].test(c.name)), 0);
 }
 
 // ---- shelves
@@ -715,6 +749,45 @@ function boardLinks() {
   b.insertAdjacentHTML('afterbegin', `<svg class="links" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`);
 }
 
+// OK on a board card: edit it right here (text, time, colour, sticker, order, done, delete)
+const BCOL = { butter: '#fff2c6', pink: '#fde2e8', mint: '#d6f2df', sky: '#dbe9ff', lav: '#e8ddff', peach: '#ffe2cc', pista: '#e4f1c9', sand: '#f1e5d6' };
+const BEMO = ['🌸', '🌿', '☕', '🌙', '⭐', '💛', '🕌', '📖', '🎈', '🍰', '🌷', '🦋', '☀️', '🍋', '🤲', '🎁'];
+let EDIT = null;
+function editCard(id) {
+  const it = (BOARD.items || []).find(x => x.id === id); if (!it) return;
+  EDIT = { ...it };
+  const kind = { note: 'الملاحظة', reminder: 'التذكير', quote: 'العبارة', sticker: 'الملصق', drawing: 'الرسمة', photo: 'الصورة' }[it.type] || 'الكرت';
+  $('#beTitle').textContent = 'تعديل ' + kind;
+  $('#beText').value = it.text || ''; $('#beText').placeholder = it.type === 'drawing' || it.type === 'photo' || it.type === 'sticker' ? 'عنوان صغير (اختياري)' : 'اكتب هنا…';
+  $('#beTime').style.display = it.type === 'reminder' ? '' : 'none'; $('#beTime').value = it.time || '';
+  $('#beDone').style.display = it.type === 'reminder' ? '' : 'none'; $('#beDone').textContent = it.done ? '↺ لم ينتهِ' : '✓ انتهى';
+  $('#beEmo').style.display = $('#beEmoL').style.display = it.type === 'sticker' ? '' : 'none';
+  editColors();
+  $('#bedit').classList.add('on'); $('#beText').focus();
+}
+function editColors() {
+  $('#beColors').innerHTML = Object.entries(BCOL).map(([k, c]) => `<button class="f ${EDIT.color === k ? 'on' : ''}" style="background:${c}" data-bec="${k}" aria-label="${k}"></button>`).join('');
+  $('#beEmo').innerHTML = BEMO.map(e => `<button class="f ${EDIT.emoji === e ? 'on' : ''}" data-bee="${e}">${e}</button>`).join('');
+  const f = document.activeElement; if (f && f.dataset && (f.dataset.bec || f.dataset.bee)) $(`[data-bec="${f.dataset.bec}"],[data-bee="${f.dataset.bee}"]`)?.focus();
+}
+function editClose(focusId) { $('#bedit').classList.remove('on'); EDIT = null; (focusId && $(`[data-bid="${focusId}"]`) || $('.tab.on'))?.focus(); }
+function editAct(a) {
+  const items = BOARD.items || [], i = items.findIndex(x => x.id === EDIT?.id); if (i < 0) return editClose();
+  const id = EDIT.id;
+  if (a === 'close') return editClose(id);
+  if (a === 'del') { items.splice(i, 1); saveBoard(); boardUi(); return editClose(items[Math.min(i, items.length - 1)]?.id); }
+  if (a === 'up' && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
+  if (a === 'down' && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
+  if (a === 'done') { items[i].done = !items[i].done; EDIT.done = items[i].done; $('#beDone').textContent = items[i].done ? '↺ لم ينتهِ' : '✓ انتهى'; }
+  if (a === 'save') {
+    Object.assign(items[i], { text: $('#beText').value.trim(), color: EDIT.color, emoji: EDIT.emoji });
+    if (items[i].type === 'reminder') items[i].time = $('#beTime').value;
+    saveBoard(); boardUi(); return editClose(id);
+  }
+  saveBoard(); boardUi();
+  if (a === 'up' || a === 'down') $(`[data-be="${a}"]`)?.focus();
+}
+
 function show(page) {
   document.body.classList.toggle('board', page === 'board');
   if (page === 'board') loadBoard();
@@ -736,11 +809,21 @@ function settings(on) {
   $('#overlay').textContent = TV.canOverlay() ? '' : 'الأذان فوق الأفلام يحتاج إذن «العرض فوق التطبيقات» (يفعّله الإعداد مع كلود)';
   $('#cities .f')?.focus();
 }
+// the remote's numbers: 1 = the first tab … (0 = settings)
+document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.dataset.act === 'settings' ? '0' : String(i + 1));
+function numberKey(n) {
+  const t = document.querySelector(`.tabs .tab[data-n="${n}"]`); if (!t) return false;
+  if (document.body.classList.contains('ambient')) ambient(false);
+  if ($('#bedit').classList.contains('on')) return true;
+  if (t.dataset.act === 'settings') { settings(true); return true; }
+  show(t.dataset.page); t.focus(); return true;
+}
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 window.onTvResume = () => { loadApps(); loadPrayers(); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
+  if (/^[0-9]$/.test(k)) return numberKey(k);
   const dir = { up: 'up', down: 'down', left: 'left', right: 'right' }[k];
   if (dir) return move(dir);
   if (k === 'ok') { if (document.body.classList.contains('ambient')) return ambient(false); return document.activeElement?.click(); }
@@ -772,8 +855,11 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
-  if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown; if (TV.watch) TV.watch(JSON.stringify(list.map(c => c.url)), JSON.stringify(list.map(c => c.name)), +b.dataset.i); else TV.link(list[+b.dataset.i].url); return; }
-  if (b.dataset.bid) { const it = (BOARD.items || []).find(x => x.id === b.dataset.bid); if (it && it.type === 'reminder') { it.done = !it.done; saveBoard(); boardUi(); $(`[data-bid="${it.id}"]`)?.focus(); } return; }
+  if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown; return playChannel(list, +b.dataset.i); }
+  if (b.dataset.bid) return editCard(b.dataset.bid);
+  if (b.dataset.be) return editAct(b.dataset.be);
+  if (b.dataset.bec) { EDIT.color = b.dataset.bec; return editColors(); }
+  if (b.dataset.bee) { EDIT.emoji = b.dataset.bee; return editColors(); }
   if (b.dataset.pkg) { let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (x) {} use[b.dataset.pkg] = (use[b.dataset.pkg] || 0) + 1; try { localStorage.use = JSON.stringify(use); } catch (x) {} return TV.open(b.dataset.pkg); }
   if (b.dataset.city) { const c = CITIES.find(x => x[0] === b.dataset.city); TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); setTimeout(() => { loadPrayers(); settings(true); }, 1500); }
 });
@@ -787,7 +873,7 @@ function ambient(on) {
 }
 function move(dir) {
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
-  const scope = $('#panel').classList.contains('on') ? $('#panel') : document;
+  const scope = $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
   const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
   if (!all.includes(cur)) return all[0]?.focus();
   const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
@@ -807,6 +893,7 @@ function move(dir) {
   best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'smooth' });
 }
 document.addEventListener('keydown', e => {
+  if (/^[0-9]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '') && numberKey(e.key)) { e.preventDefault(); return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
   if (k) { e.preventDefault(); move(k); }
   if (document.body.classList.contains('ambient') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ambient(false); }
