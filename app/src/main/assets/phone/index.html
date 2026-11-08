@@ -229,10 +229,10 @@ $('zreset').onclick = () => { if (zcat === 'general') (zgeneral || []).forEach(a
 const PAL = { butter: '#fff2c6', pink: '#fde2e8', mint: '#d6f2df', sky: '#dbe9ff', lav: '#e8ddff', peach: '#ffe2cc', pista: '#e4f1c9', sand: '#f1e5d6' };
 const BGS = { paper: ['ورق', '#f7f2e8'], blush: ['وردي', 'linear-gradient(135deg,#fde3ea,#f6f0e8)'], mint: ['نعناعي', 'linear-gradient(135deg,#dcf3e8,#f7f4ea)'], sky: ['سماوي', 'linear-gradient(135deg,#dfeaff,#f8f1f4)'], lavender: ['لافندر', 'linear-gradient(160deg,#e9e0ff,#fdeee6)'], dusk: ['غروب', 'linear-gradient(160deg,#e6e2f5,#fbe6d4)'] };
 const EMO = ['🌸', '🌿', '☕', '🌙', '⭐', '💛', '🕌', '📖', '🎈', '🍰', '🌷', '🦋', '☀️', '🍋', '🫖', '🎁', '✈️', '🏃', '💊', '🛒', '📚', '🎂', '🌈', '🤲'];
-let BRD = { bg: 'paper', items: [] }, btype = 'note', bcolor = 'butter', bemoji = '🌸';
+let BRD = { bg: 'blush', items: [] }, btype = 'note', bcolor = 'butter', bemoji = '🌸';
 $('bsw').innerHTML = Object.entries(PAL).map(([k, c]) => `<i data-bc="${k}" style="background:${c}" class="${k === bcolor ? 'on' : ''}"></i>`).join('');
 $('bemo').innerHTML = EMO.map(e => `<button data-be="${e}" class="${e === bemoji ? 'on' : ''}">${e}</button>`).join('');
-function boardLoad() { fetch('/board').then(r => r.json()).then(j => { BRD = Object.assign({ bg: 'paper', items: [] }, j); blist(); }).catch(() => blist()); }
+function boardLoad() { fetch('/board').then(r => r.json()).then(j => { BRD = Object.assign({ bg: 'blush', items: [] }, j); blist(); }).catch(() => blist()); }
 function boardSave(msg) { return post('/board', JSON.stringify(BRD)).then(r => { if (r) { $('s').textContent = msg; blist(); } }); }
 const bname = it => ({ note: '📝', reminder: '⏰', quote: '❝', sticker: it.emoji || '🌸', drawing: '🎨', photo: '🖼' }[it.type] || '•') + ' ' + (it.text || (it.time || '') || ({ drawing: 'رسمة', photo: 'صورة', sticker: 'ملصق' }[it.type] || ''));
 function blist() {

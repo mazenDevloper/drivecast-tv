@@ -53,6 +53,11 @@ public class HomeActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        // the page is laid out for 1920×1080 and scaled to the screen: the TV's own «font size» setting must not make
+        // its text bigger again (that wrapped the clock, the date and the salawat line word by word)
+        s.setTextZoom(100);
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
         web.setBackgroundColor(0xFF0A0E13);
         web.setWebViewClient(new WebViewClient());
         web.addJavascriptInterface(new Bridge(), "TV");

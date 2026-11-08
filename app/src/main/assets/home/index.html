@@ -106,8 +106,9 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
 [hidden]{display:none!important}
+.clock b,.clock span,.sal,.wx{white-space:nowrap}
 /* ---- «لوحتي»: a pastel mood board — notes, reminders, quotes, die-cut stickers, polaroid drawings, dashed arrows */
-.boardBg{position:fixed;inset:0;z-index:-1;display:none;background:#f6f1e7}
+.boardBg{position:fixed;inset:0;z-index:-1;display:none;background:linear-gradient(135deg,#fde3ea 0%,#fbeee4 55%,#f6f0e8 100%)}
 body.board .boardBg{display:block}body.board .wall,body.board .veil{display:none}
 .boardBg.paper{background:#f7f2e8 radial-gradient(rgba(120,96,70,.16) 1.4px,transparent 1.6px) 0 0/30px 30px}
 .boardBg.blush{background:linear-gradient(135deg,#fde3ea 0%,#fbeee4 55%,#f6f0e8 100%)}
@@ -122,30 +123,36 @@ body.board .clock b,body.board .wx,body.board .sal{color:#2f2b3a;text-shadow:non
 .bhead{display:flex;align-items:baseline;gap:18px;padding:6px 8px 0;color:#2f2b3a}
 .bhead b{font-family:"Thmanyah Serif Display","Thmanyah Sans","UserFont","Noto Naskh Arabic",serif;font-size:54px;font-weight:700}
 .bhead span{font-size:22px;color:#7a7386}
-.board{position:relative;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:118px;grid-auto-flow:dense;gap:62px 66px;padding:34px 30px 160px}
-.board svg.links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2;filter:drop-shadow(0 2px 2px rgba(255,255,255,.8))}
-.bi{position:relative;z-index:1;border:0;padding:26px 28px;border-radius:30px;color:#2f2b3a;font-family:"Thmanyah Sans","UserFont","Noto Sans Arabic",sans-serif;
-  text-align:right;display:flex;flex-direction:column;gap:10px;transform:rotate(var(--r,0deg));box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 14px 30px rgba(70,50,90,.12),0 3px 8px rgba(70,50,90,.08);transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
-.bi.f:focus{transform:rotate(0) scale(1.06);box-shadow:0 0 0 6px #fff,0 30px 60px rgba(70,50,90,.28);z-index:3}
-.bi .k{font-size:17px;font-weight:600;letter-spacing:.2px;opacity:.62}
-.bi .t{font-size:30px;line-height:1.45;font-weight:500;overflow:hidden}
-.bi.note{grid-column:span 2;grid-row:span 2}
-.bi.note::before{content:"";position:absolute;top:-14px;left:50%;width:120px;height:30px;margin-left:-60px;background:rgba(255,255,255,.55);border-radius:6px;transform:rotate(-3deg);box-shadow:0 2px 6px rgba(0,0,0,.06)}
-.bi.reminder{grid-column:span 2;grid-row:span 2}
-.bi.reminder .when{display:flex;align-items:center;gap:12px;font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
-.bi.reminder .when i{width:54px;height:54px;border-radius:18px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:28px}
-.bi.reminder::after{content:"";position:absolute;top:16px;left:18px;width:16px;height:16px;border-radius:50%;background:#e8798f;box-shadow:0 3px 0 rgba(0,0,0,.12),inset -3px -3px 0 rgba(0,0,0,.12)}
+.board{position:relative;margin:8px 0 0;min-height:860px}
+.board svg.links{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:500;filter:drop-shadow(0 2px 2px rgba(255,255,255,.8))}
+/* every card sits where it was put (x, y on a 1792-wide board), tilted a little, layered in the board's order */
+.bi{position:absolute;border:0;padding:18px 20px;border-radius:24px;color:#2f2b3a;font-family:"Thmanyah Sans","UserFont","Noto Sans Arabic",sans-serif;
+  text-align:right;display:flex;flex-direction:column;gap:6px;transform:rotate(var(--r,0deg)) scale(var(--s,1));transform-origin:center;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 10px 22px rgba(70,50,90,.13),0 2px 6px rgba(70,50,90,.08);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,left .12s,top .12s}
+.bi.f:focus{transform:rotate(0) scale(calc(var(--s,1) * 1.07));box-shadow:0 0 0 5px #fff,0 24px 48px rgba(70,50,90,.28);z-index:400!important}
+.bi.moving{outline:4px dashed #8a6bd6;outline-offset:10px;transform:rotate(0) scale(calc(var(--s,1) * 1.07));z-index:450!important}
+.bi .k{font-size:14px;font-weight:600;opacity:.6}
+.bi .t{font-size:23px;line-height:1.45;font-weight:500;overflow:hidden}
+.bi.note{width:300px;min-height:190px}
+.bi.note::before{content:"";position:absolute;top:-12px;left:50%;width:96px;height:24px;margin-left:-48px;background:rgba(255,255,255,.6);border-radius:5px;transform:rotate(-3deg);box-shadow:0 2px 5px rgba(0,0,0,.06)}
+.bi.reminder{width:290px;min-height:180px}
+.bi.reminder .when{display:flex;align-items:center;gap:10px;font-size:32px;font-weight:700;font-variant-numeric:tabular-nums}
+.bi.reminder .when i{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:22px}
+.bi.reminder::after{content:"";position:absolute;top:12px;left:14px;width:14px;height:14px;border-radius:50%;background:#e8798f;box-shadow:0 3px 0 rgba(0,0,0,.12),inset -3px -3px 0 rgba(0,0,0,.12)}
 .bi.reminder.done .t,.bi.reminder.done .when{text-decoration:line-through;text-decoration-thickness:3px;opacity:.5}
-.bi.quote{grid-column:span 3;grid-row:span 2;justify-content:center;align-items:center;text-align:center;padding:30px 50px}
-.bi.quote .t{font-family:"Thmanyah Serif Display","Thmanyah Sans","UserFont","Noto Naskh Arabic",serif;font-size:42px;line-height:1.5}
-.bi.quote::before,.bi.quote::after{position:absolute;font-family:Georgia,serif;font-size:120px;line-height:1;opacity:.18}
-.bi.quote::before{content:"”";top:6px;right:24px}.bi.quote::after{content:"“";bottom:-40px;left:24px}
-.bi.sticker{grid-column:span 1;grid-row:span 2;background:none!important;box-shadow:none;align-items:center;justify-content:center;padding:0}
-.bi.sticker .disc{width:168px;height:168px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:100px;border:10px solid #fff;box-shadow:0 12px 26px rgba(70,50,90,.18)}
-.bi.sticker .t{font-size:20px;text-align:center;margin-top:6px}
-.bi.drawing,.bi.photo{grid-column:span 2;grid-row:span 3;background:#fff!important;padding:16px 16px 18px;border-radius:14px}
-.bi.drawing img,.bi.photo img{width:100%;flex:1;min-height:0;object-fit:cover;border-radius:6px;background:var(--bgc,#fff)}
-.bi.drawing .t,.bi.photo .t{font-size:22px;text-align:center}
+.bi.quote{width:480px;min-height:160px;justify-content:center;align-items:center;text-align:center;padding:24px 40px}
+.bi.quote .t{font-family:"Thmanyah Serif Display","Thmanyah Sans","UserFont","Noto Naskh Arabic",serif;font-size:32px;line-height:1.5}
+.bi.quote::before,.bi.quote::after{position:absolute;font-family:Georgia,serif;font-size:86px;line-height:1;opacity:.18}
+.bi.quote::before{content:"”";top:4px;right:18px}.bi.quote::after{content:"“";bottom:-30px;left:18px}
+.bi.sticker{width:150px;background:none!important;box-shadow:none;align-items:center;justify-content:center;padding:0}
+.bi.sticker .disc{width:132px;height:132px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:76px;border:8px solid #fff;box-shadow:0 10px 20px rgba(70,50,90,.18)}
+.bi.sticker .t{font-size:17px;text-align:center;margin-top:4px}
+/* a picture is a sticker too: a thick white frame, a soft shadow */
+.bi.drawing,.bi.photo{width:250px;background:#fff!important;padding:12px 12px 14px;border-radius:12px}
+.bi.drawing img,.bi.photo img{width:100%;height:200px;object-fit:cover;border-radius:4px;background:#fff}
+.bi.drawing .t,.bi.photo .t{font-size:17px;text-align:center}
+.bmove{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:30;display:none;padding:16px 30px;border-radius:999px;background:#2f2b3a;color:#fff;font-size:22px;box-shadow:0 18px 40px rgba(40,30,60,.3)}
+body.moving .bmove{display:block}
 .bempty{display:none;margin:120px auto;max-width:900px;text-align:center;font-size:28px;line-height:1.8;color:#6c6678}
 .panel.bedit{background:rgba(40,30,55,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .panel.bedit .box{width:1000px;background:#fbf8f2;border:0;color:#2f2b3a;box-shadow:0 40px 90px rgba(40,30,60,.35)}
@@ -236,6 +243,7 @@ body.ambient .phrase.on{display:block}
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
     <div class="bhead"><b>لوحتي</b><span id="bdate"></span></div>
     <div class="board" id="board"></div>
+    <div class="bmove" id="bmove">✥ حرّك بالأسهم · OK أو رجوع للتثبيت</div>
     <div class="bempty" id="bempty">اللوحة فاضية — من الجوال: صفحة التلفزيون ← «📌 اللوحة» ← أضف ملاحظة، تذكير، عبارة، ملصق أو رسمة</div>
   </div></section>
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div></div></section>
@@ -251,7 +259,8 @@ body.ambient .phrase.on{display:block}
     <input class="f bin" id="beTime" type="time">
     <div class="note">اللون:</div><div class="bcolors" id="beColors"></div>
     <div class="note" id="beEmoL">الملصق:</div><div class="bcolors" id="beEmo"></div>
-    <div class="beRow"><button class="btn f" data-be="up">→ قدّمه</button><button class="btn f" data-be="down">أخّره ←</button><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
+    <div class="beRow"><button class="btn f" data-be="move">✥ حرّكه</button><button class="btn f" data-be="front">فوق الكل</button><button class="btn f" data-be="back">تحت الكل</button><button class="btn f" data-be="bigger">＋ كبّر</button><button class="btn f" data-be="smaller">－ صغّر</button></div>
+    <div class="beRow"><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
     <div class="beRow"><button class="btn f bsave" data-be="save">حفظ</button><button class="btn f" data-be="close">إغلاق</button></div>
   </div></div>
   <div class="panel" id="panel"><div class="box">
@@ -701,30 +710,54 @@ async function loadMatches() {
 
 // ---- pages and settings
 // ---- «لوحتي»
-let BOARD = { bg: 'paper', items: [] };
+let BOARD = { bg: 'blush', items: [] };
 function loadBoard() {
   let t = ''; try { t = TV.board ? TV.board() : (localStorage.board || ''); } catch (e) {}
-  try { BOARD = Object.assign({ bg: 'paper', items: [] }, JSON.parse(t || '{}')); } catch (e) {}
+  try { BOARD = Object.assign({ bg: 'blush', items: [] }, JSON.parse(t || '{}')); } catch (e) {}
   boardUi();
 }
 function saveBoard() { const j = JSON.stringify(BOARD); try { TV.saveBoard ? TV.saveBoard(j) : (localStorage.board = j); } catch (e) {} }
 const tilt = id => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) | 0; return ((Math.abs(h) % 9) - 4) * 0.8; };
 function boardUi() {
-  const bg = $('#boardBg'); bg.className = 'boardBg ' + (BOARD.bg === 'custom' && BOARD.bgImg ? 'custom' : BOARD.bg || 'paper');
+  const bg = $('#boardBg'); bg.className = 'boardBg ' + (BOARD.bg === 'custom' && BOARD.bgImg ? 'custom' : BOARD.bg || 'blush');
   bg.style.backgroundImage = BOARD.bg === 'custom' && BOARD.bgImg ? `url(${BOARD.bgImg})` : '';
   $('#bdate').textContent = NOW().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
   const items = BOARD.items || [];
   $('#bempty').style.display = items.length ? 'none' : 'block';
-  $('#board').innerHTML = items.map(it => {
-    const c = 'c-' + (it.color || 'butter'), r = `--r:${tilt(it.id)}deg`, t = esc(it.text || '');
-    if (it.type === 'reminder') return `<button class="bi f reminder ${c} ${it.done ? 'done' : ''}" style="${r}" data-bid="${it.id}"><span class="k">تذكير</span><div class="when"><i>⏰</i>${it.time ? AR(fmt(it.time)) : ''}</div><div class="t">${t}</div></button>`;
-    if (it.type === 'quote') return `<button class="bi f quote ${c}" style="${r}" data-bid="${it.id}"><div class="t">${t}</div></button>`;
-    if (it.type === 'sticker') return `<button class="bi f sticker" style="${r}" data-bid="${it.id}"><div class="disc ${c}">${esc(it.emoji || '🌿')}</div>${t ? `<div class="t">${t}</div>` : ''}</button>`;
-    if (it.type === 'drawing' || it.type === 'photo') return `<button class="bi f ${it.type}" style="${r}" data-bid="${it.id}"><img src="${esc(it.img)}" alt="">${t ? `<div class="t">${t}</div>` : ''}</button>`;
-    return `<button class="bi f note ${c}" style="${r}" data-bid="${it.id}"><span class="k">ملاحظة</span><div class="t">${t}</div></button>`;
+  const SIZE = { note: [300, 190], reminder: [290, 180], quote: [480, 160], sticker: [150, 170], drawing: [250, 250], photo: [250, 250] };
+  // a card without a place yet goes to the next free spot, row by row from the right
+  let cx = 1792, cy = 20, rowH = 0;
+  for (const it of items) {
+    if (it.x != null && it.y != null) continue;
+    const [w, h] = SIZE[it.type] || SIZE.note;
+    if (cx - w < 0) { cx = 1792; cy += rowH + 60; rowH = 0; }
+    it.x = cx - w; it.y = cy; cx -= w + 70; rowH = Math.max(rowH, h);
+  }
+  $('#board').style.height = Math.max(860, ...items.map(it => it.y + (SIZE[it.type] || SIZE.note)[1] * (it.s || 1) + 120)) + 'px';
+  $('#board').innerHTML = items.map((it, n) => {
+    const c = 'c-' + (it.color || 'butter'), t = esc(it.text || '');
+    const st = `left:${it.x}px;top:${it.y}px;z-index:${n + 1};--r:${tilt(it.id)}deg;--s:${it.s || 1}`;
+    if (it.type === 'reminder') return `<button class="bi f reminder ${c} ${it.done ? 'done' : ''}" style="${st}" data-bid="${it.id}"><span class="k">تذكير</span><div class="when"><i>⏰</i>${it.time ? AR(fmt(it.time)) : ''}</div><div class="t">${t}</div></button>`;
+    if (it.type === 'quote') return `<button class="bi f quote ${c}" style="${st}" data-bid="${it.id}"><div class="t">${t}</div></button>`;
+    if (it.type === 'sticker') return `<button class="bi f sticker" style="${st}" data-bid="${it.id}"><div class="disc ${c}">${esc(it.emoji || '🌿')}</div>${t ? `<div class="t">${t}</div>` : ''}</button>`;
+    if (it.type === 'drawing' || it.type === 'photo') return `<button class="bi f ${it.type}" style="${st}" data-bid="${it.id}"><img src="${esc(it.img)}" alt="">${t ? `<div class="t">${t}</div>` : ''}</button>`;
+    return `<button class="bi f note ${c}" style="${st}" data-bid="${it.id}"><span class="k">ملاحظة</span><div class="t">${t}</div></button>`;
   }).join('');
   requestAnimationFrame(boardLinks);
 }
+// ✥ move a card with the arrows (hold = faster); OK / Back puts it down
+let MOVING = null, moveAt = 0, moveRun = 0;
+function moveStart(id) { MOVING = id; document.body.classList.add('moving'); const el = $(`[data-bid="${id}"]`); el?.classList.add('moving'); el?.focus(); }
+function moveStep(dir) {
+  const it = (BOARD.items || []).find(x => x.id === MOVING), el = $(`[data-bid="${MOVING}"]`); if (!it || !el) return;
+  moveRun = Date.now() - moveAt < 220 ? moveRun + 1 : 0; moveAt = Date.now();
+  const step = moveRun > 8 ? 60 : moveRun > 3 ? 36 : 18;
+  if (dir === 'left') it.x -= step; if (dir === 'right') it.x += step; if (dir === 'up') it.y -= step; if (dir === 'down') it.y += step;
+  it.x = Math.max(-40, Math.min(1760, it.x)); it.y = Math.max(-20, it.y);
+  el.style.left = it.x + 'px'; el.style.top = it.y + 'px';
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function moveEnd() { const id = MOVING; MOVING = null; document.body.classList.remove('moving'); saveBoard(); boardUi(); $(`[data-bid="${id}"]`)?.focus(); }
 // dashed, slightly curved arrows from each card to the next one in the board's order (skipping long jumps)
 function boardLinks() {
   const b = $('#board'), cards = [...b.querySelectorAll('.bi')], br = b.getBoundingClientRect();
@@ -734,7 +767,7 @@ function boardLinks() {
   let paths = '';
   for (let i = 0; i + 1 < cards.length; i++) {
     const a = P(cards[i]), c = P(cards[i + 1]), dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy);
-    if (d > 900 || d < 60) continue;
+    if (d > 700 || d < 60) continue;
     const ux = dx / d, uy = dy / d, edge = (q, k) => Math.min(Math.abs(q.w / 2 / (ux || 1e-6)), Math.abs(q.h / 2 / (uy || 1e-6))) + k;   // where the line leaves the card
     const ra = edge(a, -16), rc = edge(c, 4);   // starts a little over its card, like a hand-drawn arrow
     if (ra + rc > d - 24) continue;
@@ -746,7 +779,7 @@ function boardLinks() {
     paths += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="2 14"/>`
       + `<path d="M${(x2 - hx * s - hy * s * .7).toFixed(1)},${(y2 - hy * s + hx * s * .7).toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} L${(x2 - hx * s + hy * s * .7).toFixed(1)},${(y2 - hy * s - hx * s * .7).toFixed(1)}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
-  b.insertAdjacentHTML('afterbegin', `<svg class="links" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`);
+  b.insertAdjacentHTML('afterbegin', `<svg class="links" xmlns="http://www.w3.org/2000/svg" width="${b.scrollWidth}" height="${b.scrollHeight}">${paths}</svg>`);
 }
 
 // OK on a board card: edit it right here (text, time, colour, sticker, order, done, delete)
@@ -776,8 +809,11 @@ function editAct(a) {
   const id = EDIT.id;
   if (a === 'close') return editClose(id);
   if (a === 'del') { items.splice(i, 1); saveBoard(); boardUi(); return editClose(items[Math.min(i, items.length - 1)]?.id); }
-  if (a === 'up' && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
-  if (a === 'down' && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
+  if (a === 'move') { editClose(id); return moveStart(id); }
+  if (a === 'front') items.push(items.splice(i, 1)[0]);
+  if (a === 'back') items.unshift(items.splice(i, 1)[0]);
+  if (a === 'bigger') items[i].s = Math.min(1.8, Math.round(((items[i].s || 1) + .15) * 100) / 100);
+  if (a === 'smaller') items[i].s = Math.max(.6, Math.round(((items[i].s || 1) - .15) * 100) / 100);
   if (a === 'done') { items[i].done = !items[i].done; EDIT.done = items[i].done; $('#beDone').textContent = items[i].done ? '↺ لم ينتهِ' : '✓ انتهى'; }
   if (a === 'save') {
     Object.assign(items[i], { text: $('#beText').value.trim(), color: EDIT.color, emoji: EDIT.emoji });
@@ -785,7 +821,7 @@ function editAct(a) {
     saveBoard(); boardUi(); return editClose(id);
   }
   saveBoard(); boardUi();
-  if (a === 'up' || a === 'down') $(`[data-be="${a}"]`)?.focus();
+  $(`[data-be="${a}"]`)?.focus();
 }
 
 function show(page) {
@@ -819,7 +855,7 @@ function numberKey(n) {
   show(t.dataset.page); t.focus(); return true;
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 window.onTvResume = () => { loadApps(); loadPrayers(); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
@@ -856,7 +892,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ilist) { const list = b.dataset.ilist === 'fav' ? IFAV : b.dataset.ilist === 'live' ? LIVE : window.__shown; return playChannel(list, +b.dataset.i); }
-  if (b.dataset.bid) return editCard(b.dataset.bid);
+  if (b.dataset.bid) return MOVING ? moveEnd() : editCard(b.dataset.bid);
   if (b.dataset.be) return editAct(b.dataset.be);
   if (b.dataset.bec) { EDIT.color = b.dataset.bec; return editColors(); }
   if (b.dataset.bee) { EDIT.emoji = b.dataset.bee; return editColors(); }
@@ -872,6 +908,7 @@ function ambient(on) {
   else $('.tab.on')?.focus();
 }
 function move(dir) {
+  if (MOVING) return moveStep(dir);
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
   const scope = $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
   const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
