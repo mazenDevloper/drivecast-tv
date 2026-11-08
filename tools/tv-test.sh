@@ -56,6 +56,14 @@ a shell dumpsys audio | grep -q 'state:started' && ok "audio is playing" || echo
 curl -fsS -m 10 -X POST --data 'stop' http://127.0.0.1:18080/key >/dev/null
 curl -fsS -m 10 -X POST --data $'m 300 120\nt' http://127.0.0.1:18080/mouse >/dev/null; sleep 1; shot 10-mouse "phone mouse: pointer moved + tap"
 
+# «لوحتي»: a sample board from the "phone", then shown on the TV (the user's own board is put back after)
+curl -fsS -m 10 http://127.0.0.1:18080/board > "$OUT/board-before.json" 2>/dev/null || echo '{"items":[]}' > "$OUT/board-before.json"
+curl -fsS -m 10 -X POST --data '{"bg":"paper","items":[{"id":"t1","type":"quote","color":"lav","text":"وقل ربّ زدني علماً"},{"id":"t2","type":"reminder","color":"pink","text":"موعد","time":"16:30"},{"id":"t3","type":"sticker","color":"butter","emoji":"☕"},{"id":"t4","type":"note","color":"mint","text":"ملاحظة"}]}' http://127.0.0.1:18080/board | grep -q ok && ok "board saved from the phone" || bad "board not saved"
+curl -fsS -m 10 -X POST --data 'board' http://127.0.0.1:18080/key >/dev/null; sleep 3; shot 11-board "«لوحتي» with a sample board"
+key KEYCODE_DPAD_DOWN 1; shot 12-board-focus "a board card in focus"
+curl -fsS -m 10 -X POST --data-binary @"$OUT/board-before.json" http://127.0.0.1:18080/board >/dev/null
+key KEYCODE_HOME 2
+
 # 5 minutes of use, then crashes / memory
 for i in $(seq 1 40); do key KEYCODE_DPAD_RIGHT 0.2; key KEYCODE_DPAD_DOWN 0.2; key KEYCODE_DPAD_UP 0.2; done
 a logcat -d -b crash > "$OUT/crash.txt"; a logcat -d '*:E' | grep -iE "drivecast|chromium|AndroidRuntime" > "$OUT/errors.txt"
