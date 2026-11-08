@@ -19,6 +19,8 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 .wl{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity 2s,background 2s}
 .sky{-webkit-mask-image:var(--skym);mask-image:var(--skym);-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #wSun{mix-blend-mode:screen}
+#wMoonBox.free{-webkit-mask-image:none;mask-image:none}
+#wPhotoN{background-image:url(wall/rawas-night-photo.webp);opacity:0}
 #wDark{background:linear-gradient(180deg,#03050c 0%,#070c1c 45%,#121d38 70%,#1b2846 100%)}#stars{width:100%;height:100%;display:block}
 #wMoon{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;mix-blend-mode:screen;filter:drop-shadow(0 0 18px rgba(230,236,255,.55)) drop-shadow(0 0 60px rgba(200,215,255,.25))}#wLight{mix-blend-mode:soft-light}
 body.deep .wall{transform:scale(1.18)}
@@ -118,7 +120,7 @@ body.ambient .clock b{font-size:64px}
 </style>
 </head>
 <body>
-<div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -267,7 +269,7 @@ function applyWall() {
   $('#veil').style.display = f ? '' : 'none';
   const live = w === 'rawas';
   $('#wNight').style.backgroundImage = live ? 'url(wall/rawas-night.webp)' : 'none';
-  ['#wNight', '#wDark', '#wMoonBox', '#wSky', '#wSun', '#wLight'].forEach(x => $(x).style.display = live ? '' : 'none');
+  ['#wNight', '#wPhotoN', '#wDark', '#wMoonBox', '#wSky', '#wSun', '#wLight'].forEach(x => $(x).style.display = live ? '' : 'none');
   if (live) liveSky();
 }
 // ---- the sun over the mosque (17.0158 N, 54.0885 E); the photo looks about south-south-west (Street View heading 192°)
@@ -315,6 +317,27 @@ function drawStars(t, show) {
     if (mag < 1.5) { g.fillStyle = `rgba(${col},${(a * .18).toFixed(2)})`; g.beginPath(); g.arc(s.x * 19.2, s.y * 10.8, rad * 3.2, 0, 6.283); g.fill(); }
   }
 }
+// today's sunrise / sunset over the mosque (scanned every 2 minutes, once a day)
+let sunDay = '', sunT = [0, 0];
+function sunTimes(now) {
+  const key = now.toDateString(); if (key === sunDay) return sunT;
+  const d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+  let prev = sunPos(d0, MOSQUE[0], MOSQUE[1]).alt, rise = 0, set = 0;
+  for (let m = 2; m <= 1440; m += 2) {
+    const t = new Date(d0.getTime() + m * 6e4), a = sunPos(t, MOSQUE[0], MOSQUE[1]).alt;
+    if (prev < -0.833 && a >= -0.833 && !rise) rise = t.getTime();
+    if (prev >= -0.833 && a < -0.833) set = t.getTime();
+    prev = a;
+  }
+  sunDay = key; sunT = [rise, set]; return sunT;
+}
+// the real night photo (cinema grade, real stars behind it): from half an hour after maghrib to an hour before sunrise
+function nightPhoto(now) {
+  const [rise, set] = sunTimes(now), t = now.getTime(), F = 15 * 6e4;
+  if (t >= set + 30 * 6e4) return clamp((t - set - 30 * 6e4) / F);
+  if (t <= rise - 60 * 6e4) return clamp((rise - 60 * 6e4 - t) / F);
+  return 0;
+}
 function hijriDay() { try { return Math.min(30, Math.max(1, +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(new Date()).replace(/\D/g, '') || 1)); } catch (e) { return 15; } }
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 function liveSky() {
@@ -324,7 +347,13 @@ function liveSky() {
   // night photo (lights on) from a little after sunset until a little after sunrise
   const night = alt < -9 ? 1 : alt < 3 ? (3 - alt) / 12 : 0;
   $('#wNight').style.opacity = $('#wDark').style.opacity = night.toFixed(2);
-  drawStars(now, night > 0);
+  const ph = nightPhoto(now);
+  $('#wPhotoN').style.opacity = ph.toFixed(2);
+  $('#wNight').style.opacity = (night * (1 - ph)).toFixed(2);   // the other angle's night must not show through the photo's sky
+  $('#wDark').style.opacity = Math.max(night, ph).toFixed(2);
+  ['#wSky', '#wSun', '#wLight'].forEach(x => $(x).style.opacity = (1 - ph).toFixed(2));
+  $('#wMoonBox').classList.toggle('free', ph > .5);
+  drawStars(now, night > 0 || ph > 0);
   // the moon: DriveCast's moon picture for tonight's hijri day, where the moon really is (kept inside the picture)
   const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = toScreen(mo.alt, mo.az), mi = $('#wMoon');
   const src = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay()}.webp`; if (mi.getAttribute('src') !== src) mi.src = src;
