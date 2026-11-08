@@ -191,6 +191,22 @@ public class HomeActivity extends Activity {
         }
 
         /** a text from the internet without the page's CORS limits (IPTV lists, DriveCast's data); answers cb(text|null) */
+        /** the font the user sent from the phone page, as a data URL (empty when none) */
+        @JavascriptInterface
+        public String font() {
+            for (String e : new String[]{"ttf", "otf", "woff2", "woff"}) {
+                java.io.File f = new java.io.File(getFilesDir(), "font." + e);
+                if (!f.exists()) continue;
+                try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+                    byte[] b = new byte[(int) f.length()]; int got = 0, r;
+                    while (got < b.length && (r = in.read(b, got, b.length - got)) > 0) got += r;
+                    String mime = e.equals("otf") ? "font/otf" : e.equals("woff2") ? "font/woff2" : e.equals("woff") ? "font/woff" : "font/ttf";
+                    return "data:" + mime + ";base64," + android.util.Base64.encodeToString(b, android.util.Base64.NO_WRAP);
+                } catch (Exception ignored) { }
+            }
+            return "";
+        }
+
         @JavascriptInterface
         public void fetch(String url, String cb) {
             new Thread(() -> {

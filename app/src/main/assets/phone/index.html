@@ -43,6 +43,8 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
     <button data-k="prev">⏮</button><button data-k="play">⏯</button><button data-k="next">⏭</button>
     <button data-k="ambient">🕌 الصورة</button><button data-k="live">📺 القنوات</button><button data-k="match">⚽ المباراة</button>
   </div>
+  <label>خط اليوم في وضع الصورة (مثلاً خط ثمانية): نزّله من موقعه الرسمي في جوالك، ثم اختره هنا يروح للتلفزيون</label>
+  <input type="file" id="font" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
 </section>
 
 <section id="m" class="hide">
@@ -138,5 +140,11 @@ cv.onpointerup = cv.onpointercancel = () => { flush(); last = null; };
 function flush() { if (q.length < 1) return; const s = (cont ? '+' : '') + col + ' ' + q.map(p => p[0].toFixed(4) + ',' + p[1].toFixed(4)).join(' '); if (last) { q = [last]; cont = true; } else q = []; post('/draw', s); }
 setInterval(() => { if (last && q.length > 1) flush(); }, 80);
 $('clr').onclick = () => { cx.clearRect(0, 0, cv.width, cv.height); post('/clear', ''); };
+$('font').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const ext = (f.name.split('.').pop() || 'ttf').toLowerCase();
+  $('s').textContent = 'جارٍ إرسال الخط…';
+  fetch('/font?ext=' + ext, { method: 'POST', body: f }).then(r => r.text()).then(t => $('s').textContent = t === 'ok' ? 'وصل الخط ✅' : 'الملف فاضي').catch(() => $('s').textContent = 'ما وصل، جرّب مرة ثانية');
+};
 try { const t = localStorage.tab; if (t) document.querySelector(`.tabs [data-t="${t}"]`).click(); } catch (e) {}
 </script></body></html>

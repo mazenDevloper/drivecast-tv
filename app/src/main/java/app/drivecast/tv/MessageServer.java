@@ -79,7 +79,7 @@ public class MessageServer extends Service {
             server = new ServerSocket(PORT);
             while (true) {
                 try (Socket s = server.accept()) {
-                    s.setSoTimeout(5000);
+                    s.setSoTimeout(15000);
                     handle(s);
                 } catch (Exception ignored) {
                 }
@@ -97,6 +97,18 @@ public class MessageServer extends Service {
             if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else reply(s.getOutputStream(), "text/html", page());
+            return;
+        }
+        if (first.startsWith("POST /font")) {   // the user's own font file (e.g. Thmanyah from its official page), kept on the TV only
+            byte[] f = readBytes(in, head, 4 << 20);
+            String ext = first.contains("ext=otf") ? "otf" : first.contains("ext=woff2") ? "woff2" : first.contains("ext=woff") ? "woff" : "ttf";
+            boolean ok = f.length > 1000;
+            if (ok) {
+                for (String e : new String[]{"ttf", "otf", "woff", "woff2"}) new java.io.File(getFilesDir(), "font." + e).delete();
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "font." + ext))) { o.write(f); }
+                main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadFont && loadFont()"); });
+            }
+            reply(s.getOutputStream(), "text/plain", ok ? "ok" : "empty");
             return;
         }
         String body = readBody(in, head);
@@ -135,6 +147,15 @@ public class MessageServer extends Service {
             if (state == 4) break;
         }
         return b.toString("UTF-8");
+    }
+
+    private static byte[] readBytes(InputStream in, String head, int max) throws Exception {
+        int len = 0;
+        for (String line : head.split("\r\n")) if (line.toLowerCase().startsWith("content-length:")) len = Integer.parseInt(line.substring(15).trim());
+        byte[] b = new byte[Math.min(len, max)];
+        int got = 0;
+        while (got < b.length) { int r = in.read(b, got, b.length - got); if (r < 0) break; got += r; }
+        return got == b.length ? b : java.util.Arrays.copyOf(b, got);
     }
 
     private static String readBody(InputStream in, String head) throws Exception {
