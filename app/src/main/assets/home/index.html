@@ -116,6 +116,10 @@ body.ambient .tabs,body.ambient .clock span{visibility:hidden}
 /* the day in the middle, big (the user's font when sent from the phone: e.g. Thmanyah), the hijri date under it */
 .day{position:absolute;top:40px;left:0;right:0;display:none;flex-direction:column;align-items:center;gap:4px;text-align:center;pointer-events:none;text-shadow:0 4px 30px rgba(0,0,0,.55)}
 body.ambient .day{display:flex}
+/* the user's own line (written from the phone), across the open sky to the right of the minaret */
+.phrase{position:absolute;top:40%;left:41%;right:3%;display:none;text-align:center;white-space:nowrap;overflow:hidden;color:#fbf7ec;text-shadow:0 4px 28px rgba(0,0,0,.5);
+  font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-weight:400;font-size:76px;line-height:1.3;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
+body.ambient .phrase.on{display:block}
 .day b,.day span{font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
 .day b{font-size:132px;font-weight:400;line-height:1.05;letter-spacing:0}
 .day span{font-size:36px;color:#e8e2d2;opacity:.92}
@@ -177,6 +181,7 @@ body.ambient .day{display:flex}
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div></div></section>
 
   <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span></div>
+  <div class="phrase" id="phrase"></div>
   <div class="mini" id="mini"><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
 
@@ -229,6 +234,12 @@ function tick() {
   $('#dayHijri').textContent = hijri.replace(/\s*هـ$/, '') + ' هـ';
 }
 let P = {};
+function loadPhrase() {
+  let t = ''; try { t = TV.phrase ? TV.phrase() : (localStorage.phrase || ''); } catch (e) {}
+  const el = $('#phrase'); el.textContent = t; el.classList.toggle('on', !!t.trim());
+  // one line: the size steps down until the whole line fits the space
+  el.style.fontSize = '76px'; requestAnimationFrame(() => { let f = 76; while (el.scrollWidth > el.clientWidth && f > 34) { f -= 4; el.style.fontSize = f + 'px'; } });
+}
 function loadFont() {
   let u = ''; try { u = TV.font ? TV.font() : ''; } catch (e) {}
   if (!u) return;
@@ -665,7 +676,7 @@ document.addEventListener('click', e => {
 function visible(el) { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
 function ambient(on) {
   document.body.classList.toggle('ambient', on);
-  if (on) { document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
+  if (on) { loadPhrase(); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
 }
 function move(dir) {
@@ -697,7 +708,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(); $('#s-quran2').innerHTML = cardsHtml();
-loadFont(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters();
+loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters();
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();

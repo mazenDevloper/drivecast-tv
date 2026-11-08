@@ -191,6 +191,10 @@ public class HomeActivity extends Activity {
         }
 
         /** a text from the internet without the page's CORS limits (IPTV lists, DriveCast's data); answers cb(text|null) */
+        /** the line the user wrote for the photo view (phone page → «اكتب») */
+        @JavascriptInterface
+        public String phrase() { return getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""); }
+
         /** the font the user sent from the phone page, as a data URL (empty when none) */
         @JavascriptInterface
         public String font() {

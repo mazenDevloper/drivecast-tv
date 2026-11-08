@@ -79,7 +79,11 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div id="zlist"></div>
 </section>
 
-<section id="w" class="hide"><textarea id="t" maxlength="200" placeholder="اكتب هني…"></textarea><button class="big" id="send">أرسل</button>
+<section id="w" class="hide">
+  <label>عبارة وضع الصورة (تبقى على الشاشة كل مرة، بخط ثمانية)</label>
+  <div class="row" style="margin-top:8px"><input id="ph" maxlength="120" placeholder="مثلاً: ﴿ألا بذكر الله تطمئن القلوب﴾" style="flex:3;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px"><button id="phs" style="flex:1">احفظ</button></div>
+  <label>رسالة سريعة (تطلع وسط الشاشة ٢٠ ثانية)</label>
+  <textarea id="t" maxlength="200" placeholder="اكتب هني…" style="margin-top:8px"></textarea><button class="big" id="send">أرسل</button>
   <div class="chips"><button data-msg="العشاء جاهز 🍽️">العشاء جاهز</button><button data-msg="وقت النوم 🌙">وقت النوم</button><button data-msg="صلّوا 🕌">صلّوا</button></div></section>
 
 <section id="d" class="hide"><canvas id="cv"></canvas><div class="row" id="colors"></div><div class="row"><button id="clr">امسح</button></div></section>
@@ -157,6 +161,8 @@ cv.onpointerup = cv.onpointercancel = () => { flush(); last = null; };
 function flush() { if (q.length < 1) return; const s = (cont ? '+' : '') + col + ' ' + q.map(p => p[0].toFixed(4) + ',' + p[1].toFixed(4)).join(' '); if (last) { q = [last]; cont = true; } else q = []; post('/draw', s); }
 setInterval(() => { if (last && q.length > 1) flush(); }, 80);
 $('clr').onclick = () => { cx.clearRect(0, 0, cv.width, cv.height); post('/clear', ''); };
+fetch('/phrase').then(r => r.text()).then(t => { $('ph').value = t; }).catch(() => {});
+$('phs').onclick = () => post('/phrase', $('ph').value).then(r => r && ($('s').textContent = $('ph').value.trim() ? 'انحفظت العبارة ✅' : 'انشالت العبارة'));
 $('font').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const ext = (f.name.split('.').pop() || 'ttf').toLowerCase();

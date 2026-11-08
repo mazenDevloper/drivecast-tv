@@ -95,6 +95,7 @@ public class MessageServer extends Service {
         String first = head.split("\r\n", 2)[0];
         if (!first.startsWith("POST ")) {
             if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
+            else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else reply(s.getOutputStream(), "text/html", page());
             return;
@@ -129,6 +130,10 @@ public class MessageServer extends Service {
             String[] q = body.trim().split("\\s+");
             String rec = q.length > 1 ? q[0] : "", n = q[q.length - 1];
             if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
+        } else if (first.startsWith("POST /phrase")) {   // the line of the photo view, kept on the TV
+            String t = body.trim(); if (t.length() > 120) t = t.substring(0, 120);
+            getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
+            main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
         } else if (first.startsWith("POST /key")) {
             String k = body.trim();
             main.post(() -> key(k));
