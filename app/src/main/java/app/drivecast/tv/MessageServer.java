@@ -108,6 +108,9 @@ public class MessageServer extends Service {
         } else if (first.startsWith("POST /draw")) {
             String segs = body;
             main.post(() -> draw(segs));
+        } else if (first.startsWith("POST /key")) {
+            String k = body.trim();
+            main.post(() -> key(k));
         } else if (first.startsWith("POST /clear")) {
             main.post(this::hideDrawing);
         }
@@ -177,6 +180,37 @@ public class MessageServer extends Service {
         main.postDelayed(hideDrawing, DRAW_IDLE);
     }
 
+    /**
+     * The phone remote. Volume and play/pause reach any app; «home» brings DriveCast TV to the front;
+     * the arrows, OK and back drive the home screen (another app's own menus need the TV's remote).
+     */
+    private void key(String k) {
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        switch (k) {
+            case "volup": am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_RAISE, android.media.AudioManager.FLAG_SHOW_UI); return;
+            case "voldown": am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_LOWER, android.media.AudioManager.FLAG_SHOW_UI); return;
+            case "mute": am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_TOGGLE_MUTE, android.media.AudioManager.FLAG_SHOW_UI); return;
+            case "play": media(am, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE); return;
+            case "next": media(am, android.view.KeyEvent.KEYCODE_MEDIA_NEXT); return;
+            case "prev": media(am, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS); return;
+            case "home":
+                try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
+                return;
+        }
+        HomeActivity h = HomeActivity.front;
+        if (h != null) { h.remote(k); return; }
+        // another app is open: the shortcuts first bring the home screen back
+        if (k.equals("ambient") || k.equals("quran") || k.equals("live") || k.equals("match")) {
+            try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
+            main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.remote(k); }, 900);
+        }
+    }
+
+    private static void media(android.media.AudioManager am, int code) {
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code));
+        am.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code));
+    }
+
     private void hideDrawing() {
         main.removeCallbacks(hideDrawing);
         if (drawing == null) return;
@@ -232,7 +266,7 @@ public class MessageServer extends Service {
     }
 
     private static final String PAGE = "<!doctype html><html dir=rtl lang=ar><head><meta charset=utf-8>"
-            + "<meta name=viewport content='width=device-width,initial-scale=1,user-scalable=no'><title>رسالة للتلفزيون</title><style>"
+            + "<meta name=viewport content='width=device-width,initial-scale=1,user-scalable=no'><title>ريموت التلفزيون</title><style>"
             + "body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;"
             + "background:#0f1a17;font-family:-apple-system,system-ui,sans-serif;color:#fff}"
             + ".c{width:min(94vw,560px)}h1{font-size:24px;margin:0 0 14px}"
@@ -245,15 +279,27 @@ public class MessageServer extends Service {
             + ".dot.on{border-color:#fff}"
             + "button{margin-top:14px;width:100%;padding:16px;font-size:20px;font-weight:700;border:0;border-radius:16px;"
             + "background:#1f6f50;color:#fff}.row button{margin:0;width:auto;flex:1;background:#3a2a2a}"
+            + ".pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.pad button{margin:0;height:76px;font-size:28px;background:#16241f;border:1px solid #2f4a42}"
+            + ".pad .ok{background:#1f6f50;border-radius:50%;font-size:22px}.pad i{display:block}"
+            + ".grid2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.grid2 button{margin:0;padding:14px 4px;font-size:16px;background:#16241f;border:1px solid #2f4a42}"
             + "p{opacity:.7;text-align:center;min-height:1.4em}.hide{display:none}</style></head><body>"
             + "<div class=c><h1>📺 للتلفزيون</h1>"
-            + "<div class=tabs><button id=bw class=on onclick=tab(0)>✍️ اكتب</button><button id=bd onclick=tab(1)>🎨 ارسم</button></div>"
-            + "<div id=w><textarea id=t maxlength=200 placeholder='اكتب هني...'></textarea><button onclick=send()>أرسل</button></div>"
+            + "<div class=tabs><button id=br class=on onclick=tab(2)>🎮 ريموت</button><button id=bw onclick=tab(0)>✍️ اكتب</button><button id=bd onclick=tab(1)>🎨 ارسم</button></div>"
+            + "<div id=r><div class=pad><i></i><button onclick=k('up')>▲</button><i></i><button onclick=k('right')>▶</button>"
+            + "<button class=ok onclick=k('ok')>OK</button><button onclick=k('left')>◀</button><i></i><button onclick=k('down')>▼</button><i></i></div>"
+            + "<div class=grid2><button onclick=k('back')>↩︎ رجوع</button><button onclick=k('home')>🏠 الرئيسية</button><button onclick=k('menu')>⚙️ الإعدادات</button>"
+            + "<button onclick=k('voldown')>🔉 صوت −</button><button onclick=k('mute')>🔇 كتم</button><button onclick=k('volup')>🔊 صوت +</button>"
+            + "<button onclick=k('prev')>⏮</button><button onclick=k('play')>⏯ تشغيل/إيقاف</button><button onclick=k('next')>⏭</button>"
+            + "<button onclick=k('ambient')>🕌 الصورة</button><button onclick=k('quran')>📖 القرآن</button><button onclick=k('live')>📺 القنوات</button>"
+            + "<button onclick=k('match')>⚽ قناة المباراة</button><button onclick=k('stop')>⏹ أوقف السورة</button></div></div>"
+            + "<div id=w class=hide><textarea id=t maxlength=200 placeholder='اكتب هني...'></textarea><button onclick=send()>أرسل</button></div>"
             + "<div id=d class=hide><canvas id=cv></canvas><div class=row id=colors></div>"
             + "<div class=row><button onclick=clr()>امسح</button></div></div>"
             + "<p id=s></p></div><script>"
             + "function $(i){return document.getElementById(i)}"
-            + "function tab(n){$('w').className=n?'hide':'';$('d').className=n?'':'hide';$('bw').className=n?'':'on';$('bd').className=n?'on':'';if(n)fit()}"
+            + "function tab(n){$('w').className=n==0?'':'hide';$('d').className=n==1?'':'hide';$('r').className=n==2?'':'hide';"
+            + "$('bw').className=n==0?'on':'';$('bd').className=n==1?'on':'';$('br').className=n==2?'on':'';if(n==1)fit()}"
+            + "function k(x){if(navigator.vibrate)navigator.vibrate(12);fetch('/key',{method:'POST',body:x}).catch(function(){$('s').textContent='ما وصلت، تأكد إنك على نفس الواي فاي'})}"
             + "function send(){var t=$('t');if(!t.value.trim())return;fetch('/send',{method:'POST',body:t.value})"
             + ".then(function(){$('s').textContent='وصلت ✅';t.value=''}).catch(function(){$('s').textContent='ما وصلت، جرّب مرة ثانية'})}"
             + "var cv=$('cv'),cx=cv.getContext('2d'),col='#ffffff',q=[],last=null,cont=false;"

@@ -37,6 +37,8 @@ import java.util.Set;
  */
 public class HomeActivity extends Activity {
     private WebView web;
+    /** the home screen while it is in front (the phone remote drives it); null when another app is open */
+    static volatile HomeActivity front;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -61,7 +63,19 @@ public class HomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        front = this;
         if (web != null) web.evaluateJavascript("window.onTvResume && onTvResume()", null);
+    }
+
+    @Override
+    protected void onPause() {
+        if (front == this) front = null;
+        super.onPause();
+    }
+
+    /** a key from the phone remote: up/down/left/right/ok/back/menu/ambient/quran/live/match/stop */
+    void remote(String k) {
+        if (web != null && k.matches("[a-z]{1,10}")) web.evaluateJavascript("window.onRemote && onRemote('" + k + "')", null);
     }
 
     /** Back on the home screen does nothing (it is home); the page closes its own panels first. */
