@@ -73,6 +73,9 @@ public class HomeActivity extends Activity {
         super.onPause();
     }
 
+    /** a line of the page's script (the phone remote's Quran) */
+    void run(String js) { if (web != null) web.evaluateJavascript(js, null); }
+
     /** a key from the phone remote: up/down/left/right/ok/back/menu/ambient/quran/live/match/stop */
     void remote(String k) {
         if (web != null && k.matches("[a-z]{1,10}")) web.evaluateJavascript("window.onRemote && onRemote('" + k + "')", null);

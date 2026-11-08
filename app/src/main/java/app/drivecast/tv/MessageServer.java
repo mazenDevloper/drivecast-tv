@@ -94,7 +94,9 @@ public class MessageServer extends Service {
         String head = readHead(in);
         String first = head.split("\r\n", 2)[0];
         if (!first.startsWith("POST ")) {
-            reply(s.getOutputStream(), "text/html", PAGE);
+            if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
+            else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"home\":" + (HomeActivity.front != null) + "}");
+            else reply(s.getOutputStream(), "text/html", page());
             return;
         }
         String body = readBody(in, head);
@@ -108,6 +110,13 @@ public class MessageServer extends Service {
         } else if (first.startsWith("POST /draw")) {
             String segs = body;
             main.post(() -> draw(segs));
+        } else if (first.startsWith("POST /mouse")) {
+            String cmds = body;
+            main.post(() -> { MouseService m = MouseService.on; if (m != null) for (String l : cmds.split("\n")) m.command(l); });
+        } else if (first.startsWith("POST /quran")) {
+            String[] q = body.trim().split("\\s+");
+            String rec = q.length > 1 ? q[0] : "", n = q[q.length - 1];
+            if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
         } else if (first.startsWith("POST /key")) {
             String k = body.trim();
             main.post(() -> key(k));
@@ -199,11 +208,53 @@ public class MessageServer extends Service {
         }
         HomeActivity h = HomeActivity.front;
         if (h != null) { h.remote(k); return; }
+        MouseService m = MouseService.on;
+        if (m != null && k.equals("back")) { m.command("b"); return; }
         // another app is open: the shortcuts first bring the home screen back
         if (k.equals("ambient") || k.equals("quran") || k.equals("live") || k.equals("match")) {
             try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
             main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.remote(k); }, 900);
         }
+    }
+
+    /** bring the home screen to the front, then run a line of its page */
+    private void toHome(String js) {
+        HomeActivity h = HomeActivity.front;
+        if (h != null) { h.run(js); return; }
+        try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
+        main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.run(js); }, 1200);
+    }
+
+    private String pageCache;
+    private String page() {
+        if (pageCache == null) {
+            try (InputStream in = getAssets().open("phone/index.html")) {
+                ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b = new byte[8192]; int r;
+                while ((r = in.read(b)) > 0) o.write(b, 0, r);
+                pageCache = o.toString("UTF-8");
+            } catch (Exception e) { return "<h1>DriveCast TV</h1>"; }
+        }
+        return pageCache;
+    }
+
+    /** DriveCast's reciters (its cloud: quran.com through drivecast.c-p.workers.dev), kept for 6 hours */
+    private String recCache; private long recAt;
+    private String reciters() {
+        if (recCache != null && System.currentTimeMillis() - recAt < 6 * 3600_000L) return recCache;
+        for (String u : new String[]{"https://drivecast.c-p.workers.dev/api/quran?path=resources/recitations&language=ar",
+                "https://api.quran.com/api/v4/resources/recitations?language=ar"}) {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                c.setConnectTimeout(8000); c.setReadTimeout(12000); c.setRequestProperty("User-Agent", "Mozilla/5.0 DriveCastTV");
+                try (InputStream in = c.getInputStream()) {
+                    ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b = new byte[8192]; int r;
+                    while ((r = in.read(b)) > 0) o.write(b, 0, r);
+                    String t = o.toString("UTF-8");
+                    if (t.contains("recitations")) { recCache = t; recAt = System.currentTimeMillis(); return t; }
+                }
+            } catch (Exception ignored) { }
+        }
+        return recCache != null ? recCache : "{\"recitations\":[]}";
     }
 
     private static void media(android.media.AudioManager am, int code) {
@@ -265,57 +316,4 @@ public class MessageServer extends Service {
         }).start(), 20_000);
     }
 
-    private static final String PAGE = "<!doctype html><html dir=rtl lang=ar><head><meta charset=utf-8>"
-            + "<meta name=viewport content='width=device-width,initial-scale=1,user-scalable=no'><title>ريموت التلفزيون</title><style>"
-            + "body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;"
-            + "background:#0f1a17;font-family:-apple-system,system-ui,sans-serif;color:#fff}"
-            + ".c{width:min(94vw,560px)}h1{font-size:24px;margin:0 0 14px}"
-            + ".tabs{display:flex;gap:8px;margin-bottom:12px}.tabs button{flex:1;margin:0;background:#16241f;border:1px solid #2f4a42}"
-            + ".tabs button.on{background:#1f6f50;border-color:#1f6f50}"
-            + "textarea{width:100%;box-sizing:border-box;height:140px;font-size:22px;padding:14px;border-radius:16px;"
-            + "border:1px solid #2f4a42;background:#16241f;color:#fff;resize:none}"
-            + "canvas{width:100%;aspect-ratio:16/9;background:#16241f;border-radius:16px;border:1px solid #2f4a42;touch-action:none;display:block}"
-            + ".row{display:flex;gap:10px;margin-top:12px;align-items:center}.dot{width:38px;height:38px;border-radius:50%;border:3px solid transparent}"
-            + ".dot.on{border-color:#fff}"
-            + "button{margin-top:14px;width:100%;padding:16px;font-size:20px;font-weight:700;border:0;border-radius:16px;"
-            + "background:#1f6f50;color:#fff}.row button{margin:0;width:auto;flex:1;background:#3a2a2a}"
-            + ".pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.pad button{margin:0;height:76px;font-size:28px;background:#16241f;border:1px solid #2f4a42}"
-            + ".pad .ok{background:#1f6f50;border-radius:50%;font-size:22px}.pad i{display:block}"
-            + ".grid2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.grid2 button{margin:0;padding:14px 4px;font-size:16px;background:#16241f;border:1px solid #2f4a42}"
-            + "p{opacity:.7;text-align:center;min-height:1.4em}.hide{display:none}</style></head><body>"
-            + "<div class=c><h1>📺 للتلفزيون</h1>"
-            + "<div class=tabs><button id=br class=on onclick=tab(2)>🎮 ريموت</button><button id=bw onclick=tab(0)>✍️ اكتب</button><button id=bd onclick=tab(1)>🎨 ارسم</button></div>"
-            + "<div id=r><div class=pad><i></i><button onclick=k('up')>▲</button><i></i><button onclick=k('right')>▶</button>"
-            + "<button class=ok onclick=k('ok')>OK</button><button onclick=k('left')>◀</button><i></i><button onclick=k('down')>▼</button><i></i></div>"
-            + "<div class=grid2><button onclick=k('back')>↩︎ رجوع</button><button onclick=k('home')>🏠 الرئيسية</button><button onclick=k('menu')>⚙️ الإعدادات</button>"
-            + "<button onclick=k('voldown')>🔉 صوت −</button><button onclick=k('mute')>🔇 كتم</button><button onclick=k('volup')>🔊 صوت +</button>"
-            + "<button onclick=k('prev')>⏮</button><button onclick=k('play')>⏯ تشغيل/إيقاف</button><button onclick=k('next')>⏭</button>"
-            + "<button onclick=k('ambient')>🕌 الصورة</button><button onclick=k('quran')>📖 القرآن</button><button onclick=k('live')>📺 القنوات</button>"
-            + "<button onclick=k('match')>⚽ قناة المباراة</button><button onclick=k('stop')>⏹ أوقف السورة</button></div></div>"
-            + "<div id=w class=hide><textarea id=t maxlength=200 placeholder='اكتب هني...'></textarea><button onclick=send()>أرسل</button></div>"
-            + "<div id=d class=hide><canvas id=cv></canvas><div class=row id=colors></div>"
-            + "<div class=row><button onclick=clr()>امسح</button></div></div>"
-            + "<p id=s></p></div><script>"
-            + "function $(i){return document.getElementById(i)}"
-            + "function tab(n){$('w').className=n==0?'':'hide';$('d').className=n==1?'':'hide';$('r').className=n==2?'':'hide';"
-            + "$('bw').className=n==0?'on':'';$('bd').className=n==1?'on':'';$('br').className=n==2?'on':'';if(n==1)fit()}"
-            + "function k(x){if(navigator.vibrate)navigator.vibrate(12);fetch('/key',{method:'POST',body:x}).catch(function(){$('s').textContent='ما وصلت، تأكد إنك على نفس الواي فاي'})}"
-            + "function send(){var t=$('t');if(!t.value.trim())return;fetch('/send',{method:'POST',body:t.value})"
-            + ".then(function(){$('s').textContent='وصلت ✅';t.value=''}).catch(function(){$('s').textContent='ما وصلت، جرّب مرة ثانية'})}"
-            + "var cv=$('cv'),cx=cv.getContext('2d'),col='#ffffff',q=[],last=null,cont=false;"
-            + "['#ffffff','#f5c542','#4ade80','#f87171','#60a5fa'].forEach(function(c,i){var b=document.createElement('div');"
-            + "b.className='dot'+(i?'':' on');b.style.background=c;b.onclick=function(){col=c;"
-            + "Array.prototype.forEach.call(document.querySelectorAll('.dot'),function(x){x.className='dot'});b.className='dot on'};$('colors').appendChild(b)});"
-            + "function fit(){var r=cv.getBoundingClientRect();cv.width=r.width*2;cv.height=r.height*2}"
-            + "function pt(e){var r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]}"
-            + "function line(a,b){cx.strokeStyle=col;cx.lineWidth=6;cx.lineCap='round';cx.beginPath();"
-            + "cx.moveTo(a[0]*cv.width,a[1]*cv.height);cx.lineTo(b[0]*cv.width,b[1]*cv.height);cx.stroke()}"
-            + "cv.onpointerdown=function(e){cv.setPointerCapture(e.pointerId);last=pt(e);cont=false;q=[last]};"
-            + "cv.onpointermove=function(e){if(!last)return;var p=pt(e);line(last,p);last=p;q.push(p)};"
-            + "cv.onpointerup=cv.onpointercancel=function(){flush();last=null};"
-            + "function flush(){if(q.length<1)return;var s=(cont?'+':'')+col+' '+q.map(function(p){return p[0].toFixed(4)+','+p[1].toFixed(4)}).join(' ');"
-            + "if(last){q=[last];cont=true}else q=[];fetch('/draw',{method:'POST',body:s})}"
-            + "setInterval(function(){if(last&&q.length>1)flush()},80);"
-            + "function clr(){cx.clearRect(0,0,cv.width,cv.height);fetch('/clear',{method:'POST',body:''})}"
-            + "</script></body></html>";
 }

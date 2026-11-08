@@ -12,6 +12,11 @@ fi
 adb -s "$D" install -r "$APK" >/dev/null && echo "✅ installed"
 adb -s "$D" shell appops set app.drivecast.tv SYSTEM_ALERT_WINDOW allow
 adb -s "$D" shell appops set app.drivecast.tv GET_USAGE_STATS allow
+# the phone page's mouse (an accessibility service: pointer + taps/scroll, reads nothing); keeps any other enabled service
+CUR=$(adb -s "$D" shell settings get secure enabled_accessibility_services | tr -d '\r')
+case "$CUR" in *app.drivecast.tv/*) ;; null|"") adb -s "$D" shell settings put secure enabled_accessibility_services app.drivecast.tv/app.drivecast.tv.MouseService ;;
+  *) adb -s "$D" shell settings put secure enabled_accessibility_services "$CUR:app.drivecast.tv/app.drivecast.tv.MouseService" ;; esac
+adb -s "$D" shell settings put secure accessibility_enabled 1
 adb -s "$D" shell pm grant app.drivecast.tv android.permission.READ_MEDIA_AUDIO 2>/dev/null || adb -s "$D" shell pm grant app.drivecast.tv android.permission.READ_EXTERNAL_STORAGE 2>/dev/null || true
 # the home button now opens DriveCast TV (the old launcher stays installed; setup may disable it afterwards)
 adb -s "$D" shell cmd package set-home-activity app.drivecast.tv/.HomeActivity >/dev/null 2>&1 || echo "⚠️ choose «DriveCast TV» when the TV asks for the home app"

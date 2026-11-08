@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DriveCast TV</string>
+    <string name="mouse_name">DriveCast TV ماوس</string>
+    <string name="mouse_desc">يحرّك مؤشراً على التلفزيون من صفحة الجوال (http://آي-بي-التلفزيون:8080 ← ماوس): تحريك، ضغط، ضغط مطوّل، سكرول، رجوع والرئيسية. لا يقرأ محتوى الشاشة.</string>
 </resources>
