@@ -675,11 +675,11 @@ function liveUi() {
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
 const BIG5 = [
-  ['الإنجليزي', /الإنجليزي/, /bein ?sports?/i, 'beIN SPORTS'],
-  ['الإسباني', /الإسباني|لاليغا/, /bein ?sports?/i, 'beIN SPORTS'],
+  ['الإنجليزي', /الإنجليزي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
+  ['الإسباني', /الإسباني|لاليغا/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
   ['الإيطالي', /الإيطالي/, /starz/i, 'STARZPLAY Sport'],
   ['الألماني', /الألماني|بوندسليغا/, /mbc action|shahid|شاهد/i, 'MBC Action · شاهد'],
-  ['الفرنسي', /الفرنسي/, /bein ?sports?/i, 'beIN SPORTS'],
+  ['الفرنسي', /الفرنسي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
 ];
 let B5 = -1, B5LIST = [], TODAYM = [];
 const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : window.__shown;
