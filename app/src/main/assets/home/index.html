@@ -78,7 +78,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .appgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px;padding:12px 4px 20px}
 .appgrid .app{width:auto;height:160px}
 .empty{font-size:22px;color:var(--dim);padding:20px 4px}
-.panel{position:fixed;inset:0;z-index:20;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
+.panel{position:fixed;inset:0;z-index:1000;background:rgba(5,8,11,.72);display:none;align-items:center;justify-content:center}
 .panel.on{display:flex}
 .panel .box{width:1100px;max-height:1000px;overflow:auto;padding:48px 56px;border-radius:44px;background:#15221c;border:1px solid rgba(52,211,153,.3);display:flex;flex-direction:column;gap:22px}
 .panel h3{margin:0;font-size:46px}
@@ -153,6 +153,7 @@ body.board .clock b,body.board .wx,body.board .sal{color:#2f2b3a;text-shadow:non
 .bi.drawing .t,.bi.photo .t{font-size:17px;text-align:center}
 .bmove{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:30;display:none;padding:16px 30px;border-radius:999px;background:#2f2b3a;color:#fff;font-size:22px;box-shadow:0 18px 40px rgba(40,30,60,.3)}
 body.moving .bmove{display:block}
+.bmove{z-index:1001}
 .bempty{display:none;margin:120px auto;max-width:900px;text-align:center;font-size:28px;line-height:1.8;color:#6c6678}
 .panel.bedit{background:rgba(40,30,55,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .panel.bedit .box{width:1000px;background:#fbf8f2;border:0;color:#2f2b3a;box-shadow:0 40px 90px rgba(40,30,60,.35)}
