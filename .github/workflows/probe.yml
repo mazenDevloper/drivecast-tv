@@ -1,0 +1,10 @@
+name: Probe
+on:
+  workflow_dispatch:
+    inputs:
+      cmd: { description: "shell to run on the runner (web checks)", required: true }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ${{ inputs.cmd }}
