@@ -5,6 +5,7 @@ on: { workflow_dispatch: {} }
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: CLOUDFLARE_ACCOUNT_ID   # the environment that holds the Cloudflare secrets
     steps:
       - uses: actions/checkout@v4
         with: { repository: mazenDevloper/studio, path: studio }
