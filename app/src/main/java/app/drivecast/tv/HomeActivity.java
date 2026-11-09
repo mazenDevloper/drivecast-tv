@@ -40,14 +40,30 @@ public class HomeActivity extends Activity {
     private WebView web;
     /** the home screen while it is in front (the phone remote drives it); null when another app is open */
     static volatile HomeActivity front;
+    /** the home screen while it exists at all (the web version calls its bridge even when a film is in front) */
+    static volatile HomeActivity alive;
+    Bridge bridge;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Crash.install(this);
+        alive = this;
         Reminder.schedule(this);
         Adhan.schedule(this);
         MessageServer.start(this);
+        bridge = new Bridge();
+        makeWeb();
+    }
+
+    /**
+     * The page's WebView. While a channel plays, Android may stop the WebView's drawing process to free memory (a TV box
+     * has little); unhandled, that took the whole app down and the TV jumped back to the home screen in the middle of
+     * zapping. Now the dead view is dropped and a new one is made when the home screen is next shown.
+     */
+    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    private void makeWeb() {
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -59,17 +75,44 @@ public class HomeActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
         web.setBackgroundColor(0xFF0A0E13);
-        web.setWebViewClient(new WebViewClient());
-        web.addJavascriptInterface(new Bridge(), "TV");
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail d) {
+                Crash.note(HomeActivity.this, "page " + (d.didCrash() ? "crashed" : "stopped to free memory"));
+                if (view == web) {
+                    android.view.ViewGroup p = (android.view.ViewGroup) view.getParent();
+                    if (p != null) p.removeView(view);
+                    view.destroy();
+                    web = null;
+                    if (front == HomeActivity.this) makeWeb();   // in front: back at once; else on the next onResume
+                }
+                return true;
+            }
+        });
+        web.addJavascriptInterface(bridge, "TV");
         web.loadUrl("file:///android_asset/home/index.html");
         setContentView(web);
         web.requestFocus();
     }
 
     @Override
+    protected void onDestroy() {
+        if (alive == this) alive = null;
+        super.onDestroy();
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (web != null && level >= TRIM_MEMORY_RUNNING_LOW) web.evaluateJavascript("window.onTvLowMemory && onTvLowMemory()", null);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         front = this;
+        alive = this;
+        if (web == null) makeWeb();
         Access.keep(this);
         if (web != null) web.evaluateJavascript("window.onTvResume && onTvResume()", null);
     }
@@ -78,6 +121,30 @@ public class HomeActivity extends Activity {
     protected void onPause() {
         if (front == this) front = null;
         super.onPause();
+    }
+
+    /** a page from the Internet as text, with the headers each site wants (the page's getText; the web version too) */
+    static String download(String url) {
+        try {
+            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            c.setConnectTimeout(12000); c.setReadTimeout(30000);
+            if (url.contains("youtube.com/results")) {   // YouTube search: the normal page, in Arabic
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+                c.setRequestProperty("Accept-Language", "ar,en;q=0.8"); c.setRequestProperty("Cookie", "CONSENT=YES+1; SOCS=CAI");
+            } else if (url.contains("365scores.com")) {   // the fixtures API answers a browser
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36");
+                c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
+            } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
+            java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
+            in.mark(2);
+            int b0 = in.read(), b1 = in.read();
+            in.reset();
+            if (b0 == 0x1f && b1 == 0x8b) in = new java.util.zip.GZIPInputStream(in);
+            java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384]; int r; long total = 0;
+            while ((r = in.read(buf)) > 0 && total < 12_000_000) { o.write(buf, 0, r); total += r; }
+            return o.toString("UTF-8");
+        } catch (Exception e) { return null; }
     }
 
     /** «لوحتي» as JSON (an empty board when none yet) */
@@ -102,14 +169,14 @@ public class HomeActivity extends Activity {
     /** Back on the home screen does nothing (it is home); the page closes its own panels first. */
     @Override
     public void onBackPressed() {
-        web.evaluateJavascript("window.onTvBack ? onTvBack() : false", null);
+        if (web != null) web.evaluateJavascript("window.onTvBack ? onTvBack() : false", null);
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         // the remote's Menu key opens the page's settings
         if (e.getKeyCode() == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_UP) {
-            web.evaluateJavascript("window.onTvMenu && onTvMenu()", null);
+            if (web != null) web.evaluateJavascript("window.onTvMenu && onTvMenu()", null);
             return true;
         }
         return super.dispatchKeyEvent(e);
@@ -181,6 +248,7 @@ public class HomeActivity extends Activity {
         public void setCity(String lat, String lon, int method, String name) {
             City.set(HomeActivity.this, Double.parseDouble(lat), Double.parseDouble(lon), method, name);
             Adhan.schedule(HomeActivity.this);
+            Remote.event("city");
         }
 
         /** the phone page's address, http://<tv-ip>:8080 */
@@ -213,6 +281,7 @@ public class HomeActivity extends Activity {
         @JavascriptInterface public void saveBoard(String json) {
             if (json == null || !json.startsWith("{")) return;
             try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "board.json"))) { o.write(json.getBytes("UTF-8")); } catch (Exception ignored) { }
+            Remote.event("board");
         }
 
         /** the line the user wrote for the photo view (phone page → «اكتب») */
@@ -238,29 +307,9 @@ public class HomeActivity extends Activity {
         @JavascriptInterface
         public void fetch(String url, String cb) {
             new Thread(() -> {
-                String text = null;
-                try {
-                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
-                    c.setConnectTimeout(12000); c.setReadTimeout(30000);
-                    if (url.contains("youtube.com/results")) {   // YouTube search: the normal page, in Arabic
-                        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
-                        c.setRequestProperty("Accept-Language", "ar,en;q=0.8"); c.setRequestProperty("Cookie", "CONSENT=YES+1; SOCS=CAI");
-                    } else if (url.contains("365scores.com")) {   // the fixtures API answers a browser
-                        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36");
-                        c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
-                    } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
-                    java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
-                    in.mark(2);
-                    int b0 = in.read(), b1 = in.read();
-                    in.reset();
-                    if (b0 == 0x1f && b1 == 0x8b) in = new java.util.zip.GZIPInputStream(in);
-                    java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
-                    byte[] buf = new byte[16384]; int r; long total = 0;
-                    while ((r = in.read(buf)) > 0 && total < 12_000_000) { o.write(buf, 0, r); total += r; }
-                    text = o.toString("UTF-8");
-                } catch (Exception ignored) { }
+                String text = download(url);
                 final String js = cb + "(" + (text == null ? "null" : JSONObject.quote(text)) + ")";
-                runOnUiThread(() -> web.evaluateJavascript(js, null));
+                runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
             }, "fetch").start();
         }
 
@@ -270,10 +319,28 @@ public class HomeActivity extends Activity {
 
         @JavascriptInterface
         public void setPref(String k, String v) {
-            if (k == null || !k.matches("[a-z0-9-]{1,20}")) return;
+            if (k == null || !k.matches("[a-z0-9-]{1,20}") || k.startsWith("webpin") || k.equals("webid")) return;
             Access.set(HomeActivity.this).edit().putString(k, v == null ? "" : v).apply();
             if ("force".equals(k)) Access.keep(HomeActivity.this);
+            if ("web".equals(k)) { if ("off".equals(v)) Remote.stop(); else Remote.start(HomeActivity.this); }
+            Remote.event("prefs");
         }
+
+        /** the web version: {pin, online, url} for the settings */
+        @JavascriptInterface
+        public String webInfo() {
+            try {
+                return new JSONObject().put("pin", Remote.pin(HomeActivity.this)).put("online", Remote.online()).put("id", Remote.id(HomeActivity.this))
+                        .put("url", "https://mazendevloper.github.io/drivecast-tv/").toString();
+            } catch (Exception e) { return "{}"; }
+        }
+
+        /** the last problem the app met (Crash.java), for the settings */
+        @JavascriptInterface
+        public String lastProblem() { String c = Crash.read(HomeActivity.this); int n = c.indexOf('\n'); return n < 0 ? c : c.substring(0, Math.min(n, 220)); }
+
+        @JavascriptInterface
+        public String webNewPin() { return Remote.newPin(HomeActivity.this); }
 
         /** the mouse: {on: switched on in Android, live: connected now, force: the adb grant is there} */
         @JavascriptInterface

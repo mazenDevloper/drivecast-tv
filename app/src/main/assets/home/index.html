@@ -96,6 +96,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .sopt button{height:62px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:var(--ink);font-size:23px;font-weight:600;font-family:inherit;padding:0 24px}
 .sopt button.on{background:var(--accent);color:#06281b;border-color:var(--accent)}
 .sopt.num b{font-size:30px;min-width:110px;text-align:center}
+h3.sub{margin:22px 0 10px;font-size:28px;font-weight:600;color:var(--dim)}
 .cnt{font-style:normal;font-size:16px;color:var(--gold);margin-right:6px}
 body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!important}
 .panel.ytp .box{width:1680px;max-height:1000px;overflow:hidden;padding:40px 48px}
@@ -262,7 +263,7 @@ body.ambient .phrase.on{display:block}
     <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
-    <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div></div>
+    <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div>
     <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
@@ -634,7 +635,7 @@ function parseM3u(t) {
   const out = []; let meta = null;
   for (const raw of String(t || '').split(/\r?\n/)) {
     const l = raw.trim(); if (!l) continue;
-    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى' }; }
+    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', cc: (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '' }; }
     else if (!l.startsWith('#') && meta) { out.push({ ...meta, url: l }); meta = null; }
   }
   return out;
@@ -674,30 +675,47 @@ function liveUi() {
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
+// [name, the league's Arabic name, its Arabic broadcaster, who, the broadcasters abroad (a channel → true)]
+const FOREIGN = (re, cc) => c => re.test(c.name) && (!cc || cc.includes(c.cc));
+const SKY_IT = FOREIGN(/sky sport(?!s)(?! ?(f1|golf|tennis|news|arena|motogp|nba|max))/i, ['it']), SKY_DE = FOREIGN(/sky sport(?!s)(?! ?(f1|golf|tennis|news|austria))/i, ['de', 'at', '']);
 const BIG5 = [
-  ['الإنجليزي', /الإنجليزي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
-  ['الإسباني', /الإسباني|لاليغا/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
-  ['الإيطالي', /الإيطالي/, /starz/i, 'STARZPLAY Sport'],
-  ['الألماني', /الألماني|بوندسليغا/, /mbc action|shahid|شاهد/i, 'MBC Action · شاهد'],
-  ['الفرنسي', /الفرنسي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS'],
+  ['الإنجليزي', /الإنجليزي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/sky sports(?! ?(f1|nfl|golf|tennis|cricket|racing|news|arena|mix|action))|tnt sports|nbc sports|usa network|\bsetanta\b|canal\+ ?sport|supersport|premier sports|optus sport|\bbein\b(?! ?(movies|drama|series))/i)]],
+  ['الإسباني', /الإسباني|لاليغا/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/movistar|laliga|m\+ ?liga|dazn(?! ?(f1|bet))|\bespn\b(?! ?(u|news))|premier sports|sport ?tv ?\d|\bbein\b(?! ?(movies|drama|series))/i)]],
+  ['الإيطالي', /الإيطالي/, /starz ?play/i, 'STARZPLAY Sport',
+    [SKY_IT, FOREIGN(/dazn(?! ?(f1|bet))|golazo|cbs sports|tnt sports|sportitalia solocalcio/i)]],
+  ['الألماني', /الألماني|بوندسليغا/, /mbc action|shahid|شاهد/i, 'MBC Action · شاهد',
+    [SKY_DE, FOREIGN(/dazn \d germany|sportdigital|\bespn\b(?! ?(u|news|deportes|latin))|sky sports (main event|football)/i)]],
+  ['الفرنسي', /الفرنسي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/ligue ?1|canal\+ ?(foot|sport)|dazn(?! ?(f1|bet))|\bbein\b(?! ?(movies|drama|series))|sport ?tv ?\d/i)]],
 ];
-let B5 = -1, B5LIST = [], TODAYM = [];
-const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : window.__shown;
+let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : window.__shown;
+// every sports channel in the iptv lists of the whole world (iptv-org), once per hour: the broadcasters abroad
+async function loadSports() {
+  if (SPORTS && Date.now() - SPORTS.at < 3600e3) return;
+  const t = await getText('https://iptv-org.github.io/iptv/categories/sports.m3u');
+  if (t) { SPORTS = { at: Date.now(), list: parseM3u(t).filter(c => !/geo-blocked/i.test(c.name)) }; big5Ui(); }
+}
 function big5Ui() {
   const cnt = i => TODAYM.filter(m => BIG5[i][1].test(m.league?.name || '') && !/كأس/.test(m.league?.name || '') && m.status !== 'finished').length;
   $('#s-b5l').innerHTML = `<button class="chip f ${B5 < 0 ? 'on' : ''}" data-b5="-1">الكل</button>` + BIG5.map((b, i) => { const n = cnt(i);
     return `<button class="chip f ${B5 === i ? 'on' : ''}" data-b5="${i}">${b[0]}${n ? `<i class="cnt">${AR(n)} اليوم</i>` : ''}</button>`; }).join('');
   const rules = B5 < 0 ? BIG5 : [BIG5[B5]], seen = new Set();
-  B5LIST = [];
+  B5LIST = []; B5F = [];
   for (const c of [...IFAV, ...ILIST]) if (rules.some(r => r[2].test(c.name)) && !/geo-blocked/i.test(c.name) && !seen.has(c.url)) { seen.add(c.url); B5LIST.push(c); }
+  for (const c of SPORTS?.list || []) if (!seen.has(c.url) && rules.some(r => r[4].some(f => f(c)))) { seen.add(c.url); B5F.push(c); }
   const apps = APPS.filter(a => rules.some(r => r[2].test(a.label) || r[2].test(a.pkg) || a.label.includes(r[3].split(' ')[0])));
   const who = [...new Set(rules.map(r => r[3]))].join(' · ');
   $('#s-b5').innerHTML = B5LIST.slice(0, 40).map((c, i) => ichHtml(c, i, 'b5')).join('')
     + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
-    || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم المجانية ولا تطبيقها على التلفزيون</div>`;
+    || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم العربية ولا تطبيقها على التلفزيون</div>`;
+  $('#s-b5f').innerHTML = B5F.slice(0, 60).map((c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f')).join('')
+    || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
 }
 async function loadIptv() {
-  big5Ui();
+  big5Ui(); loadSports();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
   iptvUi(); await loadLists(); big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
@@ -985,9 +1003,17 @@ function sections() {
       { k: 'force', l: 'إبقاء الماوس مفعّل دائماً', o: ON, d: 'on' },
       { a: '', o: [['mouse-on', '🖱️ شغّل الماوس الحين'], ['access', 'إعدادات تسهيل الوصول']] },
     ]],
+    ['🌐', 'الويب', (() => { let w = {}; try { w = JSON.parse(TV.webInfo ? TV.webInfo() : '{}'); } catch (e) {} return [
+      { i: 'الحالة', t: S('web', 'on') === 'off' ? 'مطفّي' : w.online ? '✅ التلفزيون متصل — تقدر تتحكم فيه من أي مكان' : '… يتصل' },
+      { i: 'الرابط', t: (w.url || '').replace('https://', '') },
+      { i: 'الرمز', t: w.pin ? w.pin.replace(/(\d{3})(\d{3})/, '$1 $2') : '—' },
+      { k: 'web', l: 'التحكم من الويب', o: ON, d: 'on' },
+      { a: '', o: [['newpin', '🔑 رمز جديد (يطلع الكل)']] },
+    ]; })()],
     ['ℹ️', 'الجهاز', [
       { i: 'صفحة الجوال', t: u ? u.replace('http://', '') : 'تشتغل لما يتصل التلفزيون بالواي فاي' },
       { i: 'الأذان فوق الأفلام', t: TV.canOverlay() ? '✅ مسموح' : '⚠️ يحتاج إذن «العرض فوق التطبيقات»' },
+      { i: 'آخر مشكلة', t: (TV.lastProblem && TV.lastProblem()) || 'ما فيه ✅' },
       { a: '', o: [['system', 'إعدادات التلفزيون'], ['reload-all', '↻ أعد تشغيل الواجهة']] },
     ]],
   ];
@@ -1035,6 +1061,7 @@ function setAct(a) {
   if (a === 'mouse-on') { TV.mouseOn && TV.mouseOn(); return setTimeout(() => { if ($('#panel').classList.contains('on')) setsBody(); }, 1500); }
   if (a === 'access') return TV.accessSettings && TV.accessSettings();
   if (a === 'system') return TV.settings();
+  if (a === 'newpin') { TV.webNewPin && TV.webNewPin(); return setsBody(); }
   if (a === 'reload-all') return location.reload();
 }
 function homeLayout() {

@@ -74,6 +74,27 @@ a shell settings get secure enabled_accessibility_services | grep -q "$PKG" && o
 curl -fsS -m 10 -X POST --data-binary @"$OUT/board-before.json" http://127.0.0.1:18080/board >/dev/null
 key KEYCODE_HOME 2
 
+# the web version: through DriveCast's hub, as a browser elsewhere would; then zapping fast through the channels it started
+sleep 5; curl -fsS -m 10 http://127.0.0.1:18080/web > "$OUT/web.json" && echo "- web: $(cat "$OUT/web.json" | sed 's/"pin":"[0-9]*"/"pin":"…"/')" >> "$OUT/report.md"
+WID=$(sed -n 's/.*"id":"\([^"]*\)".*/\1/p' "$OUT/web.json"); WPIN=$(sed -n 's/.*"pin":"\([0-9]*\)".*/\1/p' "$OUT/web.json")
+if command -v node >/dev/null && [ -n "$WID" ]; then
+  node tools/hub-test.mjs "$WID" "$WPIN" > "$OUT/hub.txt" 2>&1
+  while read -r l; do case "$l" in ok*) ok "web: ${l#ok }";; bad*) bad "web: ${l#bad }";; esac; done < "$OUT/hub.txt"
+  if grep -q '^zap' "$OUT/hub.txt"; then
+    sleep 6; shot 17-web-channel "a channel started from the web"
+    pid=$(a shell pidof $PKG | tr -d '\r')
+    for z in $(seq 1 30); do a shell input keyevent KEYCODE_DPAD_UP; sleep 0.15; done; sleep 3
+    for z in $(seq 1 15); do a shell input keyevent KEYCODE_DPAD_DOWN; sleep 0.4; done; sleep 8
+    shot 18-zapping "after 45 fast channel changes"
+    top=$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:')
+    pid2=$(a shell pidof $PKG | tr -d '\r')
+    echo "$top" | grep -q PlayerActivity && [ "$pid" = "$pid2" ] && ok "zapping: still in the player, same process" || bad "zapping left the player ($top, pid $pid → $pid2)"
+    key KEYCODE_BACK 2
+  fi
+fi
+curl -fsS -m 10 http://127.0.0.1:18080/crash > "$OUT/problems.txt"; [ -s "$OUT/problems.txt" ] && echo "- ⚠️ the app noted problems: see problems.txt" >> "$OUT/report.md"
+key KEYCODE_HOME 2
+
 # 5 minutes of use, then crashes / memory
 for i in $(seq 1 40); do key KEYCODE_DPAD_RIGHT 0.2; key KEYCODE_DPAD_DOWN 0.2; key KEYCODE_DPAD_UP 0.2; done
 a logcat -d -b crash > "$OUT/crash.txt"; a logcat -d '*:E' | grep -iE "drivecast|chromium|AndroidRuntime" > "$OUT/errors.txt"

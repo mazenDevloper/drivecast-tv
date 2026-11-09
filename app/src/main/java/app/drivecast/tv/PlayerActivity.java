@@ -18,7 +18,7 @@ import android.widget.VideoView;
 
 /**
  * IPTV on the TV: a full-screen player for a list of channels. Up / down on the remote = the next / previous
- * channel, OK = the channel's name, Back = home. A stream that drops or stalls is reconnected quietly, up to 6 times
+ * channel, OK = the channel's name (held: another player), Back = home. A stream that drops or stalls is reconnected quietly, up to 6 times
  * in a row; only then is another player app offered (OK opens it: VLC, MX…).
  */
 public class PlayerActivity extends Activity {
@@ -92,7 +92,10 @@ public class PlayerActivity extends Activity {
         label.setAlpha(1f);
         h.removeCallbacksAndMessages(null);
         h.postDelayed(() -> label.animate().alpha(0f).setDuration(400), 3500);
-        video.setVideoURI(Uri.parse(urls[i]));
+        // zapping: the name changes at once, the stream opens only once the remote rests (400 ms) — a box opening
+        // a new player for every press ran out of memory and Android closed the app
+        video.stopPlayback();
+        net.postDelayed(() -> video.setVideoURI(Uri.parse(urls[i])), 400);
     }
 
     private void offerOtherPlayer() {

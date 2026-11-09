@@ -63,6 +63,7 @@ public class MessageServer extends Service {
         startForeground(1, n);
         new Thread(this::serve, "msg-server").start();
         Access.watch(this);   // the mouse stays on, even when the TV switches it off
+        Remote.start(this);   // the web version: DriveCast TV from anywhere, through DriveCast's hub
     }
 
     @Override
@@ -99,6 +100,8 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
+            else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
+            else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
             else reply(s.getOutputStream(), "text/html", page());
             return;
         }
@@ -108,6 +111,7 @@ public class MessageServer extends Service {
             if (ok) {
                 try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "board.json"))) { o.write(j); }
                 main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadBoard && loadBoard()"); });
+                Remote.event("board");
             }
             reply(s.getOutputStream(), "text/plain", ok ? "ok" : "bad");
             return;
@@ -146,6 +150,7 @@ public class MessageServer extends Service {
             String t = body.trim(); if (t.length() > 120) t = t.substring(0, 120);
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
             main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
+            Remote.event("phrase");
         } else if (first.startsWith("POST /mouse-on")) {   // the phone's «شغّل الماوس»: on now if the adb grant is there
             main.post(() -> { if (!Access.force(this)) Access.openSettings(this); });
         } else if (first.startsWith("POST /adhan")) {   // try the Haram adhan / iqamah from the phone (body: adhan | iqama | stop)

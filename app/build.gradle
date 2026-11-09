@@ -32,3 +32,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+dependencies {
+    // the web version's link to DriveCast's hub (a WebSocket that stays open)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
