@@ -100,6 +100,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
+            else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
             else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
             else reply(s.getOutputStream(), "text/html", page());
@@ -199,6 +200,24 @@ public class MessageServer extends Service {
             got += r;
         }
         return new String(body, 0, got, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * The web version (mazendevloper.github.io/drivecast-tv) pairs by the TV's address: the browser, on the home Wi-Fi, opens
+     * http://<tv-ip>:8080/pair?back=<the web page>, and the TV sends it straight back with its id and code in the address's
+     * #fragment (never sent to any server). Only back to the web version's own pages.
+     */
+    private void pair(OutputStream out, String first) throws Exception {
+        String back = "";
+        int q = first.indexOf("back=");
+        if (q > 0) back = java.net.URLDecoder.decode(first.substring(q + 5).split("[ &]")[0], "UTF-8");
+        if (!back.startsWith("https://mazendevloper.github.io/drivecast-tv/")) back = "https://mazendevloper.github.io/drivecast-tv/";
+        back = back.split("#")[0] + "#pair=" + Remote.id(this) + "." + Remote.pin(this);
+        byte[] b = ("<meta http-equiv=refresh content=\"0;url=" + back + "\"><a href=\"" + back + "\">DriveCast TV</a>").getBytes(StandardCharsets.UTF_8);
+        out.write(("HTTP/1.1 302 Found\r\nLocation: " + back + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + b.length
+                + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        out.write(b);
+        out.flush();
     }
 
     private static void reply(OutputStream out, String type, String body) throws Exception {

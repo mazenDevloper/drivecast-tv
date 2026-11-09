@@ -9,6 +9,9 @@
   if (!me) { me = 'dctv-web-' + Math.random().toString(36).slice(2, 10); ls.set('dctv-me', me); }
   const q = new URLSearchParams(location.search);
   if (q.get('pin')) { ls.set('dctv-pin', q.get('pin').replace(/\D/g, '')); history.replaceState(null, '', location.pathname); }
+  // back from the TV (pairing by its address): #pair=<tv id>.<code>
+  const pm = /#pair=(dctv-[a-z0-9]+)\.(\d{6})/.exec(location.hash);
+  if (pm) { ls.set('dctv-tv', pm[1]); ls.set('dctv-pin', pm[2]); ls.set('dctv-justpaired', '1'); history.replaceState(null, '', location.pathname + location.search); }
 
   const L = window.DCTV = { me, pin: ls.get('dctv-pin') || '', tv: null, tvName: '', ws: null, open: false, wait: new Map(), fns: { ev: [], state: [] }, n: 0, ls };
   L.on = (k, f) => L.fns[k].push(f);
@@ -96,15 +99,33 @@
     catch (e) { if (e.message === 'pin') L.bad = true; return false; }
   };
   /** pairing, only when asked: the code, then the TV (online now) that accepts it — one try per TV */
+  /** pairing by the TV's address: on the home Wi-Fi, the browser goes to the TV, and the TV sends it back here paired */
+  L.askIp = () => new Promise(res => {
+    const box = document.createElement('div');
+    box.setAttribute('dir', 'rtl');
+    box.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:rgba(6,10,14,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:system-ui,-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;color:#f4f1ea';
+    box.innerHTML = `<form style="width:min(92vw,440px);background:#141b22;border:1px solid rgba(255,255,255,.12);border-radius:28px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+      <div style="font-size:22px;font-weight:700;margin-bottom:6px">📺 عنوان التلفزيون</div>
+      <div style="font-size:15px;opacity:.75;line-height:1.7;margin-bottom:18px">وأنت على واي فاي البيت: اكتب عنوان التلفزيون — تلقاه في التلفزيون: الإعدادات (زر ٠) ← 🌐 الويب. مرة وحدة وبعدها يشتغل من أي مكان.</div>
+      <input inputmode="decimal" placeholder="192.168.1.20" style="width:100%;box-sizing:border-box;font-size:28px;text-align:center;direction:ltr;padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.2);background:#0b1116;color:#fff;outline:none">
+      <div style="display:flex;gap:10px;margin-top:16px"><button style="flex:1;height:56px;border:0;border-radius:999px;background:#3ddc97;color:#06281b;font-size:19px;font-weight:700;font-family:inherit">اربط</button>
+      <button type="button" data-x style="height:56px;padding:0 22px;border:0;border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font-size:17px;font-family:inherit">إلغاء</button></div>
+    </form>`;
+    const f = box.querySelector('form'), inp = box.querySelector('input');
+    inp.value = ls.get('dctv-ip') || '';
+    box.querySelector('[data-x]').onclick = () => { box.remove(); res(null); };
+    f.onsubmit = e => {
+      e.preventDefault();
+      const ip = inp.value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:8080$/, '');
+      if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { inp.focus(); return; }
+      ls.set('dctv-ip', ip); box.remove(); res(ip);
+    };
+    document.documentElement.appendChild(box); setTimeout(() => inp.focus(), 50);
+  });
   L.pair = async () => {
-    await L.askPin();
-    await L.hubReady();
-    const prev = L.tv;
-    for (const t of (L.online || []).slice().sort((a, b) => (b.since || 0) - (a.since || 0))) {
-      L.tv = t.id;
-      try { await L.call('ping', [], 10000); ls.set('dctv-tv', t.id); L.tvName = t.name; L.okd = true; L.bad = false; fire('state'); return true; } catch (e) {}
-    }
-    L.tv = prev; fire('state'); return false;
+    const ip = await L.askIp(); if (!ip) return false;
+    location.href = `http://${ip}:8080/pair?back=${encodeURIComponent(location.href.split('#')[0])}`;   // the TV sends the browser back paired
+    return new Promise(() => {});
   };
   connect();
 })();

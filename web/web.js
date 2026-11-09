@@ -25,7 +25,7 @@
   const paint = () => {
     const live = L.open && L.tv && L.okd;
     bar.querySelector('#wState').textContent = !L.paired() ? '💻 بدون تلفزيون' : live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? (CLOUD ? '☁️ من السحابة · التلفزيون مطفّي' : '⚪ التلفزيون مو متصل') : '⚪ يتصل…';
-    bar.querySelector('#wPin').textContent = L.paired() ? '🔑' : '🔗 اربط بالتلفزيون';
+    bar.querySelector('#wPin').textContent = L.paired() && !L.bad ? '🔗' : '🔗 اربط بالتلفزيون';
     bar.querySelector('#wTv').style.background = MODE === 'tv' ? '#3ddc97' : 'transparent';
     bar.querySelector('#wTv').style.color = MODE === 'tv' ? '#06281b' : 'inherit';
     bar.querySelector('#wHere').style.background = MODE === 'here' ? '#3ddc97' : 'transparent';
@@ -34,8 +34,7 @@
   bar.querySelector('#wTv').onclick = () => { MODE = 'tv'; ls.set('dctv-mode', MODE); paint(); };
   bar.querySelector('#wHere').onclick = () => { MODE = 'here'; ls.set('dctv-mode', MODE); paint(); };
   bar.querySelector('#wPin').onclick = async () => {
-    if (await L.pair()) { toast('✅ انربط بالتلفزيون'); setTimeout(() => location.reload(), 700); }
-    else toast('ما لقيت تلفزيون يقبل هالرمز — لازم يكون شغّال وعليه آخر نسخة');
+    await L.pair();   // goes to the TV and comes back paired (or was cancelled)
   };
   L.on('state', paint); paint();
 
@@ -71,6 +70,8 @@
   }
   S = Object.assign({ apps: '[]', prayers: '', prefs: '{}', board: '', phrase: '', font: '', mouse: '{}', canOverlay: false }, S || {});
   paint();
+  if (ls.get('dctv-justpaired')) { ls.set('dctv-justpaired', ''); toast(L.okd ? '✅ انربط بالتلفزيون' : '✅ انربط — يتصل بالتلفزيون…'); }
+  if (L.bad) toast('الربط القديم ما عاد يشتغل — اضغط «🔗 اربط بالتلفزيون» وأنت في البيت');
   // no TV and no copy yet: today's prayer times from the Internet (Salalah, or the city in the saved settings)
   if (!S.prayers || S.prayers === '{}') {
     try {
@@ -172,7 +173,7 @@
     accessSettings: () => send('accessSettings', [], '📺 فتحت تسهيل الوصول'),
     tryAdhan: w => send('tryAdhan', [w], w === 'stop' ? '⏹' : '🕌 يشتغل على التلفزيون'),
     webInfo: () => JSON.stringify({ pin: L.pin, online: !!(L.open && L.tv && L.okd), url: location.href.split('?')[0].split('#')[0] }),
-    webNewPin: () => { send('webNewPin', [], 'رمز جديد على التلفزيون'); setTimeout(() => L.pair().then(ok => ok && location.reload()), 800); return ''; },
+    webNewPin: () => { send('webNewPin', [], 'فكّيت ربط كل المتصفحات — اربط من جديد من البيت'); return ''; },
     lastProblem: () => '',
   };
 

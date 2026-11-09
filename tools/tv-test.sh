@@ -76,6 +76,8 @@ key KEYCODE_HOME 2
 
 # the web version: through DriveCast's hub, as a browser elsewhere would; then zapping fast through the channels it started
 sleep 5; curl -fsS -m 10 http://127.0.0.1:18080/web > "$OUT/web.json" && echo "- web: $(cat "$OUT/web.json" | sed 's/"pin":"[0-9]*"/"pin":"…"/')" >> "$OUT/report.md"
+loc=$(curl -sS -m 10 -o /dev/null -w '%{redirect_url}' "http://127.0.0.1:18080/pair?back=https%3A%2F%2Fmazendevloper.github.io%2Fdrivecast-tv%2F")
+echo "$loc" | grep -qE '^https://mazendevloper.github.io/drivecast-tv/#pair=dctv-[a-z0-9]+\.[0-9]{6}$' && ok "pairing by the TV's address sends the browser back paired" || bad "pairing by address: $loc"
 WID=$(sed -n 's/.*"id":"\([^"]*\)".*/\1/p' "$OUT/web.json"); WPIN=$(sed -n 's/.*"pin":"\([0-9]*\)".*/\1/p' "$OUT/web.json")
 if command -v node >/dev/null && [ -n "$WID" ]; then
   node tools/hub-test.mjs "$WID" "$WPIN" > "$OUT/hub.txt" 2>&1
