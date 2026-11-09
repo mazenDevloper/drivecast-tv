@@ -6,7 +6,11 @@
   window.fetch = async (u, o) => {
     if (typeof u !== 'string' || !u.startsWith('/') || u.startsWith('//')) return real(u, o);
     o = o || {};
-    if (!gate) gate = L.gate().then(ok => { if (!ok) gate = null; return ok; });
+    if (!gate) gate = L.gate().then(async ok => {
+      if (!ok && !L.paired() && !L.asked) { L.asked = true; ok = await L.pair(); }   // the remote needs the TV: pair once, when opened
+      if (!ok) setTimeout(() => { gate = null; }, 15000);
+      return ok;
+    });
     if (!(await gate)) throw new Error('offline');
     const method = (o.method || 'GET').toUpperCase();
     let body = o.body == null ? '' : o.body, b64 = false;

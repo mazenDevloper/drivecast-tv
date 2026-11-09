@@ -16,9 +16,9 @@
 
   function pickTv(devs) {
     const tvs = (devs || []).filter(d => d && d.app === 'dctv');
-    // the TV this browser was paired with, only that one (another TV on the hub — a friend's, a test — is never tried with this code);
-    // the first time: the newest, and it is kept once its code is accepted
-    const want = ls.get('dctv-tv'), t = want ? tvs.find(d => d.id === want) : tvs.sort((a, b) => (b.since || 0) - (a.since || 0))[0];
+    // only the TV this browser was paired with («🔗 اربط»); another TV on the hub is never tried with this code
+    L.online = tvs;
+    const want = ls.get('dctv-tv'), t = want ? tvs.find(d => d.id === want) : null;
     L.tv = t ? t.id : null; L.tvName = t ? t.name : '';
     fire('state');
   }
@@ -87,13 +87,24 @@
   });
 
   /** connected and the code accepted: true; the TV is not online: false */
+  L.paired = () => !!(ls.get('dctv-tv') && L.pin);
+  /** the paired TV is online and accepts the code (asks nothing: a wrong code just means «not connected») */
   L.gate = async () => {
     if (L.okd) return true;
-    if (!(await L.ready())) return false;
-    for (;;) {
-      try { await L.call('ping', [], 12000); L.okd = true; ls.set('dctv-tv', L.tv); return true; }
-      catch (e) { if (e.message === 'pin' || e.message === 'locked') await L.askPin(e.message); else return false; }
+    if (!L.paired() || !(await L.ready())) return false;
+    try { await L.call('ping', [], 12000); L.okd = true; return true; }
+    catch (e) { if (e.message === 'pin') L.bad = true; return false; }
+  };
+  /** pairing, only when asked: the code, then the TV (online now) that accepts it — one try per TV */
+  L.pair = async () => {
+    await L.askPin();
+    await L.hubReady();
+    const prev = L.tv;
+    for (const t of (L.online || []).slice().sort((a, b) => (b.since || 0) - (a.since || 0))) {
+      L.tv = t.id;
+      try { await L.call('ping', [], 10000); ls.set('dctv-tv', t.id); L.tvName = t.name; L.okd = true; L.bad = false; fire('state'); return true; } catch (e) {}
     }
+    L.tv = prev; fire('state'); return false;
   };
   connect();
 })();

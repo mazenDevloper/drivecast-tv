@@ -25,6 +25,7 @@
   const paint = () => {
     const live = L.open && L.tv && L.okd;
     bar.querySelector('#wState').textContent = live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? (CLOUD ? '☁️ من السحابة · التلفزيون مطفّي' : '⚪ التلفزيون مو متصل') : '⚪ يتصل…';
+    bar.querySelector('#wPin').textContent = L.paired() ? '🔑' : '🔗 اربط بالتلفزيون';
     bar.querySelector('#wTv').style.background = MODE === 'tv' ? '#3ddc97' : 'transparent';
     bar.querySelector('#wTv').style.color = MODE === 'tv' ? '#06281b' : 'inherit';
     bar.querySelector('#wHere').style.background = MODE === 'here' ? '#3ddc97' : 'transparent';
@@ -32,7 +33,10 @@
   };
   bar.querySelector('#wTv').onclick = () => { MODE = 'tv'; ls.set('dctv-mode', MODE); paint(); };
   bar.querySelector('#wHere').onclick = () => { MODE = 'here'; ls.set('dctv-mode', MODE); paint(); };
-  bar.querySelector('#wPin').onclick = async () => { await L.askPin(); L.okd = false; await L.gate(); paint(); };
+  bar.querySelector('#wPin').onclick = async () => {
+    if (await L.pair()) { toast('✅ انربط بالتلفزيون'); setTimeout(() => location.reload(), 700); }
+    else toast('ما لقيت تلفزيون يقبل هالرمز — لازم يكون شغّال وعليه آخر نسخة');
+  };
   L.on('state', paint); paint();
 
   const toast = t => {
@@ -50,13 +54,10 @@
   try { S = JSON.parse(ls.get('dctv-snap') || 'null'); } catch (e) {}
   // the TV's copy in the cloud: when the TV is off, the page works from it and saves to it
   async function cloudLoad() {
-    if (!L.open || !L.tvId()) return null;   // L.gate() already waited for the hub
-    for (let tries = 0; tries < 4; tries++) {
-      let r; try { r = await L.store('dctv-get'); } catch (e) { return null; }
-      if (r.ok) { try { return r.data ? Object.assign(JSON.parse(r.data), { at: r.at }) : null; } catch (e) { return null; } }
-      if (r.error === 'key') await L.askPin('pin'); else return null;
-    }
-    return null;
+    if (!L.paired() || !(await L.hubReady())) return null;
+    let r; try { r = await L.store('dctv-get'); } catch (e) { return null; }
+    if (!r.ok) return null;   // a changed code: «🔗 اربط» again when the TV is on
+    try { return r.data ? Object.assign(JSON.parse(r.data), { at: r.at }) : null; } catch (e) { return null; }
   }
   if (await L.gate()) {
     try {
@@ -66,16 +67,26 @@
   } else {
     const c = await cloudLoad();
     if (c) { S = Object.assign(S || {}, { board: c.board, phrase: c.phrase, prefs: JSON.stringify(c.prefs || {}), prayers: c.prayers || (S && S.prayers), apps: c.apps || (S && S.apps) }); CLOUD = true; toast('☁️ التلفزيون مطفّي — تشتغل من السحابة، وتعديلاتك توصله لما يشتغل'); }
-    else if (S) toast('التلفزيون مو متصل — أعرض آخر نسخة');
+    else if (S && L.paired()) toast('التلفزيون مو متصل — أعرض آخر نسخة');
   }
   S = Object.assign({ apps: '[]', prayers: '', prefs: '{}', board: '', phrase: '', font: '', mouse: '{}', canOverlay: false }, S || {});
   paint();
+  // no TV and no copy yet: today's prayer times from the Internet (Salalah, or the city in the saved settings)
+  if (!S.prayers || S.prayers === '{}') {
+    try {
+      const d = new Date(), f = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}-${x.getFullYear()}`, t = new Date(d.getTime() + 864e5);
+      const get = async x => { const j = await (await fetch(`https://api.aladhan.com/v1/timings/${f(x)}?latitude=17.0158&longitude=54.0885&method=8`)).json(); const m = j.data.timings; return ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map(k => m[k].slice(0, 5)); };
+      S.prayers = JSON.stringify({ today: await get(d), tomorrow: await get(t), city: 'صلالة', lat: 17.0158, lon: 54.0885, method: 8 });
+    } catch (e) {}
+  }
+  const keep = () => { try { ls.set('dctv-snap', JSON.stringify(Object.assign({}, S, { font: '' }))); } catch (e) {} };
 
   const onTv = () => MODE === 'tv' && L.open && L.tv && L.okd;
   // with the TV off, a change goes to the cloud copy (the TV takes it when it is back)
   let putT = 0;
   const cloudSave = () => {
-    if (L.tv && L.okd) return;   // the TV is on: it saves its own copy
+    keep();
+    if (L.tv && L.okd || !L.paired()) return;   // the TV saves its own; not paired: this browser only   // the TV is on: it saves its own copy
     clearTimeout(putT);
     putT = setTimeout(() => {
       let prefs = {}; try { prefs = JSON.parse(S.prefs || '{}'); } catch (e) {}
@@ -161,7 +172,7 @@
     accessSettings: () => send('accessSettings', [], '📺 فتحت تسهيل الوصول'),
     tryAdhan: w => send('tryAdhan', [w], w === 'stop' ? '⏹' : '🕌 يشتغل على التلفزيون'),
     webInfo: () => JSON.stringify({ pin: L.pin, online: !!(L.open && L.tv && L.okd), url: location.href.split('?')[0].split('#')[0] }),
-    webNewPin: () => { send('webNewPin', [], 'رمز جديد على التلفزيون — اكتبه هنا'); setTimeout(() => L.askPin().then(() => { L.okd = false; L.gate(); }), 800); return ''; },
+    webNewPin: () => { send('webNewPin', [], 'رمز جديد على التلفزيون'); setTimeout(() => L.pair().then(ok => ok && location.reload()), 800); return ''; },
     lastProblem: () => '',
   };
 
