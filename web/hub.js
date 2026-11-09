@@ -16,9 +16,10 @@
 
   function pickTv(devs) {
     const tvs = (devs || []).filter(d => d && d.app === 'dctv');
-    const want = ls.get('dctv-tv'), t = tvs.find(d => d.id === want) || tvs.sort((a, b) => (b.since || 0) - (a.since || 0))[0];
+    // the TV this browser was paired with, only that one (another TV on the hub — a friend's, a test — is never tried with this code);
+    // the first time: the newest, and it is kept once its code is accepted
+    const want = ls.get('dctv-tv'), t = want ? tvs.find(d => d.id === want) : tvs.sort((a, b) => (b.since || 0) - (a.since || 0))[0];
     L.tv = t ? t.id : null; L.tvName = t ? t.name : '';
-    if (t) ls.set('dctv-tv', t.id);
     fire('state');
   }
   function connect() {
@@ -90,7 +91,7 @@
     if (L.okd) return true;
     if (!(await L.ready())) return false;
     for (;;) {
-      try { await L.call('ping', [], 12000); L.okd = true; return true; }
+      try { await L.call('ping', [], 12000); L.okd = true; ls.set('dctv-tv', L.tv); return true; }
       catch (e) { if (e.message === 'pin' || e.message === 'locked') await L.askPin(e.message); else return false; }
     }
   };
