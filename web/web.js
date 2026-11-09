@@ -21,10 +21,10 @@
     <a id="wRemote" href="remote/" style="${pill};text-decoration:none">🎮 الريموت</a>
     <button id="wPin" style="${pill}" title="رمز التلفزيون">🔑</button>`;
   document.documentElement.appendChild(bar);
-  let MODE = ls.get('dctv-mode') || 'tv';
+  let MODE = ls.get('dctv-mode') || 'tv', CLOUD = false;
   const paint = () => {
     const live = L.open && L.tv && L.okd;
-    bar.querySelector('#wState').textContent = live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? '⚪ التلفزيون مو متصل' : '⚪ يتصل…';
+    bar.querySelector('#wState').textContent = live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? (CLOUD ? '☁️ من السحابة · التلفزيون مطفّي' : '⚪ التلفزيون مو متصل') : '⚪ يتصل…';
     bar.querySelector('#wTv').style.background = MODE === 'tv' ? '#3ddc97' : 'transparent';
     bar.querySelector('#wTv').style.color = MODE === 'tv' ? '#06281b' : 'inherit';
     bar.querySelector('#wHere').style.background = MODE === 'here' ? '#3ddc97' : 'transparent';
@@ -48,16 +48,41 @@
   document.documentElement.appendChild(cover);
   let S = null;
   try { S = JSON.parse(ls.get('dctv-snap') || 'null'); } catch (e) {}
+  // the TV's copy in the cloud: when the TV is off, the page works from it and saves to it
+  async function cloudLoad() {
+    if (!L.open || !L.tvId()) return null;   // L.gate() already waited for the hub
+    for (let tries = 0; tries < 4; tries++) {
+      let r; try { r = await L.store('dctv-get'); } catch (e) { return null; }
+      if (r.ok) { try { return r.data ? Object.assign(JSON.parse(r.data), { at: r.at }) : null; } catch (e) { return null; } }
+      if (r.error === 'key') await L.askPin('pin'); else return null;
+    }
+    return null;
+  }
   if (await L.gate()) {
     try {
       S = await L.call('snapshot', [], 30000);
       try { ls.set('dctv-snap', JSON.stringify(Object.assign({}, S, { font: '' }))); } catch (e) {}
     } catch (e) { toast('التلفزيون ما ردّ — أعرض آخر نسخة'); }
-  } else if (S) toast('التلفزيون مو متصل — أعرض آخر نسخة');
+  } else {
+    const c = await cloudLoad();
+    if (c) { S = Object.assign(S || {}, { board: c.board, phrase: c.phrase, prefs: JSON.stringify(c.prefs || {}), prayers: c.prayers || (S && S.prayers), apps: c.apps || (S && S.apps) }); CLOUD = true; toast('☁️ التلفزيون مطفّي — تشتغل من السحابة، وتعديلاتك توصله لما يشتغل'); }
+    else if (S) toast('التلفزيون مو متصل — أعرض آخر نسخة');
+  }
   S = Object.assign({ apps: '[]', prayers: '', prefs: '{}', board: '', phrase: '', font: '', mouse: '{}', canOverlay: false }, S || {});
   paint();
 
   const onTv = () => MODE === 'tv' && L.open && L.tv && L.okd;
+  // with the TV off, a change goes to the cloud copy (the TV takes it when it is back)
+  let putT = 0;
+  const cloudSave = () => {
+    if (L.tv && L.okd) return;   // the TV is on: it saves its own copy
+    clearTimeout(putT);
+    putT = setTimeout(() => {
+      let prefs = {}; try { prefs = JSON.parse(S.prefs || '{}'); } catch (e) {}
+      L.store('dctv-put', { data: JSON.stringify({ board: S.board, phrase: S.phrase, prefs, prayers: S.prayers, apps: S.apps }) })
+        .then(r => toast(r.ok ? '☁️ انحفظ — يوصل التلفزيون لما يشتغل' : 'ما انحفظ')).catch(() => toast('ما انحفظ'));
+    }, 1200);
+  };
   const send = (name, args, note) => L.call(name, args || []).then(v => { if (note) toast(note); return v; }).catch(e => toast(e.message === 'offline' ? 'التلفزيون مو متصل' : 'ما وصل للتلفزيون'));
 
   // ---- the browser's own players («هنا»)
@@ -125,12 +150,12 @@
     canOverlay: () => !!S.canOverlay,
     settings: () => send('settings', [], '📺 فتحت إعدادات التلفزيون'),
     board: () => S.board || '',
-    saveBoard: j => { S.board = j; send('saveBoard', [j]); },
+    saveBoard: j => { S.board = j; if (L.tv && L.okd) send('saveBoard', [j]); else cloudSave(); },
     phrase: () => S.phrase || '',
     font: () => S.font || '',
     fetch: (url, cb) => { getAny(url).then(t => { const f = window[cb]; if (f) f(t); }); },
     prefs: () => S.prefs || '{}',
-    setPref: (k, v) => { const p = prefs(); p[k] = v; S.prefs = JSON.stringify(p); send('setPref', [k, String(v)]); },
+    setPref: (k, v) => { const p = prefs(); p[k] = v; S.prefs = JSON.stringify(p); if (L.tv && L.okd) send('setPref', [k, String(v)]); else cloudSave(); },
     mouse: () => S.mouse || '{}',
     mouseOn: () => { send('mouseOn', [], 'يشغّل الماوس على التلفزيون'); return true; },
     accessSettings: () => send('accessSettings', [], '📺 فتحت تسهيل الوصول'),
@@ -147,6 +172,7 @@
       else if (what === 'phrase') { S.phrase = await L.call('phrase'); window.loadPhrase && loadPhrase(); }
       else if (what === 'prefs') { S.prefs = await L.call('prefs'); window.loadSet && loadSet(); window.homeLayout && homeLayout(); window.applyWall && applyWall(); }
       else if (what === 'city') { S.prayers = await L.call('prayers'); window.loadPrayers && loadPrayers(); }
+      else if (what === 'cloud' && !(L.tv && L.okd)) { const c = await cloudLoad(); if (c) { S.board = c.board; S.phrase = c.phrase; S.prefs = JSON.stringify(c.prefs || {}); window.loadBoard && loadBoard(); window.loadPhrase && loadPhrase(); window.loadSet && loadSet(); window.homeLayout && homeLayout(); } }
     } catch (e) {}
   });
   // back online after a drop: everything again

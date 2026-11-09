@@ -51,7 +51,21 @@ final class Remote {
         return p;
     }
 
-    static String newPin(Context c) { Access.set(c).edit().remove("webpin").apply(); return pin(c); }
+    static String newPin(Context c) {
+        String old = key(c);
+        Access.set(c).edit().remove("webpin").apply();
+        String p = pin(c);
+        cloudPut(old);   // the cloud copy moves to the new code's key
+        return p;
+    }
+
+    /** the cloud copy's key: sha256("<tv id>:<code>"), the same in the web page */
+    static String key(Context c) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest((id(c) + ":" + pin(c)).getBytes("UTF-8"));
+            StringBuilder b = new StringBuilder(); for (byte x : d) b.append(String.format("%02x", x)); return b.toString();
+        } catch (Exception e) { return ""; }
+    }
 
     static String id(Context c) {
         SharedPreferences s = Access.set(c);
@@ -69,7 +83,7 @@ final class Remote {
         String name = "DriveCast TV";
         Request r = new Request.Builder().url(HUB + "?id=" + id + "&name=" + android.net.Uri.encode(name) + "&kind=tv&app=dctv").build();
         ws = http.newWebSocket(r, new WebSocketListener() {
-            @Override public void onOpen(WebSocket s, Response res) { backoff = 2; }
+            @Override public void onOpen(WebSocket s, Response res) { backoff = 2; cloudGet(); }
             @Override public void onMessage(WebSocket s, String text) { new Thread(() -> handle(s, text), "web-call").start(); }
             @Override public void onClosed(WebSocket s, int code, String reason) { gone(s); }
             @Override public void onFailure(WebSocket s, Throwable t, Response res) { gone(s); }
@@ -86,8 +100,68 @@ final class Remote {
         backoff = Math.min(backoff * 2, 120);
     }
 
-    /** something changed on the TV: every open web page refreshes that part */
+    // ---- the cloud copy (the hub keeps it privately): the board, the phrase and the settings, so the web version works with
+    // the TV off. Whichever side changed last wins; the TV takes the web's changes the moment it is back online.
+    private static final Runnable PUT = () -> cloudPut(null);
+    private static boolean applying;
+
+    private static JSONObject doc() throws Exception {
+        JSONObject p = new JSONObject(Access.set(app).getAll());
+        p.remove("webpin"); p.remove("webid"); p.remove("cloudat");
+        JSONObject o = new JSONObject().put("board", HomeActivity.readBoard(app))
+                .put("phrase", app.getSharedPreferences("ui", Context.MODE_PRIVATE).getString("phrase", "")).put("prefs", p);
+        HomeActivity a = HomeActivity.alive;
+        if (a != null && a.bridge != null) {
+            try { o.put("prayers", a.bridge.prayers()); } catch (Exception ignored) { }
+            try { String apps = a.bridge.apps(); if (apps.length() < 400_000) o.put("apps", apps); } catch (Exception ignored) { }
+        }
+        return o;
+    }
+
+    static void cloudPut(String oldKey) {
+        WebSocket s = ws; if (s == null || app == null || applying) return;
+        new Thread(() -> {
+            try {
+                JSONObject m = new JSONObject().put("op", "dctv-put").put("tv", id).put("key", key(app)).put("data", doc().toString()).put("rid", "tv-put");
+                if (oldKey != null) m.put("oldKey", oldKey);
+                s.send(m.toString());
+            } catch (Exception ignored) { }
+        }, "cloud-put").start();
+    }
+
+    private static void cloudGet() {
+        WebSocket s = ws; if (s == null) return;
+        try { s.send(new JSONObject().put("op", "dctv-get").put("tv", id).put("key", key(app)).put("rid", "tv-get").toString()); } catch (Exception ignored) { }
+    }
+
+    /** the cloud copy came back: newer than what the TV has → take it; else (or none yet) the TV's goes up */
+    private static void cloudGot(JSONObject r) {
+        long at = r.optLong("at"), mine = set().getLong("cloudat", 0);
+        String data = r.optString("data", "");
+        if (!r.optBoolean("ok")) return;
+        if (data.isEmpty() || "null".equals(data) || at < mine) { cloudPut(null); return; }   // none yet, or the TV's is newer
+        if (at == mine) return;
+        try {
+            JSONObject d = new JSONObject(data);
+            applying = true;
+            if (d.has("board")) try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(app.getFilesDir(), "board.json"))) { o.write(d.getString("board").getBytes("UTF-8")); }
+            if (d.has("phrase")) app.getSharedPreferences("ui", Context.MODE_PRIVATE).edit().putString("phrase", d.getString("phrase")).apply();
+            JSONObject p = d.optJSONObject("prefs");
+            if (p != null) {
+                SharedPreferences.Editor e = Access.set(app).edit();
+                for (java.util.Iterator<String> it = p.keys(); it.hasNext(); ) { String k = it.next(); if (!k.startsWith("web") && !k.equals("cloudat")) e.putString(k, p.optString(k)); }
+                e.apply();
+            }
+            set().edit().putLong("cloudat", at).apply();
+            HomeActivity a = HomeActivity.alive;
+            if (a != null) a.runOnUiThread(() -> a.run("window.loadBoard && loadBoard(); window.loadPhrase && loadPhrase(); loadSet(); homeLayout(); window.applyWall && applyWall()"));
+        } catch (Exception ignored) { }
+        finally { applying = false; }
+    }
+
+    /** something changed on the TV: every open web page refreshes that part, and the cloud copy follows (3 s later) */
     static void event(String what) {
+        h.removeCallbacks(PUT); h.postDelayed(PUT, 3000);
         WebSocket s = ws; if (s == null) return;
         try { s.send(new JSONObject().put("op", "send").put("to", "kind:dctv-web").put("msg", new JSONObject().put("type", "dctv-ev").put("what", what)).toString()); }
         catch (Exception ignored) { }
@@ -96,6 +170,12 @@ final class Remote {
     private static void handle(WebSocket s, String text) {
         JSONObject d, m;
         try { d = new JSONObject(text); } catch (Exception e) { return; }
+        if ("dctv-store".equals(d.optString("type"))) {
+            if ("tv-get".equals(d.optString("rid"))) cloudGot(d);
+            else if ("tv-put".equals(d.optString("rid")) && d.optBoolean("ok")) set().edit().putLong("cloudat", d.optLong("at")).apply();
+            return;
+        }
+        if ("dctv-changed".equals(d.optString("type")) && id.equals(d.optString("tv"))) { cloudGet(); return; }
         if (!"msg".equals(d.optString("type")) || (m = d.optJSONObject("msg")) == null || !"dctv".equals(m.optString("type"))) return;
         String to = d.optJSONObject("from") != null ? d.optJSONObject("from").optString("id") : "";
         if (to.isEmpty()) return;

@@ -29,6 +29,8 @@
     ws.onmessage = e => {
       let d; try { d = JSON.parse(e.data); } catch (x) { return; }
       if (d.type === 'hello' || d.type === 'devices') return pickTv(d.devices);
+      if (d.type === 'dctv-store') { const w = L.wait.get(d.rid); if (w) { L.wait.delete(d.rid); clearTimeout(w.t); w.ok(d); } return; }
+      if (d.type === 'dctv-changed') { if (d.tv === L.tvId()) fire('ev', 'cloud'); return; }
       if (d.type !== 'msg' || !d.msg) return;
       const m = d.msg;
       if (m.type === 'dctv-r') {
@@ -55,6 +57,16 @@
   });
   L.call = (call, args, ms) => L.send({ call, args: args || [] }, ms);
   L.http = (method, path, body, b64) => L.send({ http: method, path, body: body || '', b64: !!b64 }, 40000);
+  // ---- the TV's cloud copy in the hub (works with the TV off): its key is sha256("<tv id>:<code>")
+  L.tvId = () => L.tv || ls.get('dctv-tv') || '';
+  L.key = async () => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(L.tvId() + ':' + L.pin)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); };
+  L.store = (op, extra) => new Promise(async (ok, no) => {
+    if (!L.ws || !L.open || !L.tvId()) return no(new Error('offline'));
+    const rid = me + ':s' + (++L.n), t = setTimeout(() => { L.wait.delete(rid); no(new Error('timeout')); }, 20000);
+    L.wait.set(rid, { ok, no, t });
+    L.ws.send(JSON.stringify(Object.assign({ op, rid, tv: L.tvId(), key: await L.key() }, extra || {})));
+  });
+  L.hubReady = () => new Promise(res => { if (L.open) return res(true); const t0 = Date.now(), iv = setInterval(() => { if (L.open || Date.now() - t0 > 8000) { clearInterval(iv); res(L.open); } }, 150); });
   L.setPin = p => { L.pin = String(p || '').replace(/\D/g, ''); ls.set('dctv-pin', L.pin); };
 
   /** the TV's code, asked on a card (once per browser) */
