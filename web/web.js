@@ -21,10 +21,10 @@
     <a id="wRemote" href="remote/" style="${pill};text-decoration:none">🎮 الريموت</a>
     <button id="wPin" style="${pill}" title="رمز التلفزيون">🔑</button>`;
   document.documentElement.appendChild(bar);
-  let MODE = ls.get('dctv-mode') || 'tv', CLOUD = false;
+  let MODE = ls.get('dctv-mode') || (L.paired() ? 'tv' : 'here'), CLOUD = false;
   const paint = () => {
     const live = L.open && L.tv && L.okd;
-    bar.querySelector('#wState').textContent = live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? (CLOUD ? '☁️ من السحابة · التلفزيون مطفّي' : '⚪ التلفزيون مو متصل') : '⚪ يتصل…';
+    bar.querySelector('#wState').textContent = !L.paired() ? '💻 بدون تلفزيون' : live ? '🟢 ' + (L.tvName || 'التلفزيون') : L.open ? (CLOUD ? '☁️ من السحابة · التلفزيون مطفّي' : '⚪ التلفزيون مو متصل') : '⚪ يتصل…';
     bar.querySelector('#wPin').textContent = L.paired() ? '🔑' : '🔗 اربط بالتلفزيون';
     bar.querySelector('#wTv').style.background = MODE === 'tv' ? '#3ddc97' : 'transparent';
     bar.querySelector('#wTv').style.color = MODE === 'tv' ? '#06281b' : 'inherit';
