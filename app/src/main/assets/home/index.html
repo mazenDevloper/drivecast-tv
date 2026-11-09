@@ -19,6 +19,9 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 .wl{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity 2s,background 2s}
 .sky{-webkit-mask-image:var(--skym);mask-image:var(--skym);-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #wSun{mix-blend-mode:screen}
+.rk{display:none;background-size:cover;background-position:center;transition:none}#rkN{transition:opacity 2s}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
+#rkStars{position:absolute;inset:0;width:100%;height:100%}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
+#rkMoon{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
 #wMoonBox.free{-webkit-mask-image:none;mask-image:none}
 #wPhotoN{background-image:url(wall/rawas-night-photo.webp);opacity:0}
 #wDark{background:linear-gradient(180deg,#03050c 0%,#070c1c 45%,#121d38 70%,#1b2846 100%)}#stars{width:100%;height:100%;display:block}
@@ -221,7 +224,7 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="boardBg" id="boardBg"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkSky"><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -302,6 +305,7 @@ body.ambient .phrase.on{display:block}
 </div>
 
 <script src="stars.js"></script>
+<script src="wall/rk-masks.js"></script>
 <script>
 const FAKE = {   // in a browser (preview) the page still shows, with sample data
   apps: () => '[]', open: () => false, youtube: id => open('https://youtu.be/' + id), link: u => open(u),
@@ -404,17 +408,61 @@ function weather() {
 
 
 // ---- wallpapers: Omar Al-Rawas mosque (Salalah), and noor-tv's three (MIT, majedphotos); «أوقات اليوم» follows the time of day
-const WALLS = [['rawas', 'جامع عمر الرواس (يتغيّر مع الشمس)'], ['awqat', 'أوقات اليوم'], ['zakhrafa', 'الزخرفة'], ['masjid-layl', 'مسجد الليل'], ['none', 'بلا خلفية']];
+const WALLS = [['rawas', 'جامع عمر الرواس (صورك الحقيقية مع الوقت)'], ['rawas-art', 'جامع عمر الرواس (رسم يتبع الشمس)'], ['awqat', 'أوقات اليوم'], ['zakhrafa', 'الزخرفة'], ['masjid-layl', 'مسجد الليل'], ['none', 'بلا خلفية']];
 function getWall() { let w = 'rawas'; try { w = localStorage.wall || w; } catch (e) {} return S('wall', w); }
 function applyWall() {
   const w = getWall(), h = NOW().getHours();
-  const f = w === 'none' ? '' : w === 'awqat' ? (h >= 5 && h < 15 ? 'awqat-morning' : h >= 15 && h < 19 ? 'awqat-evening' : 'awqat-night') : w;
+  const real = w === 'rawas';
+  document.querySelectorAll('.rk').forEach(x => x.style.display = real ? 'block' : 'none');
+  const f = w === 'none' || real ? '' : w === 'awqat' ? (h >= 5 && h < 15 ? 'awqat-morning' : h >= 15 && h < 19 ? 'awqat-evening' : 'awqat-night') : w === 'rawas-art' ? 'rawas' : w;
   $('#wDay').style.backgroundImage = f ? `url(wall/${f}.jpg)` : 'none';
-  $('#veil').style.display = f ? '' : 'none';
-  const live = w === 'rawas';
+  $('#veil').style.display = f || real ? '' : 'none';
+  const live = w === 'rawas-art';
   $('#wNight').style.backgroundImage = live ? 'url(wall/rawas-night.webp)' : 'none';
   ['#wNight', '#wPhotoN', '#wDark', '#wMoonBox', '#wSky', '#wSun', '#wLight'].forEach(x => $(x).style.display = live ? '' : 'none');
   if (live) liveSky();
+  if (real) realSky();
+}
+// ---- the mosque in Mazn's own photos (one evening, 4:30 → 6:15 pm), the one for the sun's height now; a dissolve between them,
+// the real sun / stars / moon drawn in each photo's sky. head = where the photo looks (from the sun in the afternoon shot:
+// 15.6° high at azimuth 246° → the picture's centre faces 229°), hor = the horizon (% of the height), 56.9° wide.
+const RK = {
+  day: { head: 229.4, hor: 84 }, sunset: { head: 231, hor: 95 }, after: { head: 233, hor: 100 },
+  dusk: { head: 231, hor: 97 }, blue: { head: 234, hor: 100 }, night: { head: 234, hor: 100, mask: 'blue' },
+};
+// the sun's height from which each photo is shown (taken about then); below the last, the night (the same shot, lights on, dark sky) fades in
+const RK_SEQ = [[1.5, 'day'], [-1, 'sunset'], [-2.7, 'after'], [-4.8, 'dusk'], [-90, 'blue']];
+const rkScreen = (k, alt, az) => ({ x: 50 + ((((az - k.head + 540) % 360) - 180) / 56.9) * 100, y: k.hor - alt / .32 });
+let rkShown = '';
+function realSky() {
+  const now = window.__simTime ? window.__simTime() : new Date(), { alt, az } = sunPos(now, MOSQUE[0], MOSQUE[1]);
+  // which photo: they are taken from slightly different places, so one at a time — a 4-second dissolve when it changes
+  const a = (RK_SEQ.find(([h]) => alt >= h) || RK_SEQ[RK_SEQ.length - 1])[1], A = $('#rkA'), B = $('#rkB');
+  if (!A.dataset.f) { A.style.backgroundImage = `url(wall/rk-${a}.webp)`; A.dataset.f = a; }
+  else if (A.dataset.f !== a && B.dataset.f !== a) {
+    B.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.style.backgroundImage = `url(wall/rk-${a}.webp)`;
+    requestAnimationFrame(() => requestAnimationFrame(() => { B.style.transition = 'opacity 4s ease'; B.style.opacity = 1; }));
+    setTimeout(() => { A.style.backgroundImage = B.style.backgroundImage; A.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.dataset.f = ''; }, 4300);
+  }
+  const night = a === 'blue' ? clamp((-6 - alt) / 5) : 0;
+  $('#rkN').style.opacity = night.toFixed(3);
+  const cur = night > .5 ? 'night' : a, K = RK[cur], mk = window.RKM && RKM[K.mask || cur];
+  const box = $('#rkSky');
+  if (mk && box.dataset.m !== cur) { box.style.webkitMaskImage = box.style.maskImage = `url(${mk})`; box.dataset.m = cur; }
+  // the stars (real ones, where they are tonight) once it is dark enough
+  const dark = clamp((-alt - 7) / 6);
+  $('#rkStars').style.opacity = dark.toFixed(2);
+  if (dark > 0) drawStars(now, true, $('#rkStars'), (p, q) => rkScreen(K, p, q));
+  // the sun: only in the afternoon photo (its own sun was taken out), where the real one is now
+  const s = rkScreen(RK.day, alt, az), sun = $('#rkSun');
+  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105;
+  sun.style.background = sv ? `radial-gradient(circle at ${s.x}% ${s.y}%, rgba(255,255,245,.98) 0, rgba(255,252,232,.95) 22px, rgba(255,226,170,.55) 46px, rgba(255,214,150,.22) 160px, rgba(255,214,150,0) 420px)` : 'none';
+  // the moon (DriveCast's picture for tonight's phase), where it is
+  const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = rkScreen(K, mo.alt, mo.az), mi = $('#rkMoon');
+  const src = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay()}.webp`; if (mi.getAttribute('src') !== src) mi.src = src;
+  const md = clamp((-alt - 3) / 5);
+  mi.style.display = mo.alt > 0 && md > 0 && ms.x > 2 && ms.x < 98 && ms.y > 3 ? '' : 'none';
+  mi.style.left = ms.x + '%'; mi.style.top = ms.y + '%'; mi.style.opacity = md.toFixed(2);
 }
 // ---- the sun over the mosque (17.0158 N, 54.0885 E); the photo looks about south-south-west (Street View heading 192°)
 const MOSQUE = [17.0158, 54.0885], HEAD = 192, FOV = 104;   // a wide phone photo
@@ -449,12 +497,13 @@ function moonPos(t, lat, lon) {
 // sky → screen: the photo's heading / width, horizon at 66% of the height, ~18 px per degree
 const toScreen = (alt, az) => ({ x: 50 + ((((az - HEAD + 540) % 360) - 180) / FOV) * 100, y: 66 - alt * 1.7 });
 let starsAt = 0;
-function drawStars(t, show) {
-  if (!show || !window.STARS || Date.now() - starsAt < 60000) return; starsAt = Date.now();
-  const c = $('#stars'), g = c.getContext('2d'); g.clearRect(0, 0, 1920, 1080);
+function drawStars(t, show, canvas, map) {
+  const c = canvas || $('#stars'), last = +(c.dataset.at || 0);
+  if (!show || !window.STARS || Date.now() - last < 60000) return; c.dataset.at = Date.now();
+  const g = c.getContext('2d'); g.clearRect(0, 0, 1920, 1080);
   for (const [ra, dec, mag, bv] of STARS) {
     const p = altAz(ra, dec, t, MOSQUE[0], MOSQUE[1]); if (p.alt < 1) continue;
-    const s = toScreen(p.alt, p.az); if (s.x < -1 || s.x > 101 || s.y < 0) continue;
+    const s = (map || toScreen)(p.alt, p.az); if (s.x < -1 || s.x > 101 || s.y < 0) continue;
     const rad = Math.max(.75, 2.9 - mag * .42), a = Math.min(1, Math.max(.3, 1.3 - mag * .16)) * Math.min(1, p.alt / 6);
     const col = bv < 0 ? '200,215,255' : bv < .5 ? '235,240,255' : bv < 1 ? '255,244,225' : '255,214,170';
     g.fillStyle = `rgba(${col},${a.toFixed(2)})`; g.beginPath(); g.arc(s.x * 19.2, s.y * 10.8, rad, 0, 6.283); g.fill();
