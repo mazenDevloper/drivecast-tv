@@ -214,6 +214,7 @@ body.ambient .phrase.on{display:block}
 .day b,.day span{font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
 .day b{font-size:132px;font-weight:400;line-height:1.05;letter-spacing:0}
 .day span{font-size:36px;color:#e8e2d2;opacity:.92}
+.day em{font-style:normal;font-size:22px;color:#cfd8e6;opacity:.8;margin-top:6px;max-width:1300px}
 .pill{flex:1;min-width:0;height:124px;border-radius:999px;display:flex;align-items:center;gap:20px;padding:0 34px;position:relative;overflow:hidden}
 .pill b{font-size:40px;white-space:nowrap}.pill span{font-size:25px;color:#d6dbe1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill .dot{width:18px;height:18px;border-radius:50%;background:var(--accent);flex:none}
@@ -279,7 +280,7 @@ body.ambient .phrase.on{display:block}
   </div></section>
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div></div></section>
 
-  <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span></div>
+  <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span><em id="skyNote"></em></div>
   <div class="phrase" id="phrase"></div>
   <div class="mini" id="mini"><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
@@ -422,6 +423,7 @@ function applyWall() {
   ['#wNight', '#wPhotoN', '#wDark', '#wMoonBox', '#wSky', '#wSun', '#wLight'].forEach(x => $(x).style.display = live ? '' : 'none');
   if (live) liveSky();
   if (real) realSky();
+  if (document.body.classList.contains('ambient')) skyNote();
 }
 // ---- the mosque in Mazn's own photos (one evening, 4:30 → 6:15 pm), the one for the sun's height now; a dissolve between them,
 // the real sun / stars / moon drawn in each photo's sky. head = where the photo looks (from the sun in the afternoon shot:
@@ -497,6 +499,34 @@ function moonPos(t, lat, lon) {
 // sky → screen: the photo's heading / width, horizon at 66% of the height, ~18 px per degree
 const toScreen = (alt, az) => ({ x: 50 + ((((az - HEAD + 540) % 360) - 180) / FOV) * 100, y: 66 - alt * 1.7 });
 let starsAt = 0;
+// the planets tonight (Venus, Mars, Jupiter, Saturn, Mercury), from their orbits (Schlyter's elements: within about a degree)
+const PLANETS = [
+  ['عطارد', [48.3313, 3.24587e-5], [7.0047, 5e-8], [29.1241, 1.01444e-5], .387098, [.205635, 5.59e-10], [168.6562, 4.0923344368], -.2],
+  ['الزهرة', [76.6799, 2.4659e-5], [3.3946, 2.75e-8], [54.891, 1.38374e-5], .72333, [.006773, -1.302e-9], [48.0052, 1.6021302244], -4.2],
+  ['المريخ', [49.5574, 2.11081e-5], [1.8497, -1.78e-8], [286.5016, 2.92961e-5], 1.523688, [.093405, 2.516e-9], [18.6021, .5240207766], .6],
+  ['المشتري', [100.4542, 2.76854e-5], [1.303, -1.557e-7], [273.8777, 1.64505e-5], 5.20256, [.048498, 4.469e-9], [19.895, .0830853001], -2.3],
+  ['زحل', [113.6634, 2.3898e-5], [2.4886, -1.081e-7], [339.3939, 2.97661e-5], 9.55475, [.055546, -9.499e-9], [316.967, .0334442282], .7],
+];
+function planets(t) {
+  const r = Math.PI / 180, d = (t - Date.UTC(1999, 11, 31)) / 864e5, lin = ([a, b]) => a + b * d;
+  const kepler = (M, e) => { let E = M + e * Math.sin(M) * (1 + e * Math.cos(M)); for (let k = 0; k < 6; k++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); return E; };
+  // the Sun as seen from the Earth (ecliptic)
+  const ws = (282.9404 + 4.70935e-5 * d) * r, es = .016709 - 1.151e-9 * d, Ms = ((356.047 + .9856002585 * d) % 360) * r;
+  const Es = kepler(Ms, es), xv = Math.cos(Es) - es, yv = Math.sqrt(1 - es * es) * Math.sin(Es);
+  const vs = Math.atan2(yv, xv), rs = Math.hypot(xv, yv), xs = rs * Math.cos(vs + ws), ys = rs * Math.sin(vs + ws);
+  const ecl = (23.4393 - 3.563e-7 * d) * r, out = [];
+  for (const [name, N0, i0, w0, a, e0, M0, mag] of PLANETS) {
+    const N = lin(N0) * r, i = lin(i0) * r, w = lin(w0) * r, e = lin(e0), M = ((lin(M0) % 360) + 360) % 360 * r;
+    const E = kepler(M, e), x0 = a * (Math.cos(E) - e), y0 = a * Math.sqrt(1 - e * e) * Math.sin(E), v = Math.atan2(y0, x0), rr = Math.hypot(x0, y0);
+    const xh = rr * (Math.cos(N) * Math.cos(v + w) - Math.sin(N) * Math.sin(v + w) * Math.cos(i));
+    const yh = rr * (Math.sin(N) * Math.cos(v + w) + Math.cos(N) * Math.sin(v + w) * Math.cos(i));
+    const zh = rr * Math.sin(v + w) * Math.sin(i);
+    const xg = xh + xs, yg = yh + ys, zg = zh;
+    const xe = xg, ye = yg * Math.cos(ecl) - zg * Math.sin(ecl), ze = yg * Math.sin(ecl) + zg * Math.cos(ecl);
+    out.push({ name, mag, ra: ((Math.atan2(ye, xe) / r) + 360) % 360, dec: Math.atan2(ze, Math.hypot(xe, ye)) / r });
+  }
+  return out;
+}
 function drawStars(t, show, canvas, map) {
   const c = canvas || $('#stars'), last = +(c.dataset.at || 0);
   if (!show || !window.STARS || Date.now() - last < 60000) return; c.dataset.at = Date.now();
@@ -504,10 +534,25 @@ function drawStars(t, show, canvas, map) {
   for (const [ra, dec, mag, bv] of STARS) {
     const p = altAz(ra, dec, t, MOSQUE[0], MOSQUE[1]); if (p.alt < 1) continue;
     const s = (map || toScreen)(p.alt, p.az); if (s.x < -1 || s.x > 101 || s.y < 0) continue;
-    const rad = Math.max(.75, 2.9 - mag * .42), a = Math.min(1, Math.max(.3, 1.3 - mag * .16)) * Math.min(1, p.alt / 6);
+    const boost = canvas ? 1.35 : 1;   // the real photo: a little bolder, as a TV shows them
+    const rad = Math.max(.75, 2.9 - mag * .42) * boost, a = Math.min(1, Math.max(.3, 1.3 - mag * .16) * boost) * Math.min(1, p.alt / 6);
     const col = bv < 0 ? '200,215,255' : bv < .5 ? '235,240,255' : bv < 1 ? '255,244,225' : '255,214,170';
     g.fillStyle = `rgba(${col},${a.toFixed(2)})`; g.beginPath(); g.arc(s.x * 19.2, s.y * 10.8, rad, 0, 6.283); g.fill();
     if (mag < 2.2) { g.fillStyle = `rgba(${col},${(a * .18).toFixed(2)})`; g.beginPath(); g.arc(s.x * 19.2, s.y * 10.8, rad * 3.2, 0, 6.283); g.fill(); }
+  }
+  // the planets up tonight: brighter, steady, with their names
+  const sun = sunPos(t, MOSQUE[0], MOSQUE[1]);
+  g.font = '600 22px "Thmanyah Sans", system-ui, sans-serif'; g.textAlign = 'center';
+  for (const pl of planets(t)) {
+    const p = altAz(pl.ra, pl.dec, t, MOSQUE[0], MOSQUE[1]); if (p.alt < 2) continue;
+    if (pl.name === 'عطارد' && sun.alt > -8) continue;
+    const s = (map || toScreen)(p.alt, p.az); if (s.x < 1 || s.x > 99 || s.y < 2) continue;
+    const X = s.x * 19.2, Y = s.y * 10.8, rad = Math.max(2.6, 4.6 - pl.mag * .5), a = Math.min(1, p.alt / 5);
+    const col = pl.name === 'المريخ' ? '255,190,150' : pl.name === 'زحل' ? '255,236,190' : '255,250,235';
+    const halo = g.createRadialGradient(X, Y, 0, X, Y, rad * 5); halo.addColorStop(0, `rgba(${col},${(.45 * a).toFixed(2)})`); halo.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = halo; g.beginPath(); g.arc(X, Y, rad * 5, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(${col},${a.toFixed(2)})`; g.beginPath(); g.arc(X, Y, rad, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(255,255,255,${(.62 * a).toFixed(2)})`; g.fillText(pl.name, X, Y - rad * 2.6 - 6);
   }
 }
 // today's sunrise / sunset over the mosque (scanned every 2 minutes, once a day)
@@ -1185,7 +1230,36 @@ document.addEventListener('click', e => {
 
 // ---- the remote: arrows move to the nearest visible button in that direction
 function visible(el) { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+// «في السماء الليلة»: the moon's phase and the planets up tonight (or when they rise), under the date in the full-photo view
+const DIRS = ['الشمال', 'الشمال الشرقي', 'الشرق', 'الجنوب الشرقي', 'الجنوب', 'الجنوب الغربي', 'الغرب', 'الشمال الغربي'];
+const dirOf = az => DIRS[Math.round(az / 45) % 8];
+const hm12 = d => { let h = d.getHours() % 12 || 12; return AR(h + ':' + String(d.getMinutes()).padStart(2, '0')); };
+let skyAt = 0;
+function skyNote() {
+  const now = window.__simTime ? window.__simTime() : new Date();
+  if (Date.now() - skyAt < 5 * 60e3 && !window.__simTime) return; skyAt = Date.now();
+  const out = [], hd = hijriDay();
+  const moon = moonPos(now, MOSQUE[0], MOSQUE[1]);
+  if (hd >= 29 || hd <= 1) out.push('🌑 محاق — ' + (hd >= 29 ? 'الهلال يطلع بعد مغرب بكرة جهة الغرب' : 'هلال رقيق بعد المغرب جهة الغرب'));
+  else if (moon.alt > 3) out.push((hd < 7 ? '🌒 الهلال' : hd < 12 ? '🌓 القمر' : hd < 17 ? '🌕 البدر' : hd < 23 ? '🌖 القمر' : '🌘 القمر') + ' جهة ' + dirOf(moon.az));
+  const sun = sunPos(now, MOSQUE[0], MOSQUE[1]);
+  if (sun.alt < -6) {
+    for (const pl of planets(now)) {
+      if (pl.name === 'عطارد') continue;
+      const p = altAz(pl.ra, pl.dec, now, MOSQUE[0], MOSQUE[1]);
+      if (p.alt > 8) { out.push(`${pl.name} ظاهر جهة ${dirOf(p.az)}`); continue; }
+      for (let m = 10; m < 12 * 60; m += 10) {   // rises before dawn?
+        const t = new Date(now.getTime() + m * 6e4);
+        if (sunPos(t, MOSQUE[0], MOSQUE[1]).alt > -8) break;
+        const q = planets(t).find(x => x.name === pl.name), a = altAz(q.ra, q.dec, t, MOSQUE[0], MOSQUE[1]);
+        if (a.alt > 8) { out.push(`${pl.name} يطلع ${hm12(t)} جهة ${dirOf(a.az)}`); break; }
+      }
+    }
+  }
+  $('#skyNote').textContent = out.length ? 'في السماء الليلة: ' + out.join(' · ') : '';
+}
 function ambient(on) {
+  if (on) skyNote();
   document.body.classList.toggle('ambient', on);
   if (on) { loadPhrase(); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
