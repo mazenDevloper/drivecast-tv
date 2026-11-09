@@ -1,0 +1,15 @@
+name: Server (DriveCast's hub)
+# Deploys DriveCast's server (the «studio» Cloudflare Worker, from the studio repo's worker/) with this repo's Cloudflare secrets:
+# the hub keeps DriveCast TV's private copy for the web version. Run by hand (Actions → Server → Run workflow).
+on: { workflow_dispatch: {} }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { repository: mazenDevloper/studio, path: studio }
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: studio/worker
