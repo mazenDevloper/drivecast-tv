@@ -215,7 +215,7 @@
   const prefs = () => { try { return JSON.parse(S.prefs || '{}'); } catch (e) { return {}; } };
   window.TV = {
     apps: () => S.apps || '[]',
-    open: pkg => { send('open', [pkg], '📺 يفتح على التلفزيون'); return true; },
+    open: pkg => { if (!onTv() && /youtube/i.test(pkg)) { open('https://www.youtube.com', '_blank'); return true; } send('open', [pkg], '📺 يفتح على التلفزيون'); return true; },
     youtube: id => onTv() ? send('youtube', [id], '📺 يشتغل على التلفزيون') : playYt(id),
     link: url => onTv() ? send('link', [url], '📺 على التلفزيون') : open(url, '_blank'),
     channel: id => onTv() ? send('channel', [id], '📺 على التلفزيون') : open('https://www.youtube.com/channel/' + id, '_blank'),

@@ -85,6 +85,10 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .card.radio .pic::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}
 .card.radio.cover .pic{background-size:cover;background-position:center}
 .card.radio.cover:not([data-sura]) .pic::after{content:"▶"}
+/* ▶ the YouTube app: its red play button on a dark ground */
+.card.radio.yt .pic{background:radial-gradient(120% 120% at 50% 30%,#2a2a2e 0%,#141416 70%)}
+.card.radio.yt .pic::before{content:"";position:absolute;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:96px;height:68px;border-radius:20px;background:#ff0033;box-shadow:0 8px 30px rgba(255,0,51,.35)}
+.card.radio.yt .pic::after{content:"";position:relative;width:0;height:0;border-style:solid;border-width:15px 0 15px 26px;border-color:transparent transparent transparent #fff;margin-left:6px;text-shadow:none;z-index:1}
 /* 🔊 sound only: on the cover's corner, its own button (the remote reaches it with ↑ from the card) */
 .cw{position:relative;flex:none;display:flex}
 .snd{position:absolute;top:12px;left:12px;height:46px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,19,.62);backdrop-filter:blur(10px);color:#fff;font:600 18px inherit;font-family:inherit;z-index:2}
@@ -777,7 +781,9 @@ function realSky() {
   // the sun: across the picture on one arc — rising on the left at الشروق, highest over the middle at الظهر, setting on the right
   // at المغرب (today's prayer times); a soft hazy disc as the eye sees it, warmer and dimmer near the ends; it goes behind the minaret
   // and the building (the sky mask), and behind clouds
-  const sun = $('#rkSun'), mg = P.today && P.today[3] ? at(P.today[3]) : null, sr = P.sunrise && /^\d\d:\d\d$/.test(P.sunrise) ? at(P.sunrise) : null;
+  // الشروق: the TV's own time; when a copy has none (the web), the sun's own rising over the mosque, else fajr + 75 min
+  const sun = $('#rkSun'), mg = P.today && P.today[3] ? at(P.today[3]) : null;
+  const sr = P.sunrise && /^\d\d:\d\d$/.test(P.sunrise) ? at(P.sunrise) : P.today && P.today[0] ? new Date(sunTimes(now)[0] || at(P.today[0]).getTime() + 75 * 60e3) : null;
   const dh = P.today && P.today[1] ? at(P.today[1]) : null;
   // الشروق → الظهر over the first part of the arc, الظهر → المغرب over the rest: the sun is at its top at the noon prayer
   const sp = mg && sr && dh ? (now < dh ? (now - sr) / (dh - sr) * ARC_NOON : ARC_NOON + (now - dh) / (mg - dh) * (1 - ARC_NOON)) : -1;
@@ -1553,14 +1559,16 @@ function lastHtml() {
 const radioHtml = () => `<button class="card f radio${radioOn ? ' on' : ''}" data-act="radio"><div class="pic"></div><div class="txt"><b>التلاوات الأكثر شيوعًا</b><span>${radioOn && RNOW ? esc('الآن: سورة ' + SURAHS[RNOW.s - 1] + ' · ' + RNAME[RNOW.r]) : 'تلاوات يومية منتقاة'}</span></div></button>`;
 function homeCards() {
   const sh = $('#s-quran'); if (!sh) return;
-  const a = document.activeElement, was = sh.contains(a) ? (a.dataset.act || a.dataset.yt || a.dataset.snd || a.dataset.sura) : null;
+  const a = document.activeElement, was = sh.contains(a) ? (a.dataset.act || a.dataset.yt || a.dataset.snd || a.dataset.sura || a.dataset.pkg) : null;
   sh.innerHTML = cardsHtml(true);
-  if (was) (sh.querySelector(`[data-act="${was}"],[data-yt="${was}"],[data-snd="${was}"],[data-sura="${was}"]`) || sh.querySelector('.f'))?.focus();
+  if (was) (sh.querySelector(`[data-act="${was}"],[data-yt="${was}"],[data-snd="${was}"],[data-sura="${was}"],[data-pkg="${was}"]`) || sh.querySelector('.f'))?.focus();
 }
 function cardsHtml(home) {
   const u = TV.phoneUrl();
   const card = c => `<button class="card f radio cover${(c.sura && playing === c.sura) || (c.snd && SND && SND.k === c.snd) ? ' on' : ''}" ${c.sura ? `data-sura="${c.sura}"` : `data-yt="${c.v}"`}><div class="pic" style="background-image:url('https://i.ytimg.com/vi/${c.v}/hqdefault.jpg');background-color:${c.c}"></div><div class="txt"><b>${c.t}</b><span>${c.s}</span></div></button>`;
-  return (home ? lastHtml() + radioHtml() : '') + CARDS.map(c => c.snd ? `<div class="cw">${card(c)}<button class="snd f${SND && SND.k === c.snd ? ' on' : ''}" data-snd="${c.snd}" title="صوت">${SND && SND.k === c.snd ? '⏹ إيقاف' : '🔊 صوت'}</button></div>` : card(c)).join('')
+  const yt = APPS.find(a => /youtube/i.test(a.pkg) && !/music|kids|creator/i.test(a.pkg)) || { pkg: 'com.google.android.youtube.tv' };
+  const ytCard = `<button class="card f radio yt" data-pkg="${esc(yt.pkg)}"><div class="pic"></div><div class="txt"><b>يوتيوب</b><span>افتح التطبيق</span></div></button>`;
+  return (home ? ytCard + lastHtml() + radioHtml() : '') + CARDS.map(c => c.snd ? `<div class="cw">${card(c)}<button class="snd f${SND && SND.k === c.snd ? ' on' : ''}" data-snd="${c.snd}" title="صوت">${SND && SND.k === c.snd ? '⏹ إيقاف' : '🔊 صوت'}</button></div>` : card(c)).join('')
     + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
 }
 let APPS = [];
@@ -1570,6 +1578,7 @@ function appsHtml(n) {
 }
 function loadApps() {
   try { APPS = JSON.parse(TV.apps()); } catch (e) { APPS = []; }
+  setTimeout(() => { try { homeCards(); } catch (e) {} }, 0);   // the YouTube card opens the YouTube app this TV has
   // the most used first: a simple count kept on the TV
   let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (e) {}
   APPS.sort((a, b) => (use[b.pkg] || 0) - (use[a.pkg] || 0) || (b.tv - a.tv) || a.label.localeCompare(b.label, 'ar'));
