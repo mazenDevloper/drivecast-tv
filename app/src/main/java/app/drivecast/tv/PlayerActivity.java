@@ -21,7 +21,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.media3.common.C;
 import androidx.media3.common.ColorInfo;
 import androidx.media3.common.Format;
@@ -98,12 +97,12 @@ public class PlayerActivity extends Activity {
                 if (s == Player.STATE_BUFFERING) { net.removeCallbacks(stall); net.postDelayed(stall, 12000); }
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
             }
-            @Override public void onPlayerError(@NonNull PlaybackException e) { retry(); }
+            @Override public void onPlayerError(PlaybackException e) { retry(); }
         });
         player.addAnalyticsListener(new AnalyticsListener() {
-            @Override public void onVideoDecoderInitialized(@NonNull EventTime t, @NonNull String d, long a, long b) { decoder = d; fill(); }
-            @Override public void onVideoInputFormatChanged(@NonNull EventTime t, @NonNull Format f, DecoderReuseEvaluation r) { fill(); }
-            @Override public void onBandwidthEstimate(@NonNull EventTime t, int ms, long bytes, long bps) { fill(); }
+            @Override public void onVideoDecoderInitialized(EventTime t, String d, long a, long b) { decoder = d; fill(); }
+            @Override public void onVideoInputFormatChanged(EventTime t, Format f, DecoderReuseEvaluation r) { fill(); }
+            @Override public void onBandwidthEstimate(EventTime t, int ms, long bytes, long bps) { fill(); }
         });
         play();
         tick.run();
