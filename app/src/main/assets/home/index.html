@@ -34,7 +34,7 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 /* 🌠 a shooting star on a meteor shower's night */
 .met{position:absolute;width:260px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(235,242,255,.9) 85%,#fff);transform-origin:100% 50%;opacity:0;animation:met 1.1s ease-out forwards;filter:drop-shadow(0 0 4px rgba(200,220,255,.9))}
 @keyframes met{0%{opacity:0;translate:0 0}12%{opacity:1}100%{opacity:0;translate:var(--dx) var(--dy)}}#rkTint{position:absolute;inset:0;opacity:0;background:linear-gradient(180deg,#6d8db8 0%,#9db3cf 45%,#d9c8cf 78%,#ecd6c6 100%)}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
-#rkMoon{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
+#rkMoon{position:absolute;width:78px;height:78px;margin:-39px 0 0 -39px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
 #wMoonBox.free{-webkit-mask-image:none;mask-image:none}
 #wPhotoN{background-image:url(wall/rawas-night-photo.webp);opacity:0}
 #wDark{background:linear-gradient(180deg,#03050c 0%,#070c1c 45%,#121d38 70%,#1b2846 100%)}#stars{width:100%;height:100%;display:block}
@@ -598,6 +598,15 @@ function wxApply(a, alt, night) {
   wl.style.filter = sat > .99 && br > .99 && ct > .99 ? '' : `saturate(${sat.toFixed(2)}) brightness(${br.toFixed(2)}) contrast(${ct.toFixed(2)})`;
   return { sunK: (1 - .85 * oc) * (1 - .7 * fog) * (rain ? .3 : 1), skyK: 1 - .92 * c - (rain ? .08 : 0) - .6 * fog };
 }
+// the sun's arc over the picture (x, y in % of it): low on the left, over the middle at noon, down to the right — through these
+const ARC = [[2, 40], [14, 32], [27, 24], [40, 18], [53, 13.5], [66, 11], [77, 14], [86, 21], [93, 32], [97.5, 47]];   // the 6th point (66%, just right of the day's name) = الظهر
+const ARC_NOON = 5 / 9;
+function arcAt(p) {   // a smooth curve (Catmull-Rom) through ARC, p 0 → 1 along it
+  const n = ARC.length - 1, f = Math.min(n - 1e-6, Math.max(0, p * n)), i = Math.floor(f), t = f - i;
+  const P0 = ARC[Math.max(0, i - 1)], P1 = ARC[i], P2 = ARC[i + 1], P3 = ARC[Math.min(n, i + 2)];
+  const cr = (a, b, c, d) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+  return { x: cr(P0[0], P1[0], P2[0], P3[0]), y: cr(P0[1], P1[1], P2[1], P3[1]) };
+}
 /** the photo's layers: 16:9, covering the screen like the picture itself (so its masks sit on it at any screen shape) */
 function rkFit() {
   const w = $('#wall'); if (!w) return;
@@ -693,23 +702,25 @@ function realSky() {
   const sh = shower(now, 0), metOn = !!sh && dark > .8 && wx.skyK > .3 && (now.getHours() >= 21 || now.getHours() < 5);
   if (metOn !== !!realSky.met) { realSky.met = metOn; meteors(metOn, sh ? sh.rate : 0); }
   if (dark > 0) drawStars(now, true, $('#rkStars'), (p, q) => rkScreen(K, p, q));
-  // the sun: only in the afternoon photo (its own sun was taken out), where the real one is now
-  const s = rkScreen(RK.day, alt, az), sun = $('#rkSun');
-  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105 && s.y > -5 && wx.sunK > .35;
-  sun.style.opacity = clamp(wx.sunK).toFixed(2);
-  // out of the picture but in front of the camera (around noon it is high above it, to the left): its light comes in from that edge
-  const off = Math.abs(((az - RK.day.head + 540) % 360) - 180);
-  if (!sv && alt > 2 && off < 80 && night < .2 && (cur === 'day' || cur === 'morning') && wx.sunK > .2) {
-    const gx = Math.max(-2, Math.min(102, s.x)), gy = Math.max(-5, s.y), k = clamp((80 - off) / 30) * clamp(wx.sunK);
-    sun.style.background = `radial-gradient(ellipse 85% 85% at ${gx}% ${gy}%, rgba(255,253,244,${(1 * k).toFixed(2)}) 0, rgba(255,250,232,${(.92 * k).toFixed(2)}) 10%, rgba(255,242,214,${(.6 * k).toFixed(2)}) 24%, rgba(255,236,200,${(.26 * k).toFixed(2)}) 46%, rgba(255,232,190,${(.07 * k).toFixed(2)}) 70%, rgba(255,232,190,0) 90%)`;
-  } else
-  sun.style.background = sv ? `radial-gradient(circle at ${s.x}% ${s.y}%, rgba(255,255,245,.98) 0, rgba(255,252,232,.95) 22px, rgba(255,226,170,.55) 46px, rgba(255,214,150,.22) 160px, rgba(255,214,150,0) 420px)` : 'none';
-  // the moon (DriveCast's picture for tonight's phase), where it is
-  const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = rkScreen(K, mo.alt, mo.az), mi = $('#rkMoon');
+  // the sun: across the picture on one arc — rising on the left at الشروق, highest over the middle at الظهر, setting on the right
+  // at المغرب (today's prayer times); a soft hazy disc as the eye sees it, warmer and dimmer near the ends; it goes behind the minaret
+  // and the building (the sky mask), and behind clouds
+  const sun = $('#rkSun'), mg = P.today && P.today[3] ? at(P.today[3]) : null, sr = P.sunrise && /^\d\d:\d\d$/.test(P.sunrise) ? at(P.sunrise) : null;
+  const dh = P.today && P.today[1] ? at(P.today[1]) : null;
+  // الشروق → الظهر over the first part of the arc, الظهر → المغرب over the rest: the sun is at its top at the noon prayer
+  const sp = mg && sr && dh ? (now < dh ? (now - sr) / (dh - sr) * ARC_NOON : ARC_NOON + (now - dh) / (mg - dh) * (1 - ARC_NOON)) : -1;
+  if (sp > -.01 && sp < 1.01 && night < .2 && /day|morning|sunset/.test(cur) && wx.sunK > .15) {
+    const q = arcAt(clamp(sp)), mid = sp < ARC_NOON ? clamp(sp) / ARC_NOON : (1 - clamp(sp)) / (1 - ARC_NOON), k = clamp(wx.sunK) * (.55 + .45 * clamp(mid * 3));
+    const c = [255, Math.round(214 + 39 * clamp(mid * 2.5)), Math.round(165 + 75 * clamp(mid * 2.5))].join(',');
+    sun.style.opacity = 1;
+    sun.style.background = `radial-gradient(circle at ${q.x}% ${q.y}%, rgba(255,254,246,${k.toFixed(2)}) 0, rgba(${c},${(.97 * k).toFixed(2)}) 30px, rgba(${c},${(.62 * k).toFixed(2)}) 52px, rgba(${c},${(.26 * k).toFixed(2)}) 95px, rgba(${c},${(.1 * k).toFixed(2)}) 220px, rgba(${c},0) 520px)`;
+  } else sun.style.background = 'none';
+  // the moon (DriveCast's picture for tonight's phase): its own place, just right of the minaret, whenever it is up at night
+  const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), mi = $('#rkMoon');
   const src = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay()}.webp`; if (mi.getAttribute('src') !== src) mi.src = src;
-  const md = clamp((-alt - 3) / 5);
-  mi.style.display = mo.alt > 0 && md > 0 && ms.x > 2 && ms.x < 98 && ms.y > 3 ? '' : 'none';
-  mi.style.left = ms.x + '%'; mi.style.top = ms.y + '%'; mi.style.opacity = (md * clamp(.15 + wx.skyK)).toFixed(2);
+  const md = clamp((-alt - 3) / 5) * clamp(mo.alt / 3);
+  mi.style.display = md > 0 ? '' : 'none';
+  mi.style.left = '24%'; mi.style.top = '13%'; mi.style.opacity = (md * clamp(.15 + wx.skyK)).toFixed(2);
 }
 // ---- the sun over the mosque (17.0158 N, 54.0885 E); the photo looks about south-south-west (Street View heading 192°)
 const MOSQUE = [17.0158, 54.0885], HEAD = 192, FOV = 104;   // a wide phone photo
