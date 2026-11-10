@@ -19,7 +19,9 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 .wl{position:absolute;inset:0;background-size:cover;background-position:center;transition:opacity 2s,background 2s}
 .sky{-webkit-mask-image:var(--skym);mask-image:var(--skym);-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #wSun{mix-blend-mode:screen}
-.rk{display:none;background-size:cover;background-position:center;transition:none}#rkN{transition:opacity 2s}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.rk{display:none;background-size:cover;background-position:center;transition:none}#rkN{transition:opacity 2s}
+/* the morning photo's sunlit faces: the same view in direct sun, each face masked, as bright as the sun on it now */
+#rkF{opacity:0;transition:opacity 4s}#rkF i{position:absolute;inset:0;background:url(wall/rk-morning-sun.webp) center/cover;-webkit-mask-size:100% 100%;mask-size:100% 100%;opacity:0;transition:opacity 60s linear}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #rkStars{position:absolute;inset:0;width:100%;height:100%}#rkTint{position:absolute;inset:0;opacity:0;background:linear-gradient(180deg,#6d8db8 0%,#9db3cf 45%,#d9c8cf 78%,#ecd6c6 100%)}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
 #rkMoon{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
 #wMoonBox.free{-webkit-mask-image:none;mask-image:none}
@@ -247,7 +249,7 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -332,6 +334,7 @@ body.ambient .phrase.on{display:block}
 
 <script src="stars.js"></script>
 <script src="wall/rk-masks.js"></script>
+<script src="wall/rk-faces.js"></script>
 <script>
 const FAKE = {   // in a browser (preview) the page still shows, with sample data
   apps: () => '[]', open: () => false, youtube: id => open('https://youtu.be/' + id), link: u => open(u),
@@ -461,6 +464,16 @@ const RK = {
 const RK_SEQ = [[1.5, 'day'], [-1, 'sunset'], [-2.7, 'after'], [-4.8, 'dusk'], [-90, 'blue']];
 const rkScreen = (k, alt, az) => ({ x: 50 + ((((az - k.head + 540) % 360) - 180) / 56.9) * 100, y: k.hor - alt / .32 });
 let rkShown = '';
+// the sun on a vertical face looking at azimuth n (the mosque is on the qibla ≈300°: its faces here look ESE 120° and NNE 30°)
+const faceSun = (alt, az, n) => alt <= 0 ? 0 : clamp(Math.cos(alt * Math.PI / 180) * Math.cos((az - n) * Math.PI / 180)) * clamp(alt / 3);
+function rkFaces(on, alt, az) {
+  const F = $('#rkF'); F.style.opacity = on ? 1 : 0;
+  if (!window.RKF) return;
+  for (const [id, m] of [['#rkFL', 'left'], ['#rkFR', 'right'], ['#rkFG', 'ground']]) { const e = $(id); if (!e.dataset.m) { e.style.webkitMaskImage = e.style.maskImage = `url(${RKF[m]})`; e.dataset.m = 1; } }
+  $('#rkFL').style.opacity = faceSun(alt, az, 120).toFixed(3);
+  $('#rkFR').style.opacity = faceSun(alt, az, 30).toFixed(3);
+  $('#rkFG').style.opacity = (alt <= 0 ? 0 : clamp(Math.sin(alt * Math.PI / 180) * 1.8) * clamp(alt / 3)).toFixed(3);
+}
 function rkPhase(now, alt, az) {
   const t = P.today, min = (a, b) => (a - b) / 60000;
   if (!t || !t[3]) {   // no prayer times yet: by the sun's height
@@ -472,8 +485,9 @@ function rkPhase(now, alt, az) {
   if (now < dh) {   // the morning
     if (now < fj) return { a: 'blue', morning: true, night: 1, tint: 0 };
     if (now < sr - 2 * 60e3) { const p = clamp(min(now, fj) / Math.max(10, min(sr, fj))); return { a: 'blue', morning: true, night: 1 - clamp(p * 1.6), tint: clamp(p * 1.2) * .85 }; }
-    return { a: 'morning', morning: true, night: 0, tint: 0 };
   }
+  // the morning view (sun behind the camera, its faces lit as the sun turns) until the sun comes into the picture (≈215°)
+  if (now >= sr - 2 * 60e3 && now < mg - 60 * 60e3 && az < 215) return { a: 'morning', morning: true, night: 0, tint: 0 };
   const d = min(now, mg);   // minutes from maghrib
   const a = d < -8 ? 'day' : d < 6 ? 'sunset' : d < 14 ? 'after' : d < 22 ? 'dusk' : 'blue';
   return { a, morning: false, night: a === 'blue' ? clamp((d - 28) / 22) : 0, tint: 0 };
@@ -491,6 +505,7 @@ function realSky() {
     requestAnimationFrame(() => requestAnimationFrame(() => { B.style.transition = 'opacity 4s ease'; B.style.opacity = 1; }));
     setTimeout(() => { A.style.backgroundImage = B.style.backgroundImage; A.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.dataset.f = ''; }, 4300);
   }
+  rkFaces(a === 'morning' && A.dataset.f === 'morning', alt, az);
   const night = ph.night;
   $('#rkN').style.opacity = night.toFixed(3);
   $('#rkTint').style.opacity = ph.tint.toFixed(3);
