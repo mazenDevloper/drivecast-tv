@@ -1,0 +1,11 @@
+name: Keep the signing key
+# the builds' signing key lives in the Actions cache (apk.yml); a cache unused for 7 days is dropped — this touches it every 5 days
+on:
+  schedule: [{ cron: '17 3 */5 * *' }]
+  workflow_dispatch:
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with: { path: ~/.android/debug.keystore, key: drivecast-tv-signing-key, fail-on-cache-miss: true }
