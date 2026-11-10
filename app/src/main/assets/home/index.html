@@ -68,7 +68,8 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .card{flex:none;width:340px;height:190px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
 .card b{font-size:34px} .card span{font-size:19px;opacity:.8}
 /* 📻 the Quran radio card: a picture with ▶ on top, the title and its line under it (as quran.com's «Popular Recitations») */
-.card.radio{padding:0;justify-content:stretch;gap:0;overflow:hidden;background:#20242a;position:relative}
+.card.radio{padding:0;justify-content:stretch;align-items:stretch;gap:0;overflow:hidden;background:#20242a;position:relative}
+.card.radio .pic,.card.radio .txt{width:100%;box-sizing:border-box;align-self:stretch}   /* the TV's browser shrinks a button's flex children to their content */
 .card.radio .pic{flex:1;position:relative;background:#2a1b0c url(wall/radio.webp) center/cover no-repeat;display:grid;place-items:center;overflow:hidden}
 .card.radio .pic::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}
 .card.radio.cover .pic{background-size:cover;background-position:center}
