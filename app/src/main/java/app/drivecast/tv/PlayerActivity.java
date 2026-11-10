@@ -61,7 +61,7 @@ public class PlayerActivity extends Activity {
     private LinearLayout bar;
     private TextView num, name, group, note, clock;
     private ImageView logo;
-    private LinearLayout chips;
+    private LinearLayout chips, chips2;
     private View[] signal = new View[5];
     private static final Map<String, Bitmap> LOGOS = new HashMap<>();
 
@@ -113,9 +113,9 @@ public class PlayerActivity extends Activity {
         Typeface bold = Typeface.create("sans-serif", Typeface.BOLD), med = Typeface.create("sans-serif-medium", Typeface.NORMAL);
         bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setPadding((int) dp(30), (int) dp(22), (int) dp(30), (int) dp(22));
-        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x4DFFFFFF, 0x26FFFFFF, 0x33101820});
-        glass.setCornerRadius(dp(34));
+        bar.setPadding((int) dp(22), (int) dp(14), (int) dp(22), (int) dp(14));
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xB81E252C, 0xD0121820, 0xE00A0E12});
+        glass.setCornerRadius(dp(24));
         glass.setStroke((int) dp(1), 0x40FFFFFF);
         bar.setBackground(glass);
         bar.setElevation(dp(16));
@@ -124,45 +124,50 @@ public class PlayerActivity extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        num = text(34, bold, Color.WHITE);
-        num.setMinWidth((int) dp(70)); num.setGravity(Gravity.CENTER);
-        GradientDrawable nb = new GradientDrawable(); nb.setColor(0x26FFFFFF); nb.setCornerRadius(dp(18));
-        num.setBackground(nb); num.setPadding((int) dp(14), (int) dp(4), (int) dp(14), (int) dp(4));
+        num = text(22, bold, Color.WHITE);
+        num.setMinWidth((int) dp(46)); num.setGravity(Gravity.CENTER);
+        GradientDrawable nb = new GradientDrawable(); nb.setColor(0x26FFFFFF); nb.setCornerRadius(dp(12));
+        num.setBackground(nb); num.setPadding((int) dp(10), (int) dp(3), (int) dp(10), (int) dp(3));
         top.addView(num);
         logo = new ImageView(this);
         logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams((int) dp(64), (int) dp(64)); ll.setMarginStart((int) dp(18));
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams((int) dp(40), (int) dp(40)); ll.setMarginStart((int) dp(12));
         top.addView(logo, ll);
         LinearLayout names_ = new LinearLayout(this); names_.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(0, -2, 1); nl.setMarginStart((int) dp(18));
-        name = text(30, bold, Color.WHITE); name.setSingleLine(true);
-        group = text(16, med, 0xCCE9EEF2); group.setSingleLine(true);
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(0, -2, 1); nl.setMarginStart((int) dp(12));
+        name = text(20, bold, Color.WHITE); name.setSingleLine(true);
+        group = text(12, med, 0xCCE9EEF2); group.setSingleLine(true);
         names_.addView(name); names_.addView(group);
         top.addView(names_, nl);
         // the signal meter (from the connection's speed against what the stream needs) and the clock
         LinearLayout sig = new LinearLayout(this); sig.setGravity(Gravity.BOTTOM);
         for (int k = 0; k < 5; k++) {
             View v = new View(this); GradientDrawable d = new GradientDrawable(); d.setCornerRadius(dp(2)); d.setColor(0x40FFFFFF); v.setBackground(d);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams((int) dp(6), (int) dp(8 + k * 5)); p.setMarginStart((int) dp(3));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams((int) dp(4), (int) dp(6 + k * 3)); p.setMarginStart((int) dp(2));
             sig.addView(v, p); signal[k] = v;
         }
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, (int) dp(30)); sp.setMarginStart((int) dp(18));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, (int) dp(20)); sp.setMarginStart((int) dp(12));
         top.addView(sig, sp);
-        clock = text(22, med, 0xE6FFFFFF);
-        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2, -2); cp.setMarginStart((int) dp(18));
+        clock = text(15, med, 0xE6FFFFFF);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2, -2); cp.setMarginStart((int) dp(12));
         top.addView(clock, cp);
         bar.addView(top);
 
         chips = new LinearLayout(this);
         chips.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        LinearLayout.LayoutParams chp = new LinearLayout.LayoutParams(-1, -2); chp.topMargin = (int) dp(14);
+        LinearLayout.LayoutParams chp = new LinearLayout.LayoutParams(-1, -2); chp.topMargin = (int) dp(10);
         bar.addView(chips, chp);
-        note = text(17, med, 0xFFFFD27A); note.setVisibility(View.GONE);
-        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2); np.topMargin = (int) dp(10);
+        // the second row: sound and decoder (one long row would squeeze the last chip into a column of letters)
+        chips2 = new LinearLayout(this);
+        chips2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout.LayoutParams chp2 = new LinearLayout.LayoutParams(-1, -2); chp2.topMargin = (int) dp(6);
+        bar.addView(chips2, chp2);
+        note = text(13, med, 0xFFFFD27A); note.setVisibility(View.GONE);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2); np.topMargin = (int) dp(8);
         bar.addView(note, np);
 
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
-        lp.setMargins((int) dp(48), 0, (int) dp(48), (int) dp(36));
+        lp.setMargins((int) dp(40), 0, (int) dp(40), (int) dp(26));
         root.addView(bar, lp);
     }
 
@@ -170,18 +175,20 @@ public class PlayerActivity extends Activity {
         TextView t = new TextView(this); t.setTextSize(sp); t.setTypeface(tf); t.setTextColor(color); t.setIncludeFontPadding(false); return t;
     }
 
+    private LinearLayout row;
     private void chip(String s, int bg, int fg) {
-        TextView t = text(16, Typeface.create("sans-serif-medium", Typeface.BOLD), fg);
-        t.setText(s); t.setPadding((int) dp(14), (int) dp(6), (int) dp(14), (int) dp(6));
-        GradientDrawable d = new GradientDrawable(); d.setColor(bg); d.setCornerRadius(dp(14)); t.setBackground(d);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2); p.setMarginEnd((int) dp(8));
-        chips.addView(t, p);
+        TextView t = text(12, Typeface.create("sans-serif-medium", Typeface.BOLD), fg);
+        t.setText(s); t.setPadding((int) dp(10), (int) dp(4), (int) dp(10), (int) dp(4));
+        t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        GradientDrawable d = new GradientDrawable(); d.setColor(bg); d.setCornerRadius(dp(10)); t.setBackground(d);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2); p.setMarginEnd((int) dp(6));
+        row.addView(t, p);
     }
 
     /** what is really coming in, as chips */
     private void fill() {
         if (player == null) return;
-        chips.removeAllViews();
+        chips.removeAllViews(); chips2.removeAllViews(); row = chips;
         boolean ready = player.getPlaybackState() == Player.STATE_READY;
         chip(ready ? "● مباشر" : "… يتصل", ready ? 0xE6E5484D : 0x40FFFFFF, Color.WHITE);
         Format v = player.getVideoFormat(), a = player.getAudioFormat();
@@ -191,22 +198,23 @@ public class PlayerActivity extends Activity {
             String q = v.height >= 2100 ? "4K UHD" : v.height >= 1400 ? "QHD" : v.height >= 1000 ? "FHD" : v.height >= 700 ? "HD" : "SD";
             chip(q + "  " + v.width + "×" + v.height, 0xF2FFFFFF, 0xFF0B1014);
             String c = codec(v);
-            if (!c.isEmpty()) chip(c, 0x33FFFFFF, Color.WHITE);
-            chip(bits(v) + "-bit", 0x33FFFFFF, Color.WHITE);
-            if (v.frameRate > 0) chip(String.format(Locale.US, "%.0f fps", v.frameRate), 0x33FFFFFF, Color.WHITE);
+            if (!c.isEmpty()) chip(c, 0x2EFFFFFF, Color.WHITE);
+            chip(bits(v) + "-bit", 0x2EFFFFFF, Color.WHITE);
+            if (v.frameRate > 0) chip(String.format(Locale.US, "%.0f fps", v.frameRate), 0x2EFFFFFF, Color.WHITE);
             String hdr = hdr(v.colorInfo);
             chip(hdr, hdr.equals("SDR") ? 0x33FFFFFF : 0xE6F5C94C, hdr.equals("SDR") ? Color.WHITE : 0xFF1A1405);
             int br = v.averageBitrate > 0 ? v.averageBitrate : v.bitrate > 0 ? v.bitrate : v.peakBitrate;
-            if (br > 0) { chip(String.format(Locale.US, "%.1f Mbps", br / 1e6), 0x33FFFFFF, Color.WHITE); need = br; }
+            if (br > 0) { chip(String.format(Locale.US, "%.1f Mbps", br / 1e6), 0x2EFFFFFF, Color.WHITE); need = br; }
         }
+        row = chips2;
         if (a != null) {
             String m = a.sampleMimeType == null ? "" : a.sampleMimeType.replace("audio/", "").replace("mp4a-latm", "AAC").replace("ac3", "Dolby AC-3").replace("eac3", "Dolby E-AC-3").replace("mpeg", "MP3").toUpperCase(Locale.US);
             String ch = a.channelCount == 6 ? "5.1" : a.channelCount == 8 ? "7.1" : a.channelCount == 2 ? "2.0" : a.channelCount == 1 ? "1.0" : "";
-            chip(("♪ " + m + " " + ch + (a.sampleRate > 0 ? " · " + a.sampleRate / 1000 + " kHz" : "")).trim(), 0x33FFFFFF, Color.WHITE);
+            chip(("♪ " + m + " " + ch + (a.sampleRate > 0 ? " · " + a.sampleRate / 1000 + " kHz" : "")).trim(), 0x2EFFFFFF, Color.WHITE);
         }
         if (!decoder.isEmpty()) {
             boolean sw = decoder.startsWith("OMX.google") || decoder.startsWith("c2.android") || decoder.contains(".sw.");
-            chip((sw ? "فك برمجي · " : "فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), 0x33FFFFFF, 0xCCFFFFFF);
+            chip((sw ? "فك برمجي · " : "فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), 0x2EFFFFFF, 0xCCFFFFFF);
         }
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
