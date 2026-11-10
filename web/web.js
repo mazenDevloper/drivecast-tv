@@ -162,6 +162,55 @@
     try { return await L.call('fetch', [url], 45000); } catch (e) { return null; }
   }
 
+  // ---- the channel scan in the browser (the TV has its own): every channel opened once — through DriveCast's server, as the
+  // browser cannot read most streams itself — works → green, not → red, and what the stream offers (quality, codec, bit depth,
+  // HDR, fps, Mbps) from its master list. One full scan; after it, only channels not seen before. Kept in this browser.
+  const SCN = { r: {}, t: 0, running: false, done: 0, total: 0 };
+  try { const o = JSON.parse(ls.get('dctv-scan') || 'null'); if (o) { SCN.r = o.r || {}; SCN.t = o.t || 0; } } catch (e) {}
+  const scanSave = () => { try { ls.set('dctv-scan', JSON.stringify({ r: SCN.r, t: SCN.t })); } catch (e) {} };
+  function hlsInfo(t) {
+    const o = {}; let best = null, bh = -1, bb = -1;
+    for (const l of t.split(/\r?\n/)) {
+      if (!l.startsWith('#EXT-X-STREAM-INF')) continue;
+      const h = +((/RESOLUTION=\d+x(\d+)/.exec(l) || [])[1] || 0), bw = +((/[^-]BANDWIDTH=(\d+)/.exec(l) || [])[1] || 0);
+      if (h > bh || (h === bh && bw > bb)) { bh = h; bb = bw; best = l; }
+    }
+    if (!best) return o;
+    if (bh > 0) o.h = bh; if (bb > 0) o.m = Math.round(bb / 1e5) / 10;
+    const fr = /FRAME-RATE=([\d.]+)/.exec(best); if (fr) o.f = Math.round(+fr[1]);
+    let range = ((/VIDEO-RANGE=(\w+)/.exec(best) || [])[1] || 'SDR').toUpperCase();
+    const cs = ((/CODECS="([^"]*)"/.exec(best) || [])[1] || '').toLowerCase();
+    let c = '', b = 8;
+    if (/hvc1|hev1/.test(cs)) { c = 'hevc'; if (/(hvc1|hev1)\.2\./.test(cs)) b = 10; }
+    else if (/avc1|avc3/.test(cs)) { c = 'avc'; if (/avc1\.(6e|7a|f4)/.test(cs)) b = 10; }
+    else if (/av01/.test(cs)) { c = 'av1'; if (/\.10\./.test(cs)) b = 10; }
+    else if (/vp09|vp9/.test(cs)) { c = 'vp9'; if (/vp09\.02/.test(cs)) b = 10; }
+    if (/dvh1|dvhe/.test(cs)) { range = 'DV'; b = 10; }
+    if (c) { o.c = c; o.b = b; }
+    o.r = range === 'PQ' ? 'HDR10' : range;
+    return o;
+  }
+  async function scanOne(u) {
+    const c = new AbortController(), to = setTimeout(() => c.abort(), 12000);
+    try {
+      const r = await fetch('https://studio.c-p.workers.dev/tv?u=' + encodeURIComponent(u), { signal: c.signal });
+      if (!r.ok) return 0;
+      if (/mpegurl/i.test(r.headers.get('content-type') || '')) { const t = await r.text(); return t.trimStart().startsWith('#EXTM3U') ? Object.assign(hlsInfo(t), { ok: 1 }) : 0; }
+      c.abort(); return { ok: 1 };   // a video / audio stream answered: it works (not downloaded)
+    } catch (e) { return 0; } finally { clearTimeout(to); }
+  }
+  function scanStart(urlsJson) {
+    if (SCN.running) return false;
+    let urls = []; try { urls = JSON.parse(urlsJson) || []; } catch (e) {}
+    const todo = urls.filter(u => !(u in SCN.r));   // the full scan once; then only the new ones
+    if (!todo.length) return false;
+    SCN.running = true; SCN.done = 0; SCN.total = todo.length;
+    let k = 0;
+    const worker = async () => { while (k < todo.length) { const u = todo[k++]; SCN.r[u] = await scanOne(u); if (++SCN.done % 20 === 0) scanSave(); } };
+    Promise.all(Array.from({ length: 6 }, worker)).then(() => { SCN.running = false; SCN.t = Date.now(); scanSave(); });
+    return true;
+  }
+
   // ---- the bridge
   const prefs = () => { try { return JSON.parse(S.prefs || '{}'); } catch (e) { return {}; } };
   window.TV = {
@@ -192,6 +241,8 @@
     webInfo: () => JSON.stringify({ pin: L.pin, online: !!(L.open && L.tv && L.okd), url: location.href.split('?')[0].split('#')[0] }),
     webNewPin: () => { send('webNewPin', [], 'فكّيت ربط كل المتصفحات — اربط من جديد من البيت'); return ''; },
     lastProblem: () => '',
+    scanStart: (j, force) => scanStart(j),
+    scanState: () => JSON.stringify({ t: SCN.t, running: SCN.running, done: SCN.done, total: SCN.total, r: SCN.r }),
   };
 
   // ---- the TV changed something: show it here too

@@ -23,7 +23,9 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 /* the morning photo's sunlit faces: the same view in direct sun, each face masked, as bright as the sun on it now */
 #rkF{opacity:0;transition:opacity 4s}#rkF i{position:absolute;inset:0;background:url(wall/rk-morning-sun.webp) center/cover;-webkit-mask-size:100% 100%;mask-size:100% 100%;opacity:0;transition:opacity 60s linear}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #wall .wl.rk{inset:auto;left:var(--rkx,0);top:var(--rky,0);width:var(--rkw,100%);height:var(--rkh,100%)}
-#rkCloud{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 6s}
+#rkCloud,#rkCloud2{position:absolute;left:0;top:0;width:200%;height:78%;opacity:0;transition:opacity 6s;animation:drift 600s linear infinite;will-change:transform}
+#rkCloud2{height:52%;animation-duration:1300s}
+@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 #rkHaze{position:absolute;inset:0;opacity:0;transition:opacity 6s;background:linear-gradient(180deg,rgba(214,206,190,.55) 0%,rgba(220,212,196,.8) 70%,rgba(200,192,178,.6) 100%)}
 #rkRain{position:absolute;inset:-10% 0 0;opacity:0;transition:opacity 4s;background:repeating-linear-gradient(104deg,rgba(220,230,245,0) 0 22px,rgba(220,230,245,.32) 22px 23px,rgba(220,230,245,0) 23px 47px),repeating-linear-gradient(100deg,rgba(220,230,245,0) 0 31px,rgba(220,230,245,.22) 31px 32px,rgba(220,230,245,0) 32px 71px);background-size:100% 160px,100% 220px;animation:rain .55s linear infinite}
 @keyframes rain{to{background-position:-26px 160px,-34px 220px}}
@@ -80,6 +82,11 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .card.radio .pic::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}
 .card.radio.cover .pic{background-size:cover;background-position:center}
 .card.radio.cover:not([data-sura]) .pic::after{content:"▶"}
+/* 🔊 sound only: on the cover's corner, its own button (the remote reaches it with ↑ from the card) */
+.cw{position:relative;flex:none;display:flex}
+.snd{position:absolute;top:12px;left:12px;height:46px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,19,.62);backdrop-filter:blur(10px);color:#fff;font:600 18px inherit;font-family:inherit;z-index:2}
+.snd.on{background:#3ddc97;color:#06281b;border-color:#3ddc97}
+.snd:focus{outline:4px solid #fff;outline-offset:2px}
 .card.radio .pic::after{content:"▶";position:relative;font-size:30px;color:#fff;opacity:.95;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .card.radio.on .pic::after{content:"";width:34px;height:26px;background:linear-gradient(#fff,#fff) 0 100%/6px 100% no-repeat,linear-gradient(#fff,#fff) 9px 100%/6px 60% no-repeat,linear-gradient(#fff,#fff) 18px 100%/6px 85% no-repeat,linear-gradient(#fff,#fff) 27px 100%/6px 45% no-repeat;animation:eq 1s ease-in-out infinite alternate;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
 @keyframes eq{to{background-size:6px 40%,6px 100%,6px 50%,6px 90%}}
@@ -290,7 +297,7 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""><canvas id="rkCloud" width="480" height="270"></canvas></i><i class="wl rk" id="rkHaze"></i><i class="wl rk" id="rkRain"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""><canvas id="rkCloud2" width="2048" height="300"></canvas><canvas id="rkCloud" width="3072" height="672"></canvas></i><i class="wl rk" id="rkHaze"></i><i class="wl rk" id="rkRain"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -397,11 +404,11 @@ const NAMES = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'الع
 // noor-tv's videos (MIT, majedphotos): Surat Al-Kahf, Al-Baqara, morning and evening adhkar, ruqya
 // the Quran & adhkar cards, each with its video's cover; سورة الكهف plays as sound here (the chosen reciter), the others open the video
 const CARDS = [
-  { t: 'الرقية الشرعية', s: 'للبيت وأهله', v: 'BVtCjMyJ320', c: '#1f4a5e' },
+  { t: 'الرقية الشرعية', s: 'للبيت وأهله', v: 'BVtCjMyJ320', c: '#1f4a5e', snd: 'ruqya' },
   { t: 'سورة الكهف', s: 'يوم الجمعة · صوت', v: '9k1U0aGQRNA', c: '#1f5e4a', sura: 18 },
-  { t: 'أذكار الصباح', s: 'بعد الفجر', v: 'fD4uDIoCn3M', c: '#6b4a1f' },
+  { t: 'أذكار الصباح', s: 'بعد الفجر', v: 'fD4uDIoCn3M', c: '#6b4a1f', snd: 'sabah' },
   { t: 'سورة البقرة', s: 'تُقرأ في البيت', v: '9HW7j9lZZTU', c: '#2b3a55' },
-  { t: 'أذكار المساء', s: 'بعد العصر', v: 'rQnNno3Do60', c: '#3a2c55' },
+  { t: 'أذكار المساء', s: 'بعد العصر', v: 'rQnNno3Do60', c: '#3a2c55', snd: 'masa' },
 ];
 const CITIES = [
   ['مسقط', 23.588, 58.383, 8], ['صلالة', 17.019, 54.089, 8], ['صحار', 24.347, 56.709, 8], ['نزوى', 22.933, 57.533, 8],
@@ -474,11 +481,11 @@ const fmt = hm => { let [h, m] = hm.split(':').map(Number); if (S('clock', '12')
 let wxAt = 0, WX = null;   // WX: the weather now — cloud %, WMO code, visibility (m), temperature
 function weather() {
   if (!P.lat || Date.now() - wxAt < 20 * 60000) return; wxAt = Date.now();
-  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat}&longitude=${P.lon}&current=temperature_2m,cloud_cover,weather_code,visibility`).then(r => r.json())
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat}&longitude=${P.lon}&current=temperature_2m,cloud_cover,weather_code,visibility,wind_speed_10m`).then(r => r.json())
     .then(j => {
       const c = j.current; if (!c) return;
       if (c.temperature_2m != null) $('#wx').textContent = (P.city || '') + ' ' + AR(Math.round(c.temperature_2m)) + '°';
-      WX = { cloud: +c.cloud_cover || 0, code: +c.weather_code || 0, vis: c.visibility == null ? 20000 : +c.visibility, t: c.temperature_2m };
+      WX = { cloud: +c.cloud_cover || 0, code: +c.weather_code || 0, vis: c.visibility == null ? 20000 : +c.visibility, t: c.temperature_2m, wind: +c.wind_speed_10m || 8 };
       try { localStorage.wx = JSON.stringify({ ...WX, at: Date.now() }); } catch (e) {}
       if (getWall() === 'rawas') realSky();
     }).catch(() => {});
@@ -499,30 +506,52 @@ function wxWords(w) {
   if (w.cloud >= 15) return '🌤️ قليل الغيوم';
   return '';
 }
-// the clouds: soft, from a seeded noise (the same sky all day, a new one each day), drawn once per cover %
-let cloudKey = '';
-function drawClouds(cover, tone) {
-  const cv = $('#rkCloud'); if (!cv) return;
-  const key = Math.round(cover * 20) + tone + NOW().toDateString(); if (key === cloudKey) return; cloudKey = key;
-  const g = cv.getContext('2d'), W = cv.width, H = cv.height, img = g.createImageData(W, H);
-  let seed = 0; for (const ch of NOW().toDateString()) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
-  const P0 = new Uint8Array(512); for (let i = 0; i < 256; i++) P0[i] = i;
+// the clouds: two seamless strips of soft clouds (a near one, a far one) drawn once for today's cover and light, then drifting
+// with the wind at their own speeds — the sky keeps changing. Lit from above: bright tops, greyer bellies. Drawn a few rows at a
+// time (the TV box stays smooth).
+let cloudKey = '', cloudJob = 0;
+function cloudStrip(cv, cover, tone, seed0, cells, soft) {
+  const g = cv.getContext('2d'), W = cv.width / 2, H = cv.height, img = g.createImageData(W, H), job = cloudJob;
+  let seed = seed0; const P0 = new Uint8Array(512); for (let i = 0; i < 256; i++) P0[i] = i;
   for (let i = 255; i > 0; i--) { seed = (seed * 1103515245 + 12345) | 0; const j = ((seed >>> 8) % (i + 1)); [P0[i], P0[j]] = [P0[j], P0[i]]; }
   for (let i = 0; i < 256; i++) P0[i + 256] = P0[i];
-  const fade = t => t * t * (3 - 2 * t), lerp = (a, b, t) => a + (b - a) * t, h = (x, y) => P0[P0[x & 255] + (y & 255)] / 255;
-  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = fade(x - xi), yf = fade(y - yi); return lerp(lerp(h(xi, yi), h(xi + 1, yi), xf), lerp(h(xi, yi + 1), h(xi + 1, yi + 1), xf), yf); };
-  const col = { day: [255, 255, 255, 196, 204, 214], warm: [255, 214, 186, 186, 128, 120], blue: [150, 162, 190, 70, 78, 100], night: [70, 76, 92, 30, 34, 44], grey: [214, 218, 224, 150, 156, 166] }[tone] || [255, 255, 255, 196, 204, 214];
-  const th = 1 - cover;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    // stretched along the horizon (clouds seen from below), finer near it
-    const sx = x / 70, sy = y / (26 + y * .06);
-    let n = 0, a = .55, f = 1; for (let o = 0; o < 5; o++) { n += a * vn(sx * f + o * 17, sy * f * 1.7 + o * 31); a *= .5; f *= 2.03; }
-    n = n / .95;
-    const v = Math.min(1, Math.max(0, (n - th + .12) / .3)), d = Math.min(1, Math.max(0, (n - th) / .45)), i = (y * W + x) * 4;
-    img.data[i] = lerp(col[0], col[3], d); img.data[i + 1] = lerp(col[1], col[4], d); img.data[i + 2] = lerp(col[2], col[5], d);
-    img.data[i + 3] = 255 * v * (.55 + .45 * Math.min(1, y / H * 2.2));
-  }
-  g.putImageData(img, 0, 0);
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10), lerp = (a, b, t) => a + (b - a) * t;
+  const h = (x, y, per) => P0[P0[((x % per) + per) % per & 255] + (y & 255)] / 255;
+  const vn = (x, y, per) => { const xi = Math.floor(x), yi = Math.floor(y), xf = fade(x - xi), yf = fade(y - yi); return lerp(lerp(h(xi, yi, per), h(xi + 1, yi, per), xf), lerp(h(xi, yi + 1, per), h(xi + 1, yi + 1, per), xf), yf); };
+  const fbm = (x, y) => { let n = 0, a = .5, f = 1; for (let o = 0; o < 6; o++) { n += a * vn(x * f, y * f + o * 19.3, cells * f); a *= .5; f *= 2; } return n / .985; };
+  const C = { day: [[255, 255, 255], [184, 194, 208]], warm: [[255, 230, 206], [150, 128, 140]], blue: [[160, 172, 200], [70, 80, 108]], night: [[84, 92, 110], [26, 30, 40]], grey: [[222, 226, 232], [128, 134, 146]] }[tone] || [[255, 255, 255], [178, 190, 206]];
+  const th = .62 - cover * .4;   // the noise's share above it ≈ the cloud cover
+  let y = 0;
+  const rows = () => {
+    if (job !== cloudJob) return;
+    const y1 = Math.min(H, y + 18);
+    for (; y < y1; y++) {
+      const py = y / H, sy = (y / W * cells) * (1.25 + py * 1.5);   // wider than tall, flatter towards the horizon (seen from below)
+      for (let x = 0; x < W; x++) {
+        const sx = x / W * cells;
+        const wx = (fbm(sx * .5 + 3.1, sy * .5) - .5) * 1.1;   // a little warp: soft edges, not blobs
+        const n = fbm(sx + wx, sy + wx * .3), up = fbm(sx + wx, sy + wx * .3 - .12);
+        const v = Math.min(1, Math.max(0, (n - th) / soft)), lit = Math.min(1, Math.max(0, .55 + (up - n) * 9 - (n - th) * .8));
+        const i = (y * W + x) * 4;
+        img.data[i] = lerp(C[1][0], C[0][0], lit); img.data[i + 1] = lerp(C[1][1], C[0][1], lit); img.data[i + 2] = lerp(C[1][2], C[0][2], lit);
+        img.data[i + 3] = 255 * v * Math.min(1, .35 + py * 1.4);
+      }
+    }
+    if (y < H) return setTimeout(rows, 0);
+    g.putImageData(img, 0, 0); g.drawImage(cv, 0, 0, W, H, W, 0, W, H);   // the strip twice: it loops without a seam
+  };
+  rows();
+}
+function drawClouds(cover, tone, wind) {
+  const near = $('#rkCloud'), far = $('#rkCloud2'); if (!near || !far) return;
+  const day = NOW().toDateString(), key = Math.round(cover * 20) + tone + day;
+  // the wind: a strip crosses the screen in 40 min at 5 km/h, faster in more wind (the far one at half speed)
+  const sec = Math.round(2400 * 5 / Math.max(3, Math.min(40, wind || 8)));
+  near.style.animationDuration = sec + 's'; far.style.animationDuration = sec * 2.2 + 's';
+  if (key === cloudKey) return; cloudKey = key; cloudJob++;
+  let seed = 0; for (const ch of day) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  cloudStrip(near, cover, tone, seed, 9, .26);
+  cloudStrip(far, Math.max(.05, cover * .8), tone, seed ^ 0x5bd1e995, 16, .2);
 }
 /** today's weather on the photo: clouds in its sky, a greyer / softer light when it is overcast, haze or dust, rain */
 function wxApply(a, alt, night) {
@@ -530,8 +559,9 @@ function wxApply(a, alt, night) {
   const rain = (w.code >= 51 && w.code <= 67) || (w.code >= 80 && w.code <= 82) || w.code >= 95;
   const fog = w.code === 45 || w.code === 48 ? 1 : clamp((6000 - w.vis) / 5000);
   const tone = night > .5 ? 'night' : a === 'blue' ? 'blue' : /sunset|after|dusk/.test(a) ? 'warm' : oc > .6 || rain ? 'grey' : 'day';
-  if (c > .05) drawClouds(Math.max(c, rain ? .85 : 0), tone);
-  $('#rkCloud').style.opacity = (c > .05 ? clamp(.35 + c * .75) * (night > .5 ? .7 : 1) : 0).toFixed(2);
+  if (c > .05) drawClouds(Math.max(c, rain ? .85 : 0), tone, w.wind);
+  const co = (c > .05 ? clamp(.45 + c * .7) * (night > .5 ? .7 : 1) : 0);
+  $('#rkCloud').style.opacity = co.toFixed(2); $('#rkCloud2').style.opacity = (co * .8).toFixed(2);
   $('#rkHaze').style.opacity = (fog * (night > .5 ? .35 : .75)).toFixed(2);
   $('#rkRain').style.opacity = rain ? (w.code >= 63 || w.code >= 81 ? .75 : .45) : 0;
   const wl = $('#wall'); wl.classList.add('wxgrade');
@@ -633,8 +663,14 @@ function realSky() {
   if (dark > 0) drawStars(now, true, $('#rkStars'), (p, q) => rkScreen(K, p, q));
   // the sun: only in the afternoon photo (its own sun was taken out), where the real one is now
   const s = rkScreen(RK.day, alt, az), sun = $('#rkSun');
-  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105 && wx.sunK > .35;
+  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105 && s.y > -5 && wx.sunK > .35;
   sun.style.opacity = clamp(wx.sunK).toFixed(2);
+  // out of the picture but in front of the camera (around noon it is high above it, to the left): its light comes in from that edge
+  const off = Math.abs(((az - RK.day.head + 540) % 360) - 180);
+  if (!sv && alt > 2 && off < 80 && night < .2 && (cur === 'day' || cur === 'morning') && wx.sunK > .2) {
+    const gx = Math.max(-2, Math.min(102, s.x)), gy = Math.max(-5, s.y), k = clamp((80 - off) / 30) * clamp(wx.sunK);
+    sun.style.background = `radial-gradient(ellipse 85% 85% at ${gx}% ${gy}%, rgba(255,253,244,${(1 * k).toFixed(2)}) 0, rgba(255,250,232,${(.92 * k).toFixed(2)}) 10%, rgba(255,242,214,${(.6 * k).toFixed(2)}) 24%, rgba(255,236,200,${(.26 * k).toFixed(2)}) 46%, rgba(255,232,190,${(.07 * k).toFixed(2)}) 70%, rgba(255,232,190,0) 90%)`;
+  } else
   sun.style.background = sv ? `radial-gradient(circle at ${s.x}% ${s.y}%, rgba(255,255,245,.98) 0, rgba(255,252,232,.95) 22px, rgba(255,226,170,.55) 46px, rgba(255,214,150,.22) 160px, rgba(255,214,150,0) 420px)` : 'none';
   // the moon (DriveCast's picture for tonight's phase), where it is
   const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = rkScreen(K, mo.alt, mo.az), mi = $('#rkMoon');
@@ -826,6 +862,7 @@ async function surahUrl(r, n) {
   return d.audio_files?.[0]?.audio_url;
 }
 async function playSurah(n) {
+  if (SND) { SND = null; document.body.classList.remove('radio'); }
   if (radioOn) { radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); homeCards(); }
   const r = RECITERS.find(x => x[0] === getRec()) || RECITERS[0];
   try { audio.src = await surahUrl(r, n); await audio.play(); } catch (e) { $('#plSub').textContent = 'تعذّر التشغيل — تحقق من الإنترنت'; }
@@ -891,11 +928,35 @@ async function radioTune(ended) {
   try { await audio.play(); } catch (e) { if (my === rTuning) radioBlocked(); }
   radioUi();
 }
+// ---- 🔊 the cards' sound: the ruqyah (its verses, Mishary Alafasy, everyayah.com) and the morning / evening adhkar (Mishary
+// Alafasy, archive.org) — in the same little player as the surahs
+const RUQYA = [[1, 1, 7], [2, 1, 5], [2, 163, 164], [2, 255, 257], [2, 284, 286], [3, 18, 19], [7, 54, 56], [7, 117, 122], [10, 79, 82], [20, 65, 70], [23, 115, 118], [37, 1, 10], [46, 29, 32], [55, 33, 36], [59, 21, 24], [72, 1, 9], [112, 1, 4], [113, 1, 5], [114, 1, 6]];
+const pad3 = n => String(n).padStart(3, '0');
+const SOUNDS = {
+  ruqya: { t: 'الرقية الشرعية', who: 'مشاري العفاسي', list: () => RUQYA.flatMap(([s, a, b]) => Array.from({ length: b - a + 1 }, (_, i) => `https://everyayah.com/data/Alafasy_128kbps/${pad3(s)}${pad3(a + i)}.mp3`)) },
+  sabah: { t: 'أذكار الصباح', who: 'مشاري العفاسي', list: () => ['https://archive.org/download/makkah-live.-net-athkar-01/MakkahLive.Net_athkar_03.mp3'] },
+  masa: { t: 'أذكار المساء', who: 'مشاري العفاسي', list: () => ['https://archive.org/download/makkah-live.-net-athkar-01/MakkahLive.Net_athkar_04.mp3'] },
+};
+let SND = null;
+function sndPlay(k) {
+  const d = SOUNDS[k]; if (!d) return;
+  if (radioOn) { radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); }
+  playing = null; SND = { k, list: d.list(), i: 0 };
+  document.body.classList.add('radio');   // no previous / next surah buttons
+  $('#player').hidden = false; $('#plTitle').textContent = '🔊 ' + d.t; $('#plSub').textContent = d.who; $('#plToggle').textContent = 'إيقاف';
+  sndGo(); homeCards();
+}
+function sndGo() {
+  if (!SND) return;
+  audio.src = SND.list[SND.i];
+  audio.play().catch(() => { if (SND) { $('#plSub').textContent = 'اضغط أي مكان ليبدأ الصوت'; const go = () => { removeEventListener('pointerdown', go, true); removeEventListener('keydown', go, true); if (SND && audio.paused) audio.play().catch(() => {}); }; addEventListener('pointerdown', go, true); addEventListener('keydown', go, true); } });
+  miniAudio();
+}
 function radioUi() {
   if (radioOn && RNOW) { $('#plTitle').textContent = '📻 سورة ' + SURAHS[RNOW.s - 1]; $('#plSub').textContent = RNAME[RNOW.r] + ' · راديو القرآن — التلاوات الأكثر شيوعًا'; }
   homeCards(); miniAudio();
 }
-function radioStart() { if (playing) { audio.pause(); playing = null; } radioOn = true; RNOW = null; quranUi(); radioTune(false); }
+function radioStart() { SND = null; if (playing) { audio.pause(); playing = null; } radioOn = true; RNOW = null; quranUi(); radioTune(false); }
 /** a browser that refuses sound before a touch: the radio starts at the first one */
 function radioBlocked() {
   $('#plSub').textContent = 'اضغط أي مكان ليبدأ الراديو'; $('#plToggle').textContent = 'تشغيل';
@@ -905,17 +966,18 @@ function radioBlocked() {
 /** in the photo view («up»): what is playing, over the prayer bar */
 function miniAudio() {
   const m = $('#miniA'); if (!m) return;
-  const on = !audio.paused && (radioOn ? !!RNOW : !!playing);
+  const on = !audio.paused && (SND ? true : radioOn ? !!RNOW : !!playing);
   m.classList.toggle('on', on); if (!on) return;
+  if (SND) { const d = SOUNDS[SND.k], pct = audio.duration ? Math.min(100, ((SND.i + audio.currentTime / audio.duration) / SND.list.length) * 100) : 0; m.innerHTML = `<i class="eq"></i><div><b>${d.t}</b><span>${d.who} · 🔊</span></div><div class="pb"><i style="width:${pct}%"></i></div>`; return; }
   const s = radioOn ? RNOW.s : playing, who = radioOn ? RNAME[RNOW.r] + ' · 📻 راديو القرآن' : $('#plSub').textContent;
   const pct = audio.duration ? Math.min(100, audio.currentTime / audio.duration * 100) : 0;
   m.innerHTML = `<i class="eq"></i><div><b>سورة ${SURAHS[s - 1]}</b><span>${esc(who)}</span></div><div class="pb"><i style="width:${pct}%"></i></div>`;
 }
 let miniT = 0; audio.addEventListener('timeupdate', () => { if (Date.now() - miniT > 5000) { miniT = Date.now(); miniAudio(); } });
 audio.addEventListener('play', miniAudio); audio.addEventListener('pause', miniAudio);
-audio.onended = () => { if (radioOn) return radioTune(true); if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
+audio.onended = () => { if (SND) { if (++SND.i < SND.list.length) return sndGo(); return closePlayer(); } if (radioOn) return radioTune(true); if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
 audio.onerror = () => { if (radioOn && audio.src) setTimeout(() => radioOn && radioTune(true), 4000); };
-function closePlayer() { const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
+function closePlayer() { SND = null; const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
 let pauseT = 0;
 audio.onpause = () => { clearTimeout(pauseT); pauseT = setTimeout(() => { if (audio.paused && playing) closePlayer(); }, 8000); };
 audio.onplay = () => clearTimeout(pauseT);
@@ -1376,13 +1438,14 @@ function lastHtml() {
 const radioHtml = () => `<button class="card f radio${radioOn ? ' on' : ''}" data-act="radio"><div class="pic"></div><div class="txt"><b>التلاوات الأكثر شيوعًا</b><span>${radioOn && RNOW ? esc('الآن: سورة ' + SURAHS[RNOW.s - 1] + ' · ' + RNAME[RNOW.r]) : 'تلاوات يومية منتقاة'}</span></div></button>`;
 function homeCards() {
   const sh = $('#s-quran'); if (!sh) return;
-  const a = document.activeElement, was = sh.contains(a) ? (a.dataset.act || a.dataset.yt) : null;
+  const a = document.activeElement, was = sh.contains(a) ? (a.dataset.act || a.dataset.yt || a.dataset.snd || a.dataset.sura) : null;
   sh.innerHTML = cardsHtml(true);
-  if (was) (sh.querySelector(`[data-act="${was}"],[data-yt="${was}"]`) || sh.querySelector('.f'))?.focus();
+  if (was) (sh.querySelector(`[data-act="${was}"],[data-yt="${was}"],[data-snd="${was}"],[data-sura="${was}"]`) || sh.querySelector('.f'))?.focus();
 }
 function cardsHtml(home) {
   const u = TV.phoneUrl();
-  return (home ? lastHtml() + radioHtml() : '') + CARDS.map(c => `<button class="card f radio cover${c.sura && playing === c.sura ? ' on' : ''}" ${c.sura ? `data-sura="${c.sura}"` : `data-yt="${c.v}"`}><div class="pic" style="background-image:url('https://i.ytimg.com/vi/${c.v}/hqdefault.jpg');background-color:${c.c}"></div><div class="txt"><b>${c.t}</b><span>${c.s}</span></div></button>`).join('')
+  const card = c => `<button class="card f radio cover${(c.sura && playing === c.sura) || (c.snd && SND && SND.k === c.snd) ? ' on' : ''}" ${c.sura ? `data-sura="${c.sura}"` : `data-yt="${c.v}"`}><div class="pic" style="background-image:url('https://i.ytimg.com/vi/${c.v}/hqdefault.jpg');background-color:${c.c}"></div><div class="txt"><b>${c.t}</b><span>${c.s}</span></div></button>`;
+  return (home ? lastHtml() + radioHtml() : '') + CARDS.map(c => c.snd ? `<div class="cw">${card(c)}<button class="snd f${SND && SND.k === c.snd ? ' on' : ''}" data-snd="${c.snd}" title="صوت">${SND && SND.k === c.snd ? '⏹ إيقاف' : '🔊 صوت'}</button></div>` : card(c)).join('')
     + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
 }
 let APPS = [];
@@ -1694,6 +1757,7 @@ document.addEventListener('click', e => {
   if (b.dataset.rec) { try { localStorage.rec = b.dataset.rec; } catch (x) {} if (playing) playSurah(playing); return quranUi(); }
   if (b.dataset.sura && b.closest('#s-quran') && playing === +b.dataset.sura && !audio.paused) return closePlayer();   // the card again: stop
   if (b.dataset.sura) return playSurah(+b.dataset.sura);
+  if (b.dataset.act === 'pl-toggle' && SND) { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-close') return closePlayer();
@@ -1710,6 +1774,7 @@ document.addEventListener('click', e => {
   }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
+  if (b.dataset.snd) return SND && SND.k === b.dataset.snd ? closePlayer() : sndPlay(b.dataset.snd);
   if (b.dataset.act === 'last') return lastPlay();
   if (b.dataset.ctx) return ctxDo(b.dataset.ctx);
   if (b.dataset.ytll) { YTLL = +b.dataset.ytll; ytlUi(); return $(`[data-ytll="${YTLL}"]`)?.focus(); }
