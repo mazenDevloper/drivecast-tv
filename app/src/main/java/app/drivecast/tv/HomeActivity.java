@@ -404,6 +404,14 @@ public class HomeActivity extends Activity {
             new Thread(() -> { Adhan.sounds(app); runOnUiThread(() -> Adhan.fire(app, 3, true, "iqama".equals(what))); }, "adhan-try").start();
         }
 
+        /** the settings' time simulation: the adhan / iqamah of that prayer (its own sound: the fajr adhan for fajr) */
+        @JavascriptInterface
+        public void tryAdhanFor(String what, int prayer) {
+            Context app = getApplicationContext();
+            int p = Math.max(0, Math.min(4, prayer));
+            new Thread(() -> { Adhan.sounds(app); runOnUiThread(() -> Adhan.fire(app, p, true, "iqama".equals(what))); }, "adhan-sim").start();
+        }
+
         /** OK held on a channel: the stream in another player on the TV (VLC, MX…), YouTube links in YouTube */
         @JavascriptInterface
         public void external(String url) {

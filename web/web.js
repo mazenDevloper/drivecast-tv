@@ -238,6 +238,7 @@
     mouseOn: () => { send('mouseOn', [], 'يشغّل الماوس على التلفزيون'); return true; },
     accessSettings: () => send('accessSettings', [], '📺 فتحت تسهيل الوصول'),
     tryAdhan: w => send('tryAdhan', [w], w === 'stop' ? '⏹' : '🕌 يشتغل على التلفزيون'),
+    tryAdhanFor: (w, i) => onTv() ? send('tryAdhanFor', [w, i], '🕌 يشتغل على التلفزيون') : toast(w === 'iqama' ? '🔔 حان وقت الإقامة (محاكاة)' : '🕌 حان وقت الأذان (محاكاة)'),
     webInfo: () => JSON.stringify({ pin: L.pin, online: !!(L.open && L.tv && L.okd), url: location.href.split('?')[0].split('#')[0] }),
     webNewPin: () => { send('webNewPin', [], 'فكّيت ربط كل المتصفحات — اربط من جديد من البيت'); return ''; },
     lastProblem: () => '',

@@ -266,6 +266,7 @@ body.moving .bmove{display:block}
 /* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
+body.sim::after{content:"⏱ محاكاة";position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;padding:6px 16px;border-radius:999px;background:rgba(255,190,60,.9);color:#2a1a00;font:700 18px inherit;font-family:inherit;pointer-events:none}
 /* 📻 what is playing (the radio, a surah): a small player over the prayer bar */
 #miniA{position:absolute;bottom:calc(100% + 16px);inset-inline-start:0;display:none;align-items:center;gap:16px;padding:14px 26px 14px 22px;border-radius:28px;max-width:720px}
 #miniA.on{display:flex}#miniA b{font-size:26px;display:block}#miniA span{font-size:18px;color:var(--dim)}
@@ -443,8 +444,79 @@ function loadFont() {
   if (!u) return;
   try { for (const fam of ['Thmanyah Sans', 'UserFont']) { const f = new FontFace(fam, `url(${u})`); f.load().then(x => document.fonts.add(x)).catch(() => {}); } } catch (e) {}
 }
-function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } prayersUi(); weather(); }
+function loadPrayers() { try { P = JSON.parse(TV.prayers()) || {}; } catch (e) { P = {}; } if (SIM) { simDay = ''; simPrayers(); } prayersUi(); weather(); }
 async function loadSettings() { const ms = await getJ('https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a'); if (ms && Array.isArray(ms.prayerSettings)) { PSET = ms.prayerSettings; prayersUi(); } }
+// ---- ⏱ the time simulation (settings): the screen lives at another date and time, and the clock runs on from there (at a chosen
+// speed) — the wallpaper, sun, moon, stars, prayer countdown, and the adhan / iqamah when their times come. Kept until it is stopped.
+let SIM = null;
+try { SIM = JSON.parse(localStorage.sim || 'null'); } catch (e) {}
+const simNow = () => SIM ? new Date(SIM.start + (Date.now() - SIM.at) * SIM.speed) : new Date();
+function simApply() {
+  if (SIM) window.__simTime = simNow; else if (window.__simTime === simNow) delete window.__simTime;
+  document.body && document.body.classList.toggle('sim', !!SIM);
+  clearInterval(simApply.t); if (SIM) simApply.t = setInterval(simTick, 1000);
+  simPrayers().then(() => { tick(); skyAt = 0; if (document.body.classList.contains('ambient')) skyNote(); });
+}
+function simSet(start, speed) {
+  SIM = { start: +start, at: Date.now(), speed: speed ?? (SIM ? SIM.speed : 1) };
+  try { localStorage.sim = JSON.stringify(SIM); } catch (e) {}
+  simLast = +start; simApply();
+}
+function simOff() { SIM = null; try { localStorage.removeItem('sim'); } catch (e) {} simApply(); loadPrayers(); }
+/** the prayer times of the simulated day (from the TV's own when it is today; else aladhan.com for that day, same place and method) */
+let simDay = '';
+async function simPrayers() {
+  if (!SIM) { simDay = ''; return; }
+  const d = simNow(), key = d.toDateString();
+  if (key === new Date().toDateString()) { if (simDay) { simDay = ''; loadPrayers(); } return; }
+  if (key === simDay) return;
+  const f = x => `${String(x.getDate()).padStart(2, '0')}-${String(x.getMonth() + 1).padStart(2, '0')}-${x.getFullYear()}`;
+  const get = async x => { const j = await getJ(`https://api.aladhan.com/v1/timings/${f(x)}?latitude=${P.lat || 17.0158}&longitude=${P.lon || 54.0885}&method=${P.method || 8}`); const m = j?.data?.timings; return m ? { t: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map(k => m[k].slice(0, 5)), sr: m.Sunrise.slice(0, 5) } : null; };
+  const a = await get(d), b = await get(new Date(d.getTime() + 864e5));
+  if (a) { P = { ...P, today: a.t, tomorrow: b ? b.t : a.t, sunrise: a.sr }; simDay = key; prayersUi(); }
+}
+// while simulating: the screen moves every second; a prayer time / an iqamah passed on the way → its adhan / iqamah (once)
+let simLast = 0;
+function simTick() {
+  if (!SIM) return;
+  const now = simNow().getTime(), from = simLast || now; simLast = now;
+  if (new Date(now).toDateString() !== simDay && new Date(now).toDateString() !== new Date().toDateString()) simPrayers();
+  tick();
+  if (now - from > 6 * 3600e3 || !P.today) return;   // a jump, not the clock running
+  P.today.forEach((x, i) => {
+    const d = at(x); d.setMinutes(d.getMinutes() + (+pset(i).offsetMinutes || 0));
+    const iq = S('iqsrc', 'dc') === 'custom' ? +S('iq' + i, IQ[i]) : (pset(i).iqamahDuration ?? IQ[i]), q = d.getTime() + iq * 60000;
+    const fire = what => TV.tryAdhanFor ? TV.tryAdhanFor(what, i) : TV.tryAdhan && TV.tryAdhan(what);
+    if (from < d.getTime() && now >= d.getTime() && S('adhan', 'sound') !== 'off') fire('adhan');
+    else if (from < q && now >= q && S('iqama', 'sound') !== 'off') fire('iqama');
+  });
+}
+/** the next day (from the simulated one) whose Hijri day is <n> */
+function dayWithHijri(n, from) {
+  for (let k = 0; k < 40; k++) {
+    const d = new Date(from.getTime() + k * 864e5);
+    let h = 0; try { h = +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric' }).format(d).replace(/\D/g, ''); } catch (e) {}
+    if (h === n) return d;
+  }
+  return from;
+}
+async function simAct(a) {
+  const cur = simNow();
+  if (a === 'sim-off') return simOff();
+  if (/^sim-x/.test(a)) { const sp = +a.slice(5); return simSet(cur.getTime(), sp); }
+  if (/^sim-d/.test(a)) { const d = new Date(cur); d.setDate(d.getDate() + +a.slice(5)); return simSet(d.getTime()); }
+  if (/^sim-m/.test(a)) return simSet(cur.getTime() + +a.slice(5) * 60000);
+  if (/^sim-h/.test(a)) { const d = dayWithHijri(+a.slice(5), cur); d.setHours(cur.getHours(), cur.getMinutes(), 0, 0); return simSet(d.getTime()); }
+  if (/^sim-p/.test(a)) {   // 2 minutes before the adhan of that prayer, on the simulated day (or الشروق / منتصف الليل)
+    if (!SIM) simSet(cur.getTime());
+    await simPrayers();
+    const k = a.slice(5), base = simNow();
+    if (k === 'sr') { const d = at(P.sunrise || '06:15'); return simSet(d.getTime() - 2 * 60000); }
+    if (k === 'mn') { const d = new Date(base); d.setHours(23, 58, 0, 0); return simSet(d.getTime()); }
+    const i = +k, d = at(P.today[i]); d.setMinutes(d.getMinutes() + (+pset(i).offsetMinutes || 0));
+    return simSet(d.getTime() - 2 * 60000);
+  }
+}
 function at(hm, plusDay) { const [h, m] = hm.split(':').map(Number), d = NOW(); d.setHours(h, m, 0, 0); if (plusDay) d.setDate(d.getDate() + 1); return d; }
 // iqamah = adhan + DriveCast's own setting (master bin prayerSettings), else the usual Oman gaps
 let PSET = [];
@@ -1694,6 +1766,15 @@ function sections() {
       { k: 'web', l: 'التحكم من الويب', o: ON, d: 'on' },
       { a: '', o: [['newpin', '🔒 فكّ ربط كل المتصفحات']] },
     ]; })()],
+    ['⏱', 'محاكاة الوقت', [
+      { i: SIM ? '⏱ الشاشة الآن على' : 'الوقت', t: SIM ? simNow().toLocaleString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · ' + (() => { try { return simNow().toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long' }); } catch (e) { return ''; } })() + (SIM.speed > 1 ? ' · أسرع ×' + AR(SIM.speed) : '') : 'الحقيقي — اختر من تحت لتجرّب يوماً ووقتاً' },
+      { a: 'دقيقتين قبل', o: [['sim-psr', 'الشروق'], ['sim-p0', 'الفجر'], ['sim-p1', 'الظهر'], ['sim-p2', 'العصر'], ['sim-p3', 'المغرب'], ['sim-p4', 'العشاء'], ['sim-pmn', 'منتصف الليل']] },
+      { a: 'اليوم الهجري', o: [['sim-h1', '١ هلال'], ['sim-h3', '٣'], ['sim-h7', '٧ تربيع'], ['sim-h14', '١٤ بدر'], ['sim-h22', '٢٢'], ['sim-h29', '٢٩ محاق']] },
+      { a: 'اليوم', o: [['sim-d-30', '−٣٠'], ['sim-d-7', '−٧'], ['sim-d-1', '−١'], ['sim-d1', '+١'], ['sim-d7', '+٧'], ['sim-d30', '+٣٠']] },
+      { a: 'الساعة', o: [['sim-m-60', '−ساعة'], ['sim-m-10', '−١٠ د'], ['sim-m10', '+١٠ د'], ['sim-m60', '+ساعة']] },
+      { a: 'السرعة', o: [['sim-x1', 'عادي'], ['sim-x10', '×١٠'], ['sim-x60', '×٦٠'], ['sim-x600', '×٦٠٠']] },
+      { a: '', o: [['sim-off', '⏹ ارجع للوقت الحقيقي']] },
+    ]],
     ['ℹ️', 'الجهاز', [
       { i: 'صفحة الجوال', t: u ? u.replace('http://', '') : 'تشتغل لما يتصل التلفزيون بالواي فاي' },
       { i: 'الأذان فوق الأفلام', t: TV.canOverlay() ? '✅ مسموح' : '⚠️ يحتاج إذن «العرض فوق التطبيقات»' },
@@ -1740,6 +1821,7 @@ function applySet(k, v) {
   if (/^iq/.test(k)) prayersUi();
 }
 function setAct(a) {
+  if (/^sim-/.test(a)) { simAct(a).then(() => { if ($('#panel').classList.contains('on')) { const all = [...document.querySelectorAll('#sbody .f')], at = all.indexOf(document.activeElement); setsBody(); (document.querySelectorAll('#sbody .f')[at] || $('#sbody .f'))?.focus(); } }); return; }
   if (/^(adhan|iqama|stop)$/.test(a)) return TV.tryAdhan && TV.tryAdhan(a);
   if (a === 'reload') { listsAt = 0; return loadLists(); }
   if (a === 'mouse-on') { TV.mouseOn && TV.mouseOn(); return setTimeout(() => { if ($('#panel').classList.contains('on')) setsBody(); }, 1500); }
@@ -1944,7 +2026,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml();
-homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs();
+homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
