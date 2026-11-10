@@ -113,16 +113,32 @@
   async function playHere(urls, names, i) {
     const p = overlay('<video controls autoplay playsinline style="width:100%;height:100%;background:#000"></video>');
     p.urls = urls; p.names = names; p.i = i;
+    // a browser refuses http streams on this https page, and streams that carry no CORS header: those come through DriveCast's
+    // server (studio…/tv). Tried straight first (lighter), then through the server, before saying it did not work.
+    const VIA = x => 'https://studio.c-p.workers.dev/tv?u=' + encodeURIComponent(x);
     const go = async () => {
-      const u = p.urls[p.i], v = p.querySelector('video');
+      const u = p.urls[p.i], v = p.querySelector('video'), my = p.n = (p.n || 0) + 1;
       p.querySelector('#wName').textContent = (p.i + 1) + ' · ' + (p.names[p.i] || '');
       if (p.hls) { p.hls.destroy(); p.hls = null; }
-      if (location.protocol === 'https:' && u.startsWith('http:')) { toast('هالبث ما يشتغل في المتصفح — شغّله على التلفزيون'); return; }
-      if (/\.m3u8(\?|$)/i.test(u) && !v.canPlayType('application/vnd.apple.mpegurl')) {
-        try { await hlsReady(); p.hls = new Hls(); p.hls.loadSource(u); p.hls.attachMedia(v); p.hls.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) toast('القناة ما اشتغلت هنا — جرّبها على التلفزيون'); }); }
-        catch (e) { v.src = u; }
-      } else v.src = u;
-      v.play().catch(() => {});
+      const blocked = location.protocol === 'https:' && u.startsWith('http:');
+      const fail = () => { if (my === p.n) toast('القناة ما اشتغلت — يمكن بثها واقف الحين، جرّب غيرها'); };
+      const start = async (src, last) => {
+        if (my !== p.n) return;
+        if (p.hls) { p.hls.destroy(); p.hls = null; }
+        const next = () => last ? fail() : start(VIA(u), true);
+        v.onerror = next;
+        const isHls = /\.m3u8?(\?|$)/i.test(u) || !/\.(mp4|webm|mp3|aac|ts|mpd)(\?|$)/i.test(u);
+        if (isHls && !v.canPlayType('application/vnd.apple.mpegurl')) {
+          try {
+            await hlsReady(); if (my !== p.n) return;
+            const h = p.hls = new Hls({ manifestLoadingTimeOut: 12000, fragLoadingTimeOut: 20000 });
+            h.loadSource(src); h.attachMedia(v);
+            h.on(Hls.Events.ERROR, (e, d) => { if (!d.fatal || p.hls !== h) return; if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !h.rec) { h.rec = 1; return h.recoverMediaError(); } h.destroy(); p.hls = null; next(); });
+          } catch (e) { v.src = src; }
+        } else v.src = src;
+        v.play().catch(() => {});
+      };
+      start(blocked ? VIA(u) : u, blocked);
     };
     p.zap = d => { p.i = (p.i + d + p.urls.length) % p.urls.length; go(); };
     go();

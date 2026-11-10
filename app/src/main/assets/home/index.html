@@ -58,14 +58,29 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .times{width:100%;display:flex;flex-direction:column;justify-content:center;gap:14px}
 .times .row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center}
 .times .p{padding:8px 0;border-radius:22px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:4px}
-.times .p span{font-size:20px;color:var(--dim)} .times .p b{font-size:28px;font-variant-numeric:tabular-nums}
-.times .p em{font-style:normal;font-size:17px;color:var(--dim);font-variant-numeric:tabular-nums}.times .p.next em{color:#0b3d2a}
+.times .p span{font-size:20px;color:var(--dim)} .times .p b{font-size:40px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+/* the adhan time large, its iqamah clear under it (a light chip) */
+.times .p em{font-style:normal;font-size:21px;font-weight:700;color:#9fecc9;font-variant-numeric:tabular-nums;background:rgba(61,220,151,.13);border-radius:999px;padding:2px 0;margin:2px 10px 0}.times .p.next em{color:#062016;background:rgba(6,32,22,.16)}.times .p.past em{color:#8a96a3;background:rgba(255,255,255,.05)}
 .times .p.past b{color:#7c8794} .times .p.next{background:var(--accent);color:#062016} .times .p.next span{color:#062016}
 .bar{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
 h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .shelf{display:flex;gap:28px;padding:14px 18px 18px;margin:0 -18px;overflow:hidden}
 .card{flex:none;width:340px;height:190px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
 .card b{font-size:34px} .card span{font-size:19px;opacity:.8}
+/* 📻 the Quran radio card: a picture with ▶ on top, the title and its line under it (as quran.com's «Popular Recitations») */
+.card.radio{padding:0;justify-content:stretch;gap:0;overflow:hidden;background:#20242a;position:relative}
+.card.radio .pic{flex:1;position:relative;background:radial-gradient(120% 90% at 60% 55%,#8a5a22 0%,#4a2f12 38%,#1c130a 78%),#2a1b0c;display:grid;place-items:center;overflow:hidden}
+.card.radio .pic::before{content:"";position:absolute;width:150px;height:104px;border-radius:9px;transform:perspective(420px) rotateX(46deg) rotateZ(-14deg);background:radial-gradient(circle at 50% 50%,rgba(255,221,140,.5) 0 13%,transparent 14%),repeating-linear-gradient(45deg,rgba(255,214,130,.20) 0 3px,transparent 3px 8px),linear-gradient(135deg,#6b2f1e,#3d190f);border:3px solid #c9973d;box-shadow:0 0 0 7px #55241a,0 0 0 9px #b88a36,10px 22px 30px rgba(0,0,0,.55)}
+.card.radio .pic::after{content:"▶";position:relative;font-size:30px;color:#fff;opacity:.95;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.card.radio.on .pic::after{content:"";width:34px;height:26px;background:linear-gradient(#fff,#fff) 0 100%/6px 100% no-repeat,linear-gradient(#fff,#fff) 9px 100%/6px 60% no-repeat,linear-gradient(#fff,#fff) 18px 100%/6px 85% no-repeat,linear-gradient(#fff,#fff) 27px 100%/6px 45% no-repeat;animation:eq 1s ease-in-out infinite alternate;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+@keyframes eq{to{background-size:6px 40%,6px 100%,6px 50%,6px 90%}}
+.card.radio .txt{flex:none;display:flex;flex-direction:column;gap:0;padding:9px 20px 11px;background:#20242a}
+.card.radio .txt b{font-size:23px;font-weight:600}.card.radio .txt span{font-size:16px;opacity:.72}
+/* ▶ the last thing watched (a YouTube video or a channel): its picture, to carry on */
+.card.last{background:#11161c center/cover no-repeat;position:relative;overflow:hidden}
+.card.last::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,15,.15) 0%,rgba(8,11,15,.88) 100%)}
+.card.last.ch{background-size:40% auto;background-position:50% 30%}
+.card.last>*{position:relative}.card.last b{font-size:24px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.card.last span{color:#7df0c0;opacity:1;font-weight:600}
 .app{flex:none;width:236px;height:140px;border-radius:26px;background:rgba(20,28,37,.8);border:1px solid var(--line);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:inherit;color:var(--ink)}
 .app img{width:100%;height:100%;object-fit:cover}.app img.icon{width:72px;height:72px;object-fit:contain}
 .app.icon{flex-direction:column;gap:8px;font-size:19px}
@@ -141,7 +156,10 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .ichan .at{font-size:13px;opacity:.78;letter-spacing:.2px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ichan .at:empty{display:none}
 .chip.chk.on{background:#3ddc97;color:#06281a}
-.ichan.fav::after{content:"★";margin-inline-start:auto;color:#f5c94c;font-size:22px}
+.ichan>.nm{flex:1;min-width:0}
+/* ⭐ on every channel: tap / click it — with the remote, hold OK on the channel */
+.ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
+.ichan.fav .star{color:#f5c94c;background:rgba(245,201,76,.14)}
 /* the long-press menu, tvOS style: a glass sheet, big rows, the focused one lifts and glows */
 .ctx{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;background:rgba(4,7,10,.38);backdrop-filter:blur(6px)}
 .ctx.on{display:flex}
@@ -160,6 +178,7 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
+body.radio .player [data-act="pl-prev"],body.radio .player [data-act="pl-next"]{display:none}
 [hidden]{display:none!important}
 .clock b,.clock span,.sal,.wx{white-space:nowrap}
 /* ---- «لوحتي»: a pastel mood board — notes, reminders, quotes, die-cut stickers, polaroid drawings, dashed arrows */
@@ -228,6 +247,11 @@ body.moving .bmove{display:block}
 /* «up» from the tabs: the photo alone, with the clock and two slim bars (prayer + countdown, next match) */
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
+/* 📻 what is playing (the radio, a surah): a small player over the prayer bar */
+#miniA{position:absolute;bottom:calc(100% + 16px);inset-inline-start:0;display:none;align-items:center;gap:16px;padding:14px 26px 14px 22px;border-radius:28px;max-width:720px}
+#miniA.on{display:flex}#miniA b{font-size:26px;display:block}#miniA span{font-size:18px;color:var(--dim)}
+#miniA .eq{flex:none;width:34px;height:26px;background:linear-gradient(#3ddc97,#3ddc97) 0 100%/6px 100% no-repeat,linear-gradient(#3ddc97,#3ddc97) 9px 100%/6px 60% no-repeat,linear-gradient(#3ddc97,#3ddc97) 18px 100%/6px 85% no-repeat,linear-gradient(#3ddc97,#3ddc97) 27px 100%/6px 45% no-repeat;animation:eq 1s ease-in-out infinite alternate}
+#miniA .pb{position:absolute;left:26px;right:26px;bottom:6px;height:3px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}#miniA .pb i{display:block;height:100%;background:#3ddc97}
 body.ambient .page,body.ambient .player{display:none!important}
 body.ambient .wall{transform:scale(1,.92) translateY(-5%);transform-origin:50% 50%;border-radius:0 0 34px 34px}
 /* the full-photo view: the photo a little smaller and higher, its own blurred light around it (tvOS's ambient backdrop) */
@@ -304,7 +328,7 @@ body.ambient .phrase.on{display:block}
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <h2>القنوات العربية</h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
+    <h2>القنوات العربية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -317,7 +341,7 @@ body.ambient .phrase.on{display:block}
 
   <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span><em id="skyNote"></em></div>
   <div class="phrase" id="phrase"></div>
-  <div class="mini" id="mini"><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
+  <div class="mini" id="mini"><div class="glass" id="miniA"></div><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
 
   <div class="panel bedit" id="bedit"><div class="box">
@@ -720,14 +744,96 @@ async function surahUrl(r, n) {
   return d.audio_files?.[0]?.audio_url;
 }
 async function playSurah(n) {
+  if (radioOn) { radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); homeCards(); }
   const r = RECITERS.find(x => x[0] === getRec()) || RECITERS[0];
   try { audio.src = await surahUrl(r, n); await audio.play(); } catch (e) { $('#plSub').textContent = 'تعذّر التشغيل — تحقق من الإنترنت'; }
   playing = n; $('#player').hidden = false;
   $('#plTitle').textContent = 'سورة ' + SURAHS[n - 1]; $('#plSub').textContent = r[1]; $('#plToggle').textContent = 'إيقاف';
   quranUi();
 }
-audio.onended = () => { if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
-function closePlayer() { audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
+// ---- 📻 the Quran radio («التلاوات الأكثر شيوعًا»): quran.com's own list — four reciters × the surahs — but as a real station:
+// the day's order is drawn once from the date, and the clock says which recitation is on air and where in it, so every screen
+// that tunes in hears the same aya, and it starts in the middle like a radio. One <audio>, one mp3 at a time: nothing lighter.
+const RREC = ['7', '3', '10', '4'], RNAME = { 7: 'مشاري العفاسي', 3: 'عبدالرحمن السديس', 10: 'سعود الشريم', 4: 'أبو بكر الشاطري' };
+let radioOn = false, RNOW = null, RTAB = null, rTuning = 0;
+const QDC = 'https://api.qurancdn.com/api/qdc/audio/reciters/';
+/** every recitation's link and length (4 requests, kept 10 days on the screen) */
+async function radioTable() {
+  if (RTAB) return RTAB;
+  try { const c = JSON.parse(localStorage.radioTab || 'null'); if (c && Date.now() - c.at < 10 * 864e5 && c.t.length > 400) return RTAB = c.t; } catch (e) {}
+  const t = [];
+  for (const r of RREC) {
+    const d = await getJ(QDC + r + '/audio_files');
+    const f = arr(d?.audio_files).filter(x => x && x.audio_url && x.chapter_id && x.duration > 0);
+    if (f.length < 110) return null;
+    const ms = (f.find(x => x.chapter_id === 2)?.duration || 0) > 100000;   // lengths in ms or in seconds: al-Baqarah tells
+    f.forEach(x => t.push([+r, x.chapter_id, x.audio_url, Math.round(ms ? x.duration / 1000 : x.duration)]));
+  }
+  try { localStorage.radioTab = JSON.stringify({ at: Date.now(), t }); } catch (e) {}
+  return RTAB = t;
+}
+/** what is on air now: { r, s, url, at (seconds into it), len } */
+function radioNow(t, skip) {
+  const now = NOW(), day = Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / 864e5);
+  let sec = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
+  let x = (day * 2654435761) >>> 0; const rnd = () => { x += 0x6D2B79F5; let z = x; z = Math.imul(z ^ z >>> 15, z | 1); z ^= z + Math.imul(z ^ z >>> 7, z | 61); return ((z ^ z >>> 14) >>> 0) / 4294967296; };
+  const o = t.map((_, i) => i); for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }   // today's order
+  for (let k = 0; k < o.length; k++) {
+    const [r, s, url, len] = t[o[k]];
+    if (sec < len - 2) { if (skip && skip.r === r && skip.s === s) { sec = 0; continue; } return { r, s, url, at: sec < 4 ? 0 : sec, len }; }
+    sec -= len;
+  }
+  const [r, s, url, len] = t[o[0]]; return { r, s, url, at: 0, len };
+}
+async function radioTune(ended) {
+  const my = ++rTuning;
+  $('#player').hidden = false; $('#plToggle').textContent = 'إيقاف'; document.body.classList.add('radio');
+  $('#plTitle').textContent = '📻 راديو القرآن'; if (!RNOW) $('#plSub').textContent = 'أضبط الإذاعة…';
+  let n = null; const t = await radioTable();
+  if (my !== rTuning || !radioOn) return;
+  if (t) n = radioNow(t, ended ? RNOW : null);
+  else {   // the lengths did not come: quran.com's own way — a random one of the list, from a random point
+    const r = +RREC[Math.floor(Math.random() * 4)], s = 1 + Math.floor(Math.random() * 114);
+    const d = await getJ(QDC + r + '/audio_files?chapter=' + s), url = d?.audio_files?.[0]?.audio_url;
+    if (my !== rTuning || !radioOn) return;
+    if (url) n = { r, s, url, at: ended ? 0 : -1, len: 0 };
+  }
+  if (!n) { $('#plSub').textContent = 'تعذّر تشغيل الراديو — تحقق من الإنترنت'; return; }
+  RNOW = n; playing = null;
+  audio.src = n.url;
+  audio.onloadedmetadata = () => {
+    audio.onloadedmetadata = null;
+    const at = n.at < 0 ? Math.random() * (audio.duration || 0) * .9 : n.at;
+    if (at > 0 && isFinite(audio.duration) && at < audio.duration - 2) try { audio.currentTime = at; } catch (e) {}
+  };
+  try { await audio.play(); } catch (e) { if (my === rTuning) radioBlocked(); }
+  radioUi();
+}
+function radioUi() {
+  if (radioOn && RNOW) { $('#plTitle').textContent = '📻 سورة ' + SURAHS[RNOW.s - 1]; $('#plSub').textContent = RNAME[RNOW.r] + ' · راديو القرآن — التلاوات الأكثر شيوعًا'; }
+  homeCards(); miniAudio();
+}
+function radioStart() { if (playing) { audio.pause(); playing = null; } radioOn = true; RNOW = null; quranUi(); radioTune(false); }
+/** a browser that refuses sound before a touch: the radio starts at the first one */
+function radioBlocked() {
+  $('#plSub').textContent = 'اضغط أي مكان ليبدأ الراديو'; $('#plToggle').textContent = 'تشغيل';
+  const go = () => { removeEventListener('pointerdown', go, true); removeEventListener('keydown', go, true); if (radioOn && audio.paused) radioTune(false); };
+  addEventListener('pointerdown', go, true); addEventListener('keydown', go, true);
+}
+/** in the photo view («up»): what is playing, over the prayer bar */
+function miniAudio() {
+  const m = $('#miniA'); if (!m) return;
+  const on = !audio.paused && (radioOn ? !!RNOW : !!playing);
+  m.classList.toggle('on', on); if (!on) return;
+  const s = radioOn ? RNOW.s : playing, who = radioOn ? RNAME[RNOW.r] + ' · 📻 راديو القرآن' : $('#plSub').textContent;
+  const pct = audio.duration ? Math.min(100, audio.currentTime / audio.duration * 100) : 0;
+  m.innerHTML = `<i class="eq"></i><div><b>سورة ${SURAHS[s - 1]}</b><span>${esc(who)}</span></div><div class="pb"><i style="width:${pct}%"></i></div>`;
+}
+let miniT = 0; audio.addEventListener('timeupdate', () => { if (Date.now() - miniT > 5000) { miniT = Date.now(); miniAudio(); } });
+audio.addEventListener('play', miniAudio); audio.addEventListener('pause', miniAudio);
+audio.onended = () => { if (radioOn) return radioTune(true); if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
+audio.onerror = () => { if (radioOn && audio.src) setTimeout(() => radioOn && radioTune(true), 4000); };
+function closePlayer() { const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); if (wasRadio) setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
 let pauseT = 0;
 audio.onpause = () => { clearTimeout(pauseT); pauseT = setTimeout(() => { if (audio.paused && playing) closePlayer(); }, 8000); };
 audio.onplay = () => clearTimeout(pauseT);
@@ -936,7 +1042,7 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
 }
 setInterval(scanMaybe, 3600e3);
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span></button>`;
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 function iptvUi() {
   const groups = ['all', ...new Set(ILIST.map(c => c.group))].slice(0, 30);
   $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
@@ -1150,6 +1256,8 @@ async function playChannel(list, i) {
     list = list.filter((x, k) => k === i || !/^yt-live:/.test(x.url)); i = list.indexOf(chosen);
   }
   const c = list[i]; if (!c) return;
+  lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
+  if (radioOn) closePlayer();
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
@@ -1169,9 +1277,30 @@ async function playMatchChannel(other) {
 }
 
 // ---- shelves
-function cardsHtml() {
+// ▶ the last thing watched — a YouTube video (YouTube itself carries on where it stopped) or a TV channel — is the home shelf's first card
+function lastGet() { try { return JSON.parse(localStorage.last || 'null'); } catch (e) { return null; } }
+function lastSet(x) { try { localStorage.last = JSON.stringify({ ...x, at: Date.now() }); } catch (e) {} setTimeout(homeCards, 600); }
+function lastPlay() {
+  const x = lastGet(); if (!x) return;
+  if (x.k === 'yt') return TV.youtube(x.id);
+  const same = [...MYFAV, ...ILIST].find(c => c.name === x.name);   // today's link for it, when the lists have it
+  playChannel([same || { name: x.name, url: x.url, logo: x.logo, group: x.group }], 0);
+}
+function lastHtml() {
+  const x = lastGet(); if (!x) return '';
+  const img = x.k === 'yt' ? `https://i.ytimg.com/vi/${esc(x.id)}/mqdefault.jpg` : x.logo;
+  return `<button class="card f last ${x.k === 'ch' ? 'ch' : ''}" data-act="last" style="${img ? `background-image:url('${esc(img)}')` : ''}"><span>${x.k === 'yt' ? '▶ كمّل المشاهدة' : '📺 آخر قناة'}</span><b>${esc(x.k === 'yt' ? (x.t || 'آخر مقطع') : x.name)}</b></button>`;
+}
+const radioHtml = () => `<button class="card f radio${radioOn ? ' on' : ''}" data-act="radio"><div class="pic"></div><div class="txt"><b>التلاوات الأكثر شيوعًا</b><span>${radioOn && RNOW ? esc('الآن: سورة ' + SURAHS[RNOW.s - 1] + ' · ' + RNAME[RNOW.r]) : 'تلاوات يومية منتقاة'}</span></div></button>`;
+function homeCards() {
+  const sh = $('#s-quran'); if (!sh) return;
+  const a = document.activeElement, was = sh.contains(a) ? (a.dataset.act || a.dataset.yt) : null;
+  sh.innerHTML = cardsHtml(true);
+  if (was) (sh.querySelector(`[data-act="${was}"],[data-yt="${was}"]`) || sh.querySelector('.f'))?.focus();
+}
+function cardsHtml(home) {
   const u = TV.phoneUrl();
-  return CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join('')
+  return (home ? lastHtml() + radioHtml() : '') + CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join('')
     + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
 }
 let APPS = [];
@@ -1474,7 +1603,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'system') return TV.settings();
   if (b.dataset.act === 'phone') return settings(true);
   if (b.dataset.wall) { try { localStorage.wall = b.dataset.wall; } catch (x) {} applyWall(); return settings(true); }
-  if (b.dataset.yt) return TV.youtube(b.dataset.yt);
+  if (b.dataset.yt) { lastSet({ k: 'yt', id: b.dataset.yt, t: (b.querySelector('span,b')?.textContent || '').replace(/^● مباشر\s*/, '').trim() }); return TV.youtube(b.dataset.yt); }
   if (b.dataset.rname) return ytPick(b.dataset.rname);
   if (b.dataset.yts) return ytSearch(+b.dataset.yts);
   if (b.dataset.ytq) return TV.link('https://www.youtube.com/results?search_query=' + encodeURIComponent(b.dataset.ytq));
@@ -1482,6 +1611,7 @@ document.addEventListener('click', e => {
   if (b.dataset.ch) return TV.channel ? TV.channel(b.dataset.ch) : TV.link('https://www.youtube.com/channel/' + b.dataset.ch);
   if (b.dataset.rec) { try { localStorage.rec = b.dataset.rec; } catch (x) {} if (playing) playSurah(playing); return quranUi(); }
   if (b.dataset.sura) return playSurah(+b.dataset.sura);
+  if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-close') return closePlayer();
   if (b.dataset.act === 'nextm') return playMatchChannel();
@@ -1490,7 +1620,14 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'gofilt') { const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ifilt) { FILT[b.dataset.ifilt] = !FILT[b.dataset.ifilt]; iptvUi(); const n = document.querySelector(`[data-ifilt="${b.dataset.ifilt}"]`); if (n) n.focus(); return; }
+  if (b.dataset.ilist && e.target.closest && e.target.closest('[data-star]')) {   // the ⭐ on the channel
+    const l = listOf(b.dataset.ilist), c = l && l[+b.dataset.i], sel = `[data-ilist="${b.dataset.ilist}"][data-i="${b.dataset.i}"]`;
+    if (c) toggleFav(c).then(() => { iptvUi(); big5Ui(); $(sel)?.focus(); });
+    return;
+  }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
+  if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
+  if (b.dataset.act === 'last') return lastPlay();
   if (b.dataset.ctx) return ctxDo(b.dataset.ctx);
   if (b.dataset.ytll) { YTLL = +b.dataset.ytll; ytlUi(); return $(`[data-ytll="${YTLL}"]`)?.focus(); }
   if (b.dataset.b5) { B5 = +b.dataset.b5; big5Ui(); return $(`[data-b5="${B5}"]`)?.focus(); }
@@ -1612,8 +1749,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' || e.key === 'GoBack') { e.preventDefault(); window.onTvBack(); }
 });
 
-$('#s-quran').innerHTML = cardsHtml(); $('#s-quran2').innerHTML = cardsHtml();
+$('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml();
 homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs();
+// a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
+if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();
