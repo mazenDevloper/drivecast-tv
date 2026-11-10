@@ -343,6 +343,14 @@ public class HomeActivity extends Activity {
             }, "favs").start();
         }
 
+        /** the daily channel scan: starts it when the last one is over a day old (or force), true if it started */
+        @JavascriptInterface
+        public boolean scanStart(String urlsJson, boolean force) { return Scan.start(HomeActivity.this, urlsJson, force); }
+
+        /** {t, running, done, total, r: {url: 1|0}} */
+        @JavascriptInterface
+        public String scanState() { return Scan.state(HomeActivity.this); }
+
         /** every setting of the TV's settings panel, as JSON (the adhan, the player and the mouse read them too) */
         @JavascriptInterface
         public String prefs() { return new JSONObject(Access.set(HomeActivity.this).getAll()).toString(); }

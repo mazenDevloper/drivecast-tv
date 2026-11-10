@@ -80,16 +80,16 @@ public class PlayerActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
-        PlayerView view = new PlayerView(this);
+        view = new PlayerView(this);
         view.setUseController(false);
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root);
+        buildBar(root); Scan.paused = true;   // the daily scan waits while a channel plays
         setContentView(root);
 
         meter = new DefaultBandwidthMeter.Builder(this).build();
-        player = new ExoPlayer.Builder(this).setBandwidthMeter(meter).build();
+        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).build();
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
@@ -98,7 +98,9 @@ public class PlayerActivity extends Activity {
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
             }
             @Override public void onPlayerError(PlaybackException e) { retry(); }
+            @Override public void onVideoSizeChanged(androidx.media3.common.VideoSize vs) { vw = vs.width * (vs.pixelWidthHeightRatio > 0 ? vs.pixelWidthHeightRatio : 1f); vh = vs.height; fit(); }
         });
+        root.addOnLayoutChangeListener((v, l, t, r, bt, ol, ot, or, ob) -> fit());
         player.addAnalyticsListener(new AnalyticsListener() {
             @Override public void onVideoDecoderInitialized(EventTime t, String d, long a, long b) { decoder = d; fill(); }
             @Override public void onVideoInputFormatChanged(EventTime t, Format f, DecoderReuseEvaluation r) { fill(); }
@@ -106,6 +108,24 @@ public class PlayerActivity extends Activity {
         });
         play();
         tick.run();
+    }
+
+    // ---- the picture's width: 0 smart, 1 as it is (black sides stay), 2 fill the screen (crops)
+    private PlayerView view;
+    private float vw, vh;
+    private int fitMode = 0;
+    private static final String[] FIT_NAMES = {"عرض ذكي", "الأصلي", "ملء الشاشة"};
+
+    /** smart: a picture narrower than the screen (4:3, or a 16:9 one inside black bars) is enlarged until the side bars shrink,
+     *  cropping at most ~16% of its top and bottom (never more, so faces and scores stay); a wide one just fills. */
+    private void fit() {
+        if (view == null || vw <= 0 || vh <= 0) return;
+        View p = (View) view.getParent();
+        if (p == null || p.getWidth() == 0 || p.getHeight() == 0) return;
+        float screen = p.getWidth() / (float) p.getHeight(), ar = vw / vh, z = 1f;
+        if (fitMode == 2) z = Math.max(screen / ar, 1f);
+        else if (fitMode == 0) z = ar >= screen ? 1f : Math.min(screen / ar, 1.16f);
+        view.setScaleX(z); view.setScaleY(z);
     }
 
     // ---- the bar: a tvOS glass sheet at the bottom
@@ -186,7 +206,9 @@ public class PlayerActivity extends Activity {
     }
 
     /** what is really coming in, as chips */
-    private void fill() {
+    private void open() { try { if (player == null) return; player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+    private void fill() { try { fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
+    private void fill0() {
         if (player == null) return;
         chips.removeAllViews(); chips2.removeAllViews(); row = chips;
         boolean ready = player.getPlaybackState() == Player.STATE_READY;
@@ -270,6 +292,8 @@ public class PlayerActivity extends Activity {
 
     private void setNote(String s) { note.setText(s); note.setVisibility(s == null ? View.GONE : View.VISIBLE); }
 
+    private final Runnable clearNote = () -> { if (!offered && errors == 0) setNote(null); };
+
     private final Runnable stall = this::retry;
 
     /** a drop or a stall: reconnect the same channel, a little later each time; after TRIES in a row, offer another player */
@@ -279,10 +303,11 @@ public class PlayerActivity extends Activity {
         if (errors >= TRIES) { offerOtherPlayer(); return; }
         setNote("إعادة الاتصال… (" + errors + " من " + TRIES + ")");
         showBar(0);
-        net.postDelayed(() -> { player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); }, 1200L * errors);
+        net.postDelayed(() -> { open(); }, 1200L * errors);
     }
 
-    private void play() {
+    private void play() { try { play0(); } catch (Throwable t) { Crash.note(this, "player play: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+    private void play0() {
         errors = 0; offered = false; decoder = "";
         net.removeCallbacksAndMessages(null);
         num.setText(String.valueOf(i + 1));
@@ -296,7 +321,7 @@ public class PlayerActivity extends Activity {
         // zapping: the bar changes at once, the stream opens only once the remote rests (400 ms)
         player.stop();
         final int at = i;
-        net.postDelayed(() -> { if (at != i) return; player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); }, 400);
+        net.postDelayed(() -> { if (at != i) return; open(); }, 400);
     }
 
     private void loadLogo(String u) {
@@ -336,7 +361,8 @@ public class PlayerActivity extends Activity {
     };
 
     @Override
-    public boolean onKeyDown(int code, KeyEvent e) {
+    public boolean onKeyDown(int code, KeyEvent e) { try { return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
+    private boolean key(int code, KeyEvent e) {
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
@@ -348,7 +374,12 @@ public class PlayerActivity extends Activity {
         if (ok && e.getRepeatCount() == 8) { openOtherPlayer(); return true; }   // OK held ≈ ½ s: another player
         if (ok && e.getRepeatCount() > 0) return true;
         if (ok && offered) { openOtherPlayer(); return true; }
-        if (ok || code == KeyEvent.KEYCODE_INFO || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) { fill(); showBar(6000); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {   // ◀ ▶ : smart / original / fill
+            fitMode = (fitMode + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 2)) % 3; fit();
+            fill(); setNote("حجم الصورة: " + FIT_NAMES[fitMode] + "  ◀ ▶"); showBar(3500);
+            h.removeCallbacks(clearNote); h.postDelayed(clearNote, 3500); return true;
+        }
+        if (ok || code == KeyEvent.KEYCODE_INFO) { fill(); showBar(6000); return true; }
         return super.onKeyDown(code, e);
     }
 
@@ -356,7 +387,9 @@ public class PlayerActivity extends Activity {
     protected void onStop() {
         super.onStop();
         net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null);
-        if (player != null) { player.release(); player = null; }
+        Scan.paused = false;
+        try { if (player != null) { player.release(); } } catch (Throwable ignored) { }
+        player = null;
         finish();
     }
 }

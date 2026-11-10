@@ -133,6 +133,14 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .chan img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222}
 .ichan{height:110px;border-radius:24px;border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;gap:14px;padding:0 18px;color:var(--ink);font-family:inherit;font-size:20px;text-align:right;overflow:hidden}
 .ichan img{width:64px;height:64px;object-fit:contain;flex:none}
+.ichan.ok::before,.ichan.bad::before{content:"";flex:none;width:14px;height:14px;border-radius:50%;margin-inline-end:-4px}
+.ichan.ok::before{background:#3ddc97;box-shadow:0 0 10px #3ddc97}
+.ichan.bad::before{background:#ff4d4f;box-shadow:0 0 10px #ff4d4f}
+.ichan.bad{opacity:.62}
+.ichan .nm{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ichan .at{font-size:13px;opacity:.78;letter-spacing:.2px;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ichan .at:empty{display:none}
+.chip.chk.on{background:#3ddc97;color:#06281a}
 .ichan.fav::after{content:"★";margin-inline-start:auto;color:#f5c94c;font-size:22px}
 /* the long-press menu, tvOS style: a glass sheet, big rows, the focused one lifts and glows */
 .ctx{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;background:rgba(4,7,10,.38);backdrop-filter:blur(6px)}
@@ -221,7 +229,7 @@ body.moving .bmove{display:block}
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
 body.ambient .page,body.ambient .player{display:none!important}
-body.ambient .wall{transform:scale(.92) translateY(-5%);transform-origin:50% 50%;border-radius:0 0 34px 34px}
+body.ambient .wall{transform:scale(1,.92) translateY(-5%);transform-origin:50% 50%;border-radius:0 0 34px 34px}
 /* the full-photo view: the photo a little smaller and higher, its own blurred light around it (tvOS's ambient backdrop) */
 #wallBack{position:fixed;inset:-6%;z-index:-3;background-size:cover;background-position:center;filter:blur(46px) saturate(1.15) brightness(.55);opacity:0;transition:opacity .9s}
 body.ambient #wallBack{opacity:1}
@@ -291,11 +299,12 @@ body.ambient .phrase.on{display:block}
     <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
+    <div style="margin-bottom:10px"><button class="chip f" data-act="gofilt">🎚️ فلترة وبحث القنوات (الجودة · HDR · عمق اللون · H.264)</button></div>
     <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
+    <h2>القنوات العربية</h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -871,11 +880,70 @@ function favUi() {
   loadFavs();
   $('#s-myfav').innerHTML = MYFAV.map((c, i) => ichHtml(c, i, 'my')).join('') || '<div class="empty">اضغط مطوّلاً على أي قناة ← ⭐ أضف للمفضّلة</div>';
 }
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span>${esc(c.name)}</span></button>`;
+// ---- the daily scan: every channel opened once a day; works → green dot, does not → red dot
+let SCAN = {}, SCANT = 0;
+const isOk = c => { const v = SCAN[c.url]; return v === 1 || (!!v && typeof v === 'object'); };   // the old scan stored 1; the new one the stream's attributes
+const scanCls = c => isOk(c) ? ' ok' : SCAN[c.url] === 0 ? ' bad' : '';
+// the stream's attributes the scan found, as one line: quality · codec · bit depth · HDR · fps · Mbps
+const QNAME = h => h >= 2000 ? '4K' : h >= 1400 ? 'QHD' : h >= 1000 ? 'FHD' : h >= 700 ? 'HD' : h > 0 ? 'SD' : '';
+const CNAME = { avc: 'H.264', hevc: 'HEVC', av1: 'AV1', vp9: 'VP9' };
+function attrText(c) {
+  const v = SCAN[c.url]; if (!v || typeof v !== 'object') return '';
+  return [QNAME(v.h), CNAME[v.c], v.b ? v.b + '-bit' : '', v.c || v.r ? (v.r || 'SDR') : '', v.f ? v.f + 'fps' : '', v.m ? v.m + ' Mbps' : ''].filter(Boolean).join(' · ');
+}
+function markScan() {
+  document.querySelectorAll('.ichan[data-ilist]').forEach(b => {
+    const c = (listOf(b.dataset.ilist) || [])[+b.dataset.i]; if (!c) return;
+    b.classList.toggle('ok', isOk(c)); b.classList.toggle('bad', SCAN[c.url] === 0);
+    const a = b.querySelector('.at'); if (a) a.textContent = attrText(c);
+  });
+}
+// ---- filters (checkboxes) on the scan's findings + a name search
+const FILT = { ok: false, k4: false, fhd: false, hd: false, hdr: false, b10: false, avc: false, hevc: false, q: '' };
+const FILT_CHIPS = [['ok', '✅ تعمل فقط'], ['k4', '4K'], ['fhd', 'FHD ↑'], ['hd', 'HD ↑'], ['hdr', 'HDR'], ['b10', '10-bit'], ['avc', 'H.264'], ['hevc', 'HEVC']];
+const filtOn = () => FILT.q.trim() !== '' || FILT_CHIPS.some(([k]) => FILT[k]);
+function passFilt(c) {
+  const v = SCAN[c.url], o = v && typeof v === 'object' ? v : {};
+  if (FILT.q.trim() && !c.name.toLowerCase().includes(FILT.q.trim().toLowerCase())) return false;
+  if (FILT.ok && !isOk(c)) return false;
+  if (FILT.k4 && !(o.h >= 2000)) return false;
+  if (FILT.fhd && !(o.h >= 1000)) return false;
+  if (FILT.hd && !(o.h >= 700)) return false;
+  if (FILT.hdr && !/HDR|HLG|DV/.test(o.r || '')) return false;
+  if (FILT.b10 && !(o.b >= 10)) return false;
+  if (FILT.avc && o.c !== 'avc') return false;
+  if (FILT.hevc && o.c !== 'hevc') return false;
+  return true;
+}
+function filtUi() {
+  const box = $('#s-ifilt'); if (!box) return;
+  const n = Object.keys(SCAN).length;
+  box.innerHTML = FILT_CHIPS.map(([k, t]) => `<button class="chip f chk ${FILT[k] ? 'on' : ''}" data-ifilt="${k}">${FILT[k] ? '☑' : '☐'} ${t}</button>`).join('')
+    + `<span class="empty" style="margin:0 12px">${SCANT ? 'آخر فحص: ' + new Date(SCANT).toLocaleString('ar') + ' · ' + n + ' قناة' : n ? 'الفحص يعمل… ' + n : 'لم يُفحص بعد'}</span>`;
+}
+async function scanPoll() {
+  if (!window.TV || !TV.scanState || TV === FAKE) return;
+  try {
+    const s = JSON.parse(TV.scanState()); SCAN = s.r || {}; SCANT = s.t || 0; markScan(); filtUi();
+    if (s.running) setTimeout(scanPoll, 4000); else if (filtOn()) { iptvUi(); big5Ui(); }
+    if (!window.__isearch) { window.__isearch = 1; const q = $('#s-isearch'); if (q) q.addEventListener('input', () => { clearTimeout(window.__qt); window.__qt = setTimeout(() => { FILT.q = q.value; iptvUi(); }, 350); }); }
+  } catch (e) { }
+}
+function scanMaybe() {   // once a day: all the channels the TV knows (favourites, lists, sports, big five)
+  if (!window.TV || !TV.scanStart || TV === FAKE) return;
+  scanPoll();
+  const urls = [...new Set([...IFAV, ...ILIST, ...(SPORTS?.list || []), ...(MYFAV || [])].map(c => c.url).filter(u => /^https?:/i.test(u) && !/youtube\.com|youtu\.be/i.test(u)))];   // YouTube opens in YouTube: nothing to scan
+  if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
+}
+setInterval(scanMaybe, 3600e3);
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span></button>`;
 function iptvUi() {
   const groups = ['all', ...new Set(ILIST.map(c => c.group))].slice(0, 30);
   $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
-  const shown = ILIST.filter(c => IGROUP === 'all' || c.group === IGROUP).slice(0, 300);
+  filtUi();
+  let pool = ILIST.filter(c => IGROUP === 'all' || c.group === IGROUP);
+  if (filtOn()) { const seen = new Set(); pool = [...MYFAV, ...IFAV, ...ILIST].filter(c => c && c.url && !seen.has(c.url) && seen.add(c.url)).filter(passFilt); }   // filtering searches every list
+  const shown = pool.slice(0, 400);
   window.__shown = shown;
   $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || '<div class="empty">جارٍ التحميل…</div>';
 }
@@ -887,12 +955,12 @@ async function loadLists() {
   const texts = await Promise.all(LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u')));
   const seen = new Set(); ILIST = [];
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  liveUi(); iptvUi();
+  liveUi(); iptvUi(); scanMaybe();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
 const HOME_PICKS = [[/^(Al Quran Al Kareem|Saudi Quran|Quran Kareem)/i, /قرآن|القرآن|quran|makkah|مكة/i], [/^Oman TV( \(|$)/i, /oman tv(?! (cultural|mubashir|live|sport))/i], [/^Oman TV (Mubashir|Live)/i, /oman.*(mubashir|live|مباشر)/i],
-  [/^Al Jazeera( \(|$)/i, /jazeera|الجزيرة/i], [/^MBC 1\b/i, /\bmbc ?1\b|mbc$/i], [/^Oman Sports?/i, /oman sports?|عمان الرياضية/i]];
+  [/^Oman Sports?/i, /oman sports?|عمان الرياضية/i], [/^MBC 1\b/i, /\bmbc ?1\b|mbc$/i], [/^MBC (Drama|4|Action)\b/i, /\bmbc ?(drama|4|action)\b/i], [/^Al Jazeera( \(|$)/i, /jazeera|الجزيرة/i]];
 const PICKS = [/^Oman TV\b/i, /^Oman TV Cultural/i, /^Oman TV Mubashir/i, /^Oman Sports?/i, /^MBC 1\b/i, /^MBC Drama/i, /^MBC 4\b/i, /^MBC 5\b/i, /^MBC Action/i, /^MBC Masr\b/i, /^Al Quran Al Kareem/i, /^Al Sunnah/i, /^Iqraa Quran/i, /^Al Jazeera( |$)/i, /^Al Arabiya( |$)/i, /^Dubai Sports/i, /^Abu Dhabi Sports/i, /^Sharjah Sports/i];
 function liveUi() {
   const usable = c => !/geo-blocked|radio|\bFM\b/i.test(c.name);
@@ -903,7 +971,7 @@ function liveUi() {
   }
   loadFavs();
   const mine = MYFAV.filter(f => !picks.some(p => p.name === f.name));
-  LIVE = [...mine, ...picks, ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
+  LIVE = [...picks, ...mine, ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
@@ -921,6 +989,28 @@ const BIG5 = [
     [SKY_DE, FOREIGN(/dazn \d germany|sportdigital|\bespn\b(?! ?(u|news|deportes|latin))|sky sports (main event|football)/i)]],
   ['الفرنسي', /الفرنسي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
     [FOREIGN(/ligue ?1|canal\+ ?(foot|sport)|dazn(?! ?(f1|bet))|\bbein\b(?! ?(movies|drama|series))|sport ?tv ?\d/i)]],
+  // the other leagues: whoever carries them (the region's broadcaster, and the channels abroad) joins the same lists
+  ['دوري الأبطال', /أبطال أوروبا|دوري أبطال|الدوري الأوروبي|المؤتمر/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))|starz ?play|abu ?dhabi sports?/i, 'beIN SPORTS · STARZPLAY',
+    [FOREIGN(/tnt sports|canal\+ ?(foot|sport)|sky sport(?!s)|sky sports (main event|football)|movistar|dazn(?! ?(f1|bet))|\bespn\b(?! ?(u|news))|sport ?tv ?\d|cbs sports|paramount|premier sports|\bsuper ?sport\b/i)]],
+  ['السعودي', /السعودي|روشن/, /thmanyah|\bssc\b|saudi sports|ksa sports|ثمانية|السعودية الرياضية/i, 'ثمانية · SSC', []],
+  ['الإماراتي', /الإماراتي|أدنوك/, /abu ?dhabi sports?|dubai sports?|sharjah sports?|ad sport/i, 'أبوظبي الرياضية · دبي الرياضية', []],
+  ['العُماني', /العماني|عمانتل/, /oman sports?|عمان الرياضية/i, 'عُمان الرياضية', []],
+  ['التركي', /التركي|سوبر ليغ/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/\bs ?sport\b|trt spor|\ba spor\b|\bbein sports? (tr|turk)|tivibu|\bht spor\b|\bnow tv\b/i)]],
+  ['البرتغالي', /البرتغالي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/sport ?tv ?\d|benfica tv|sporting tv|porto canal|eleven sports|\bdazn\b/i)]],
+  ['الهولندي', /الهولندي/, /dubai sports?/i, 'دبي الرياضية',
+    [FOREIGN(/\bespn\b ?(nl|netherlands)|ziggo sport|viaplay|fox sports (nl|eredivisie)/i)]],
+  ['الاسكتلندي', /الاسكتلندي|السكوتلندي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/premier sports|sky sports|\bbbc scotland|\bsportscotland|\bstv\b/i)]],
+  ['الأمريكي', /الأمريكي|الدوري الأمريكي|MLS/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
+    [FOREIGN(/\bmls\b|fox sports|\bespn\b(?! ?(u|news))|tudn|telemundo|universo|\bapple tv\b|\bfs1\b/i)]],
+  ['البرازيلي', /البرازيلي/, /dubai sports?/i, 'دبي الرياضية',
+    [FOREIGN(/premiere|sportv|\bespn\b ?brasil|globo|band sports|fox sports brasil/i)]],
+  ['الأرجنتيني', /الأرجنتيني/, /dubai sports?/i, 'دبي الرياضية',
+    [FOREIGN(/\btyc\b|\bespn\b ?(arg|premium)|tnt sports (arg|argentina)|tv p[uú]blica|fox sports (arg|argentina)/i)]],
+  ['الياباني', /الياباني/, /dazn/i, 'DAZN', [FOREIGN(/dazn|sky ?perfec|j sports|spotv|nhk bs/i)]],
+  ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
 const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : window.__shown;
@@ -953,7 +1043,7 @@ function ytlUi() {
 async function loadSports() {
   if (SPORTS && Date.now() - SPORTS.at < 3600e3) return;
   const t = await getText('https://iptv-org.github.io/iptv/categories/sports.m3u');
-  if (t) { SPORTS = { at: Date.now(), list: parseM3u(t).filter(c => !/geo-blocked/i.test(c.name)) }; big5Ui(); }
+  if (t) { SPORTS = { at: Date.now(), list: parseM3u(t).filter(c => !/geo-blocked/i.test(c.name)) }; big5Ui(); scanMaybe(); }   // the foreign channels join the daily scan
 }
 function big5Ui() {
   const cnt = i => TODAYM.filter(m => BIG5[i][1].test(m.league?.name || '') && !/كأس/.test(m.league?.name || '') && m.status !== 'finished').length;
@@ -961,14 +1051,15 @@ function big5Ui() {
     return `<button class="chip f ${B5 === i ? 'on' : ''}" data-b5="${i}">${b[0]}${n ? `<i class="cnt">${AR(n)} اليوم</i>` : ''}</button>`; }).join('');
   const rules = B5 < 0 ? BIG5 : [BIG5[B5]], seen = new Set();
   B5LIST = []; B5F = [];
-  for (const c of [...IFAV, ...ILIST]) if (rules.some(r => r[2].test(c.name)) && !/geo-blocked/i.test(c.name) && !seen.has(c.url)) { seen.add(c.url); B5LIST.push(c); }
-  for (const c of SPORTS?.list || []) if (!seen.has(c.url) && rules.some(r => r[4].some(f => f(c)))) { seen.add(c.url); B5F.push(c); }
+  const keep = filtOn() ? passFilt : () => true;   // the channel filters (quality, HDR, bit depth, codec, works) cover these lists too
+  for (const c of [...IFAV, ...ILIST]) if (rules.some(r => r[2].test(c.name)) && !/geo-blocked/i.test(c.name) && !seen.has(c.url)) { seen.add(c.url); if (keep(c)) B5LIST.push(c); }
+  for (const c of [...(SPORTS?.list || []), ...ILIST.filter(x => x.cc)]) if (!seen.has(c.url) && rules.some(r => r[4].some(f => f(c)))) { seen.add(c.url); if (keep(c)) B5F.push(c); }
   const apps = APPS.filter(a => rules.some(r => r[2].test(a.label) || r[2].test(a.pkg) || a.label.includes(r[3].split(' ')[0])));
   const who = [...new Set(rules.map(r => r[3]))].join(' · ');
   $('#s-b5').innerHTML = B5LIST.slice(0, 40).map((c, i) => ichHtml(c, i, 'b5')).join('')
     + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
     || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم العربية ولا تطبيقها على التلفزيون</div>`;
-  $('#s-b5f').innerHTML = B5F.slice(0, 60).map((c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f')).join('')
+  $('#s-b5f').innerHTML = B5F.slice(0, 150).map((c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f')).join('')
     || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
 }
 async function loadIptv() {
@@ -1396,7 +1487,9 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'nextm') return playMatchChannel();
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
+  if (b.dataset.act === 'gofilt') { const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
+  if (b.dataset.ifilt) { FILT[b.dataset.ifilt] = !FILT[b.dataset.ifilt]; iptvUi(); const n = document.querySelector(`[data-ifilt="${b.dataset.ifilt}"]`); if (n) n.focus(); return; }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.ctx) return ctxDo(b.dataset.ctx);
   if (b.dataset.ytll) { YTLL = +b.dataset.ytll; ytlUi(); return $(`[data-ytll="${YTLL}"]`)?.focus(); }
