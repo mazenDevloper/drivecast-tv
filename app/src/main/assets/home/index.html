@@ -22,6 +22,12 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 .rk{display:none;background-size:cover;background-position:center;transition:none}#rkN{transition:opacity 2s}
 /* the morning photo's sunlit faces: the same view in direct sun, each face masked, as bright as the sun on it now */
 #rkF{opacity:0;transition:opacity 4s}#rkF i{position:absolute;inset:0;background:url(wall/rk-morning-sun.webp) center/cover;-webkit-mask-size:100% 100%;mask-size:100% 100%;opacity:0;transition:opacity 60s linear}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
+#wall .wl.rk{inset:auto;left:var(--rkx,0);top:var(--rky,0);width:var(--rkw,100%);height:var(--rkh,100%)}
+#rkCloud{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 6s}
+#rkHaze{position:absolute;inset:0;opacity:0;transition:opacity 6s;background:linear-gradient(180deg,rgba(214,206,190,.55) 0%,rgba(220,212,196,.8) 70%,rgba(200,192,178,.6) 100%)}
+#rkRain{position:absolute;inset:-10% 0 0;opacity:0;transition:opacity 4s;background:repeating-linear-gradient(104deg,rgba(220,230,245,0) 0 22px,rgba(220,230,245,.32) 22px 23px,rgba(220,230,245,0) 23px 47px),repeating-linear-gradient(100deg,rgba(220,230,245,0) 0 31px,rgba(220,230,245,.22) 31px 32px,rgba(220,230,245,0) 32px 71px);background-size:100% 160px,100% 220px;animation:rain .55s linear infinite}
+@keyframes rain{to{background-position:-26px 160px,-34px 220px}}
+#wall.wxgrade{transition:filter 6s}
 #rkStars{position:absolute;inset:0;width:100%;height:100%}#rkTint{position:absolute;inset:0;opacity:0;background:linear-gradient(180deg,#6d8db8 0%,#9db3cf 45%,#d9c8cf 78%,#ecd6c6 100%)}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
 #rkMoon{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
 #wMoonBox.free{-webkit-mask-image:none;mask-image:none}
@@ -284,7 +290,7 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""><canvas id="rkCloud" width="480" height="270"></canvas></i><i class="wl rk" id="rkHaze"></i><i class="wl rk" id="rkRain"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -465,12 +471,82 @@ function prayersUi() {
 const minutesAr = m => m === 1 ? 'دقيقة' : m === 2 ? 'دقيقتان' : m <= 10 ? AR(m) + ' دقائق' : AR(m) + ' دقيقة';
 const fmtD = d => fmt(d.getHours() + ':' + d.getMinutes());
 const fmt = hm => { let [h, m] = hm.split(':').map(Number); if (S('clock', '12') !== '24') h = h % 12 || 12; return h + ':' + String(m).padStart(2, '0'); };
-let wxAt = 0;
+let wxAt = 0, WX = null;   // WX: the weather now — cloud %, WMO code, visibility (m), temperature
 function weather() {
-  if (!P.lat || Date.now() - wxAt < 30 * 60000) return; wxAt = Date.now();
-  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat}&longitude=${P.lon}&current=temperature_2m`).then(r => r.json())
-    .then(j => { const c = j.current?.temperature_2m; if (c != null) $('#wx').textContent = (P.city || '') + ' ' + AR(Math.round(c)) + '°'; }).catch(() => {});
+  if (!P.lat || Date.now() - wxAt < 20 * 60000) return; wxAt = Date.now();
+  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${P.lat}&longitude=${P.lon}&current=temperature_2m,cloud_cover,weather_code,visibility`).then(r => r.json())
+    .then(j => {
+      const c = j.current; if (!c) return;
+      if (c.temperature_2m != null) $('#wx').textContent = (P.city || '') + ' ' + AR(Math.round(c.temperature_2m)) + '°';
+      WX = { cloud: +c.cloud_cover || 0, code: +c.weather_code || 0, vis: c.visibility == null ? 20000 : +c.visibility, t: c.temperature_2m };
+      try { localStorage.wx = JSON.stringify({ ...WX, at: Date.now() }); } catch (e) {}
+      if (getWall() === 'rawas') realSky();
+    }).catch(() => {});
 }
+try { const w = JSON.parse(localStorage.wx || 'null'); if (w && Date.now() - w.at < 3 * 3600e3) WX = w; } catch (e) {}
+const wxNow = () => window.__wx || WX || { cloud: 0, code: 0, vis: 20000 };
+/** the weather as words (for the line under the date) */
+function wxWords(w) {
+  const c = w.code;
+  if (c >= 95) return '⛈️ عواصف رعدية';
+  if (c >= 80) return '🌦️ زخات مطر';
+  if (c >= 61) return '🌧️ مطر';
+  if (c >= 51) return '🌦️ رذاذ';
+  if (c === 45 || c === 48) return '🌫️ ضباب';
+  if (w.vis < 5000) return '🌫️ غبار أو ضباب خفيف';
+  if (w.cloud >= 85) return '☁️ غائم';
+  if (w.cloud >= 45) return '⛅ غائم جزئياً';
+  if (w.cloud >= 15) return '🌤️ قليل الغيوم';
+  return '';
+}
+// the clouds: soft, from a seeded noise (the same sky all day, a new one each day), drawn once per cover %
+let cloudKey = '';
+function drawClouds(cover, tone) {
+  const cv = $('#rkCloud'); if (!cv) return;
+  const key = Math.round(cover * 20) + tone + NOW().toDateString(); if (key === cloudKey) return; cloudKey = key;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, img = g.createImageData(W, H);
+  let seed = 0; for (const ch of NOW().toDateString()) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const P0 = new Uint8Array(512); for (let i = 0; i < 256; i++) P0[i] = i;
+  for (let i = 255; i > 0; i--) { seed = (seed * 1103515245 + 12345) | 0; const j = ((seed >>> 8) % (i + 1)); [P0[i], P0[j]] = [P0[j], P0[i]]; }
+  for (let i = 0; i < 256; i++) P0[i + 256] = P0[i];
+  const fade = t => t * t * (3 - 2 * t), lerp = (a, b, t) => a + (b - a) * t, h = (x, y) => P0[P0[x & 255] + (y & 255)] / 255;
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = fade(x - xi), yf = fade(y - yi); return lerp(lerp(h(xi, yi), h(xi + 1, yi), xf), lerp(h(xi, yi + 1), h(xi + 1, yi + 1), xf), yf); };
+  const col = { day: [255, 255, 255, 196, 204, 214], warm: [255, 214, 186, 186, 128, 120], blue: [150, 162, 190, 70, 78, 100], night: [70, 76, 92, 30, 34, 44], grey: [214, 218, 224, 150, 156, 166] }[tone] || [255, 255, 255, 196, 204, 214];
+  const th = 1 - cover;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    // stretched along the horizon (clouds seen from below), finer near it
+    const sx = x / 70, sy = y / (26 + y * .06);
+    let n = 0, a = .55, f = 1; for (let o = 0; o < 5; o++) { n += a * vn(sx * f + o * 17, sy * f * 1.7 + o * 31); a *= .5; f *= 2.03; }
+    n = n / .95;
+    const v = Math.min(1, Math.max(0, (n - th + .12) / .3)), d = Math.min(1, Math.max(0, (n - th) / .45)), i = (y * W + x) * 4;
+    img.data[i] = lerp(col[0], col[3], d); img.data[i + 1] = lerp(col[1], col[4], d); img.data[i + 2] = lerp(col[2], col[5], d);
+    img.data[i + 3] = 255 * v * (.55 + .45 * Math.min(1, y / H * 2.2));
+  }
+  g.putImageData(img, 0, 0);
+}
+/** today's weather on the photo: clouds in its sky, a greyer / softer light when it is overcast, haze or dust, rain */
+function wxApply(a, alt, night) {
+  const w = wxNow(), c = Math.min(1, w.cloud / 100), oc = clamp((c - .3) / .7);
+  const rain = (w.code >= 51 && w.code <= 67) || (w.code >= 80 && w.code <= 82) || w.code >= 95;
+  const fog = w.code === 45 || w.code === 48 ? 1 : clamp((6000 - w.vis) / 5000);
+  const tone = night > .5 ? 'night' : a === 'blue' ? 'blue' : /sunset|after|dusk/.test(a) ? 'warm' : oc > .6 || rain ? 'grey' : 'day';
+  if (c > .05) drawClouds(Math.max(c, rain ? .85 : 0), tone);
+  $('#rkCloud').style.opacity = (c > .05 ? clamp(.35 + c * .75) * (night > .5 ? .7 : 1) : 0).toFixed(2);
+  $('#rkHaze').style.opacity = (fog * (night > .5 ? .35 : .75)).toFixed(2);
+  $('#rkRain').style.opacity = rain ? (w.code >= 63 || w.code >= 81 ? .75 : .45) : 0;
+  const wl = $('#wall'); wl.classList.add('wxgrade');
+  const sat = 1 - .4 * oc - .2 * fog - (rain ? .15 : 0), br = 1 - .1 * oc - (rain ? .12 : 0), ct = 1 - .14 * oc - .2 * fog;
+  wl.style.filter = sat > .99 && br > .99 && ct > .99 ? '' : `saturate(${sat.toFixed(2)}) brightness(${br.toFixed(2)}) contrast(${ct.toFixed(2)})`;
+  return { sunK: (1 - .85 * oc) * (1 - .7 * fog) * (rain ? .3 : 1), skyK: 1 - .92 * c - (rain ? .08 : 0) - .6 * fog };
+}
+/** the photo's layers: 16:9, covering the screen like the picture itself (so its masks sit on it at any screen shape) */
+function rkFit() {
+  const w = $('#wall'); if (!w) return;
+  const W = w.clientWidth || innerWidth, H = w.clientHeight || innerHeight, k = Math.max(W / 1920, H / 1080), rw = 1920 * k, rh = 1080 * k;
+  w.style.setProperty('--rkw', rw + 'px'); w.style.setProperty('--rkh', rh + 'px');
+  w.style.setProperty('--rkx', (W - rw) / 2 + 'px'); w.style.setProperty('--rky', (H - rh) / 2 + 'px');
+}
+addEventListener('resize', rkFit);
 
 
 // ---- wallpapers: Omar Al-Rawas mosque (Salalah), and noor-tv's three (MIT, majedphotos); «أوقات اليوم» follows the time of day
@@ -503,13 +579,13 @@ const rkScreen = (k, alt, az) => ({ x: 50 + ((((az - k.head + 540) % 360) - 180)
 let rkShown = '';
 // the sun on a vertical face looking at azimuth n (the mosque is on the qibla ≈300°: its faces here look ESE 120° and NNE 30°)
 const faceSun = (alt, az, n) => alt <= 0 ? 0 : clamp(Math.cos(alt * Math.PI / 180) * Math.cos((az - n) * Math.PI / 180)) * clamp(alt / 3);
-function rkFaces(on, alt, az) {
+function rkFaces(on, alt, az, k = 1) {
   const F = $('#rkF'); F.style.opacity = on ? 1 : 0;
   if (!window.RKF) return;
   for (const [id, m] of [['#rkFL', 'left'], ['#rkFR', 'right'], ['#rkFG', 'ground']]) { const e = $(id); if (!e.dataset.m) { e.style.webkitMaskImage = e.style.maskImage = `url(${RKF[m]})`; e.dataset.m = 1; } }
-  $('#rkFL').style.opacity = faceSun(alt, az, 120).toFixed(3);
-  $('#rkFR').style.opacity = faceSun(alt, az, 30).toFixed(3);
-  $('#rkFG').style.opacity = (alt <= 0 ? 0 : clamp(Math.sin(alt * Math.PI / 180) * 1.8) * clamp(alt / 3)).toFixed(3);
+  $('#rkFL').style.opacity = (faceSun(alt, az, 120) * k).toFixed(3);
+  $('#rkFR').style.opacity = (faceSun(alt, az, 30) * k).toFixed(3);
+  $('#rkFG').style.opacity = ((alt <= 0 ? 0 : clamp(Math.sin(alt * Math.PI / 180) * 1.8) * clamp(alt / 3)) * k).toFixed(3);
 }
 function rkPhase(now, alt, az) {
   const t = P.today, min = (a, b) => (a - b) / 60000;
@@ -542,8 +618,9 @@ function realSky() {
     requestAnimationFrame(() => requestAnimationFrame(() => { B.style.transition = 'opacity 4s ease'; B.style.opacity = 1; }));
     setTimeout(() => { A.style.backgroundImage = B.style.backgroundImage; A.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.dataset.f = ''; }, 4300);
   }
-  rkFaces(a === 'morning' && A.dataset.f === 'morning', alt, az);
-  const night = ph.night;
+  rkFit();
+  const night = ph.night, wx = wxApply(a, alt, night);
+  rkFaces(a === 'morning' && A.dataset.f === 'morning', alt, az, wx.sunK);
   $('#rkN').style.opacity = night.toFixed(3);
   $('#rkTint').style.opacity = ph.tint.toFixed(3);
   const back = $('#wallBack'); if (back && back.dataset.f !== a) { back.style.backgroundImage = `url(wall/rk-${a}.webp)`; back.dataset.f = a; }
@@ -552,18 +629,19 @@ function realSky() {
   if (mk && box.dataset.m !== cur) { box.style.webkitMaskImage = box.style.maskImage = `url(${mk})`; box.dataset.m = cur; }
   // the stars (real ones, where they are tonight) once it is dark enough
   const dark = clamp((-alt - 7) / 6);
-  $('#rkStars').style.opacity = dark.toFixed(2);
+  $('#rkStars').style.opacity = (dark * clamp(wx.skyK)).toFixed(2);
   if (dark > 0) drawStars(now, true, $('#rkStars'), (p, q) => rkScreen(K, p, q));
   // the sun: only in the afternoon photo (its own sun was taken out), where the real one is now
   const s = rkScreen(RK.day, alt, az), sun = $('#rkSun');
-  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105;
+  const sv = cur === 'day' && alt > 1 && s.x > -5 && s.x < 105 && wx.sunK > .35;
+  sun.style.opacity = clamp(wx.sunK).toFixed(2);
   sun.style.background = sv ? `radial-gradient(circle at ${s.x}% ${s.y}%, rgba(255,255,245,.98) 0, rgba(255,252,232,.95) 22px, rgba(255,226,170,.55) 46px, rgba(255,214,150,.22) 160px, rgba(255,214,150,0) 420px)` : 'none';
   // the moon (DriveCast's picture for tonight's phase), where it is
   const mo = moonPos(now, MOSQUE[0], MOSQUE[1]), ms = rkScreen(K, mo.alt, mo.az), mi = $('#rkMoon');
   const src = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay()}.webp`; if (mi.getAttribute('src') !== src) mi.src = src;
   const md = clamp((-alt - 3) / 5);
   mi.style.display = mo.alt > 0 && md > 0 && ms.x > 2 && ms.x < 98 && ms.y > 3 ? '' : 'none';
-  mi.style.left = ms.x + '%'; mi.style.top = ms.y + '%'; mi.style.opacity = md.toFixed(2);
+  mi.style.left = ms.x + '%'; mi.style.top = ms.y + '%'; mi.style.opacity = (md * clamp(.15 + wx.skyK)).toFixed(2);
 }
 // ---- the sun over the mosque (17.0158 N, 54.0885 E); the photo looks about south-south-west (Street View heading 192°)
 const MOSQUE = [17.0158, 54.0885], HEAD = 192, FOV = 104;   // a wide phone photo
@@ -1675,7 +1753,8 @@ function skyNote() {
       }
     }
   }
-  $('#skyNote').textContent = out.length ? 'في السماء الليلة: ' + out.join(' · ') : '';
+  const ww = wxWords(wxNow()), cl = wxNow().cloud >= 70;
+  $('#skyNote').textContent = [ww ? 'الطقس الآن: ' + ww : '', out.length ? (cl ? 'خلف الغيوم الليلة: ' : 'في السماء الليلة: ') + out.join(' · ') : ''].filter(Boolean).join(' — ');
 }
 function ambient(on) {
   if (on) skyNote();
