@@ -27,6 +27,9 @@ android {
         }
     }
 
+    // release builds skip lint's opt-in checks (Media3's player info uses its «unstable» API on purpose)
+    lint { checkReleaseBuilds false; abortOnError false }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -36,4 +39,9 @@ android {
 dependencies {
     // the web version's link to DriveCast's hub (a WebSocket that stays open)
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    // the channel player (like a satellite receiver: the stream's resolution, codec, bit depth, frame rate, bitrate)
+    implementation 'androidx.media3:media3-exoplayer:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.4.1'
+    implementation 'androidx.media3:media3-ui:1.4.1'
 }

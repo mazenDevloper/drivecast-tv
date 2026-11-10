@@ -154,6 +154,7 @@
     youtube: id => onTv() ? send('youtube', [id], '📺 يشتغل على التلفزيون') : playYt(id),
     link: url => onTv() ? send('link', [url], '📺 على التلفزيون') : open(url, '_blank'),
     channel: id => onTv() ? send('channel', [id], '📺 على التلفزيون') : open('https://www.youtube.com/channel/' + id, '_blank'),
+    watchFull: (j, i) => { const a = JSON.parse(j); return onTv() ? send('watchFull', [j, i], '📺 يشتغل على التلفزيون') : playHere(a.map(x => x.url), a.map(x => x.name), i); },
     watch: (u, n, i) => onTv() ? send('watch', [u, n, i], '📺 يشتغل على التلفزيون') : playHere(JSON.parse(u), JSON.parse(n), i),
     external: url => open(url, '_blank'),
     prayers: () => S.prayers || '',

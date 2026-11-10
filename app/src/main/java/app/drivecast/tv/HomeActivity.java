@@ -276,6 +276,17 @@ public class HomeActivity extends Activity {
             } catch (Exception ignored) { }
         }
 
+        /** IPTV with each channel's logo and group too (the player's info bar): [{url,name,logo,group}] */
+        @JavascriptInterface
+        public void watchFull(String channelsJson, int index) {
+            try {
+                JSONArray a = new JSONArray(channelsJson);
+                int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n];
+                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); }
+                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("i", index));
+            } catch (Exception ignored) { }
+        }
+
         /** a text from the internet without the page's CORS limits (IPTV lists, DriveCast's data); answers cb(text|null) */
         @JavascriptInterface public String board() { return readBoard(HomeActivity.this); }
         @JavascriptInterface public void saveBoard(String json) {

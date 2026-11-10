@@ -20,7 +20,7 @@ html,body{margin:0;height:100%;color:var(--ink);font-family:"Noto Sans Arabic","
 .sky{-webkit-mask-image:var(--skym);mask-image:var(--skym);-webkit-mask-size:100% 100%;mask-size:100% 100%}
 #wSun{mix-blend-mode:screen}
 .rk{display:none;background-size:cover;background-position:center;transition:none}#rkN{transition:opacity 2s}#rkB{opacity:0}#rkN{opacity:0;background-image:url(wall/rk-night.webp)}#rkSky{-webkit-mask-size:100% 100%;mask-size:100% 100%}
-#rkStars{position:absolute;inset:0;width:100%;height:100%}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
+#rkStars{position:absolute;inset:0;width:100%;height:100%}#rkTint{position:absolute;inset:0;opacity:0;background:linear-gradient(180deg,#6d8db8 0%,#9db3cf 45%,#d9c8cf 78%,#ecd6c6 100%)}#rkSun{position:absolute;inset:0;mix-blend-mode:screen}
 #rkMoon{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;mix-blend-mode:screen;filter:drop-shadow(0 0 16px rgba(230,236,255,.5))}
 #wMoonBox.free{-webkit-mask-image:none;mask-image:none}
 #wPhotoN{background-image:url(wall/rawas-night-photo.webp);opacity:0}
@@ -42,6 +42,10 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .wx{font-size:24px;color:#d6dbe1;min-width:180px;text-align:left}
 .f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
 .f:focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 26px 50px rgba(0,0,0,.55);z-index:2}
+/* tvOS feel: the focused card lifts on a spring and catches the light (a glass sheen across it) */
+.f{transition:transform .38s cubic-bezier(.2,.9,.25,1.18),box-shadow .38s ease,background-color .25s}
+.ichan:focus,.chan:focus,.vid:focus,.app:focus,.chip:focus{background-image:linear-gradient(125deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 60%)}
+.ichan{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,22,30,.72);backdrop-filter:blur(18px) saturate(1.4);border-color:rgba(255,255,255,.14)}
 .tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
 .heroRow{display:flex;gap:28px;align-items:stretch}
 .hero{display:flex;flex-direction:column;gap:12px;width:1040px;flex:none;padding:22px 32px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
@@ -125,8 +129,23 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .vid img{width:100%;height:190px;object-fit:cover;display:block}.vid span{display:block;padding:10px 14px;font-size:18px;line-height:1.35;height:52px;overflow:hidden}
 .chan{flex:none;width:200px;height:200px;border-radius:26px;background:rgba(20,28,37,.8);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink);font-family:inherit;font-size:18px;padding:12px;text-align:center}
 .chan img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222}
-.ichan{height:110px;border-radius:20px;background:rgba(20,28,37,.8);border:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 18px;color:var(--ink);font-family:inherit;font-size:20px;text-align:right;overflow:hidden}
+.ichan{height:110px;border-radius:24px;border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;gap:14px;padding:0 18px;color:var(--ink);font-family:inherit;font-size:20px;text-align:right;overflow:hidden}
 .ichan img{width:64px;height:64px;object-fit:contain;flex:none}
+.ichan.fav::after{content:"★";margin-inline-start:auto;color:#f5c94c;font-size:22px}
+/* the long-press menu, tvOS style: a glass sheet, big rows, the focused one lifts and glows */
+.ctx{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;background:rgba(4,7,10,.38);backdrop-filter:blur(6px)}
+.ctx.on{display:flex}
+.ctxbox{width:620px;padding:22px;border-radius:38px;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 40px 90px rgba(0,0,0,.55);backdrop-filter:blur(40px) saturate(1.6);display:flex;flex-direction:column;gap:8px;animation:ctxIn .28s cubic-bezier(.2,.9,.25,1.15)}
+@keyframes ctxIn{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+.ctxh{display:flex;align-items:center;gap:16px;padding:6px 10px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+.ctxh img{width:58px;height:58px;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.08)}.ctxh img[src=""]{display:none}
+.ctxh b{font-size:28px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ctxBody{display:flex;flex-direction:column;gap:6px}
+#ctxBody button{height:76px;border:0;border-radius:22px;background:transparent;color:#f4f1ea;font:inherit;font-size:26px;font-weight:600;text-align:right;padding:0 24px;display:flex;align-items:center;gap:16px;transition:transform .18s,background .18s}
+#ctxBody button i{font-style:normal;width:34px;text-align:center}
+#ctxBody button:focus{outline:none;background:rgba(255,255,255,.92);color:#0b1014;transform:scale(1.04);box-shadow:0 14px 34px rgba(0,0,0,.35)}
+.ytl{width:420px}.ytl em{color:#ff6b6b;font-style:normal;font-weight:700}
 .shelf .ichan{flex:none;width:380px}   /* in a row (the home's live shelf) the cards keep their size */
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
@@ -200,7 +219,10 @@ body.moving .bmove{display:block}
 .mini{position:absolute;left:64px;right:64px;bottom:44px;display:none;gap:24px;align-items:stretch}
 body.ambient .mini{display:flex}
 body.ambient .page,body.ambient .player{display:none!important}
-body.ambient .wall{transform:none}
+body.ambient .wall{transform:scale(.92) translateY(-5%);transform-origin:50% 50%;border-radius:0 0 34px 34px}
+/* the full-photo view: the photo a little smaller and higher, its own blurred light around it (tvOS's ambient backdrop) */
+#wallBack{position:fixed;inset:-6%;z-index:-3;background-size:cover;background-position:center;filter:blur(46px) saturate(1.15) brightness(.55);opacity:0;transition:opacity .9s}
+body.ambient #wallBack{opacity:1}
 body.ambient .veil{background:linear-gradient(180deg,rgba(10,14,19,.45) 0%,rgba(10,14,19,0) 22%,rgba(10,14,19,0) 70%,rgba(10,14,19,.55) 100%)}
 body.ambient .clock b{font-size:64px}
 body.ambient .tabs,body.ambient .clock span{visibility:hidden}
@@ -209,7 +231,7 @@ body.ambient .tabs,body.ambient .clock span{visibility:hidden}
 body.ambient .day{display:flex}
 /* the user's own line (written from the phone), across the open sky to the right of the minaret */
 .phrase{position:absolute;top:40%;left:41%;right:3%;display:none;text-align:center;white-space:nowrap;overflow:hidden;color:#fbf7ec;text-shadow:0 4px 28px rgba(0,0,0,.5);
-  font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-weight:400;font-size:76px;line-height:1.3;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
+  font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-weight:400;font-size:60px;line-height:1.3;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
 body.ambient .phrase.on{display:block}
 .day b,.day span{font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
 .day b{font-size:132px;font-weight:400;line-height:1.05;letter-spacing:0}
@@ -225,7 +247,7 @@ body.ambient .phrase.on{display:block}
 </style>
 </head>
 <body>
-<div class="boardBg" id="boardBg"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkSky"><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
+<div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
 <div class="screen">
   <div class="top">
     <div class="clock"><b id="time">--:--</b><span id="date"></span><div class="line" id="line"></div></div>
@@ -267,6 +289,8 @@ body.ambient .phrase.on{display:block}
     <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
+    <div id="favwrap"><h2>⭐ قنواتي المفضّلة</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
+    <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div>
     <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
@@ -295,6 +319,7 @@ body.ambient .phrase.on{display:block}
     <div class="beRow"><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
     <div class="beRow"><button class="btn f bsave" data-be="save">حفظ</button><button class="btn f" data-be="close">إغلاق</button></div>
   </div></div>
+  <div class="ctx" id="ctx"><div class="ctxbox"><div class="ctxh"><img id="ctxLogo" alt=""><b id="ctxName"></b></div><div id="ctxBody"></div></div></div>
   <div class="panel ytp" id="ytp"><div class="box">
     <div class="ytph"><h3 id="ytpT"></h3><button class="btn f" data-act="ytclose">إغلاق</button></div>
     <div class="ytpb" id="ytpBody"></div>
@@ -355,7 +380,7 @@ function loadPhrase() {
   let t = ''; try { t = TV.phrase ? TV.phrase() : (localStorage.phrase || ''); } catch (e) {}
   const el = $('#phrase'); el.textContent = t; el.classList.toggle('on', !!t.trim());
   // one line: the size steps down until the whole line fits the space
-  el.style.fontSize = '76px'; requestAnimationFrame(() => { let f = 76; while (el.scrollWidth > el.clientWidth && f > 34) { f -= 4; el.style.fontSize = f + 'px'; } });
+  el.style.fontSize = '60px'; requestAnimationFrame(() => { let f = 60; while (el.scrollWidth > el.clientWidth && f > 34) { f -= 4; el.style.fontSize = f + 'px'; } });
 }
 function loadFont() {
   let u = ''; try { u = TV.font ? TV.font() : ''; } catch (e) {}
@@ -439,15 +464,20 @@ let rkShown = '';
 function realSky() {
   const now = window.__simTime ? window.__simTime() : new Date(), { alt, az } = sunPos(now, MOSQUE[0], MOSQUE[1]);
   // which photo: they are taken from slightly different places, so one at a time — a 4-second dissolve when it changes
-  const a = (RK_SEQ.find(([h]) => alt >= h) || RK_SEQ[RK_SEQ.length - 1])[1], A = $('#rkA'), B = $('#rkB');
+  // the evening photos have the sunset's glow in the west (where the camera looks); at dawn the light is behind the camera,
+  // so the morning keeps the blue-hour shot and lightens its sky (masked) until the day photo
+  const morning = az < 180;
+  const a = morning ? (alt >= RK_SEQ[0][0] ? 'day' : 'blue') : (RK_SEQ.find(([h]) => alt >= h) || RK_SEQ[RK_SEQ.length - 1])[1], A = $('#rkA'), B = $('#rkB');
   if (!A.dataset.f) { A.style.backgroundImage = `url(wall/rk-${a}.webp)`; A.dataset.f = a; }
   else if (A.dataset.f !== a && B.dataset.f !== a) {
     B.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.style.backgroundImage = `url(wall/rk-${a}.webp)`;
     requestAnimationFrame(() => requestAnimationFrame(() => { B.style.transition = 'opacity 4s ease'; B.style.opacity = 1; }));
     setTimeout(() => { A.style.backgroundImage = B.style.backgroundImage; A.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.dataset.f = ''; }, 4300);
   }
-  const night = a === 'blue' ? clamp((-6 - alt) / 5) : 0;
+  const night = a === 'blue' ? clamp(((morning ? -9 : -6) - alt) / 5) : 0;
   $('#rkN').style.opacity = night.toFixed(3);
+  $('#rkTint').style.opacity = (morning && a === 'blue' ? clamp((alt + 9) / 9) * .85 : 0).toFixed(3);
+  const back = $('#wallBack'); if (back && back.dataset.f !== a) { back.style.backgroundImage = `url(wall/rk-${a}.webp)`; back.dataset.f = a; }
   const cur = night > .5 ? 'night' : a, K = RK[cur], mk = window.RKM && RKM[K.mask || cur];
   const box = $('#rkSky');
   if (mk && box.dataset.m !== cur) { box.style.webkitMaskImage = box.style.maskImage = `url(${mk})`; box.dataset.m = cur; }
@@ -734,7 +764,20 @@ function parseM3u(t) {
   }
   return out;
 }
-const ichHtml = (c, i, list) => `<button class="ichan f" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span>${esc(c.name)}</span></button>`;
+// ⭐ my favourite channels: kept on the TV (settings «favs»), by name — the link is looked up again in the fresh lists when played
+let MYFAV = [];
+function loadFavs() { try { MYFAV = JSON.parse(S('favs', '[]')) || []; } catch (e) { MYFAV = []; } }
+const isFav = c => MYFAV.some(f => f.name === c.name);
+function toggleFav(c) {
+  loadFavs();
+  if (isFav(c)) MYFAV = MYFAV.filter(f => f.name !== c.name); else MYFAV.unshift({ name: c.name, url: c.url, logo: c.logo || '' });
+  setPref('favs', JSON.stringify(MYFAV.slice(0, 60))); favUi(); liveUi();
+}
+function favUi() {
+  loadFavs();
+  $('#s-myfav').innerHTML = MYFAV.map((c, i) => ichHtml(c, i, 'my')).join('') || '<div class="empty">اضغط مطوّلاً على أي قناة ← ⭐ أضف للمفضّلة</div>';
+}
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span>${esc(c.name)}</span></button>`;
 function iptvUi() {
   const groups = ['all', ...new Set(ILIST.map(c => c.group))].slice(0, 30);
   $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
@@ -765,7 +808,9 @@ function liveUi() {
     const c = ILIST.find(x => inList.test(x.name) && usable(x)) || IFAV.find(x => inFav.test(x.name));
     if (c && !picks.includes(c)) picks.push(c);
   }
-  LIVE = [...picks, ...IFAV.filter(c => !picks.includes(c))];
+  loadFavs();
+  const mine = MYFAV.filter(f => !picks.some(p => p.name === f.name));
+  LIVE = [...mine, ...picks, ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
@@ -785,7 +830,32 @@ const BIG5 = [
     [FOREIGN(/ligue ?1|canal\+ ?(foot|sport)|dazn(?! ?(f1|bet))|\bbein\b(?! ?(movies|drama|series))|sport ?tv ?\d/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : window.__shown;
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : window.__shown;
+// 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
+const YTLEAGUES = [
+  ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
+  ['الإماراتي', 'دوري أدنوك للمحترفين بث مباشر'], ['العُماني', 'دوري عمانتل بث مباشر'], ['السعودي', 'دوري روشن بث مباشر'],
+  ['الأمريكي', 'MLS live'], ['الهندي', 'Indian Super League live'], ['التايلندي', 'Thai League live'],
+];
+let YTL = [], YTLALL = {}, YTLL = 0, ytlAt = 0;
+function ytParseLive(html) {
+  return ytParse(html).filter(v => !v.len);   // a live video has no length
+}
+async function loadYtLive() {
+  if (Date.now() - ytlAt < 20 * 60e3) return ytlUi(); ytlAt = Date.now();
+  for (let k = 1; k < YTLEAGUES.length; k++) {
+    const t = await getText('https://www.youtube.com/results?sp=EgJAAQ%253D%253D&hl=ar&search_query=' + encodeURIComponent(YTLEAGUES[k][1]));
+    YTLALL[k] = ytParseLive(t).slice(0, 6).map(v => ({ ...v, league: YTLEAGUES[k][0] }));
+    ytlUi();
+  }
+}
+function ytlUi() {
+  $('#s-ytll').innerHTML = YTLEAGUES.map(([n], k) => `<button class="chip f ${k === YTLL ? 'on' : ''}" data-ytll="${k}">${n}${k && YTLALL[k]?.length ? `<i class="cnt">${AR(YTLALL[k].length)}</i>` : ''}</button>`).join('');
+  const seen = new Set();
+  YTL = (YTLL ? YTLALL[YTLL] || [] : Object.values(YTLALL).flatMap(a => a.slice(0, 3))).filter(v => !seen.has(v.id) && seen.add(v.id));
+  $('#s-ytl').innerHTML = YTL.map(v => `<button class="vid ytl f" data-yt="${esc(v.id)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" loading="lazy"><span><em>● مباشر</em> ${esc(v.title)}</span></button>`).join('')
+    || `<div class="empty">${Object.keys(YTLALL).length ? 'ما فيه بث مباشر الحين' : 'أدوّر على البث المباشر…'}</div>`;
+}
 // every sports channel in the iptv lists of the whole world (iptv-org), once per hour: the broadcasters abroad
 async function loadSports() {
   if (SPORTS && Date.now() - SPORTS.at < 3600e3) return;
@@ -809,7 +879,7 @@ function big5Ui() {
     || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
 }
 async function loadIptv() {
-  big5Ui(); loadSports();
+  favUi(); big5Ui(); loadSports(); loadYtLive();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
   iptvUi(); await loadLists(); big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
@@ -876,12 +946,31 @@ function nextUi() {
 }
 // a channel: a YouTube link opens in YouTube; a stream plays full screen (up / down = the next streams of the same list)
 const ytId = u => (String(u).match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/)([\w-]{11})/) || [])[1];
-function playChannel(list, i) {
+// a channel's link at play time: the newest lists (refreshed when older than 30 min) by its name — tokens and moved streams
+// keep working; «yt-live:@channel» = whatever that YouTube channel streams live now
+async function resolveChannel(c) {
+  if (/^yt-live:/.test(c.url)) {
+    const h = c.url.slice(8), t = await getText(`https://www.youtube.com/${h}/live`);
+    const id = (/"canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/.exec(t || '') || /"videoId":"([\w-]{11})"/.exec(t || '') || [])[1];
+    return id ? { ...c, url: 'https://www.youtube.com/watch?v=' + id } : c;
+  }
+  if (Date.now() - listsAt > 30 * 60e3) { listsAt = 0; await loadLists(); }
+  const fresh = [...IFAV, ...ILIST, ...(SPORTS?.list || [])].find(x => x.name === c.name && !/geo-blocked/i.test(x.name));
+  return fresh ? { ...c, url: fresh.url, logo: c.logo || fresh.logo } : c;
+}
+async function playChannel(list, i) {
+  // favourites and the home shelf are kept by name: their links come from the newest lists (the chosen one also from YouTube live)
+  if (list && list[i] && (list === MYFAV || list === LIVE || /^yt-live:/.test(list[i].url))) {
+    const chosen = await resolveChannel(list[i]);
+    list = await Promise.all(list.map((x, k) => k === i ? chosen : /^yt-live:/.test(x.url) ? x : resolveChannel(x)));
+    list = list.filter((x, k) => k === i || !/^yt-live:/.test(x.url)); i = list.indexOf(chosen);
+  }
   const c = list[i]; if (!c) return;
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
-  if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : '') }))), Math.max(0, k));
+  else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
 async function playMatchChannel(other) {
@@ -1086,7 +1175,7 @@ function sections() {
     ['📺', 'القنوات والمشغّل', [
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
       { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
-      { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['ext', 'مشغّل آخر'], ['off', 'لا شيء']], d: 'ext' },
+      { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['menu', 'قائمة (مفضّلة، مشغّل آخر)'], ['ext', 'مشغّل آخر مباشرة'], ['off', 'لا شيء']], d: 'menu' },
       { k: 'big5', l: 'قنوات الدوريات الخمس أعلى صفحة القنوات', o: SHOW, d: 'on' },
       { a: '', o: [['reload', '↻ حدّث قوائم القنوات']] },
     ]],
@@ -1175,7 +1264,7 @@ function numberKey(n) {
   show(t.dataset.page); t.focus(); return true;
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if (CTX) return ctxClose(); if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 window.onTvResume = () => { loadApps(); loadPrayers(); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
@@ -1216,6 +1305,8 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
+  if (b.dataset.ctx) return ctxDo(b.dataset.ctx);
+  if (b.dataset.ytll) { YTLL = +b.dataset.ytll; ytlUi(); return $(`[data-ytll="${YTLL}"]`)?.focus(); }
   if (b.dataset.b5) { B5 = +b.dataset.b5; big5Ui(); return $(`[data-b5="${B5}"]`)?.focus(); }
   if (b.dataset.sec) { SEC = +b.dataset.sec; return setsUi(); }
   if (b.dataset.set) return setClick(b);
@@ -1267,7 +1358,7 @@ function ambient(on) {
 function move(dir) {
   if (MOVING) return moveStep(dir);
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
-  const scope = $('#ytp').classList.contains('on') ? $('#ytp') : $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
+  const scope = $('#ctx').classList.contains('on') ? $('#ctx') : $('#ytp').classList.contains('on') ? $('#ytp') : $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
   const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
   if (!all.includes(cur)) return all[0]?.focus();
   const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
@@ -1288,12 +1379,35 @@ function move(dir) {
 }
 let HOLD = null;
 function holdPlay(b) {
-  if (b.dataset.act === 'nextm') return playMatchChannel(true);
-  const list = listOf(b.dataset.ilist), c = list && list[+b.dataset.i];
-  if (c) TV.external ? TV.external(c.url) : TV.link(c.url);
+  if (S('hold', 'menu') === 'ext') {
+    if (b.dataset.act === 'nextm') return playMatchChannel(true);
+    const list = listOf(b.dataset.ilist), c = list && list[+b.dataset.i];
+    return c && (TV.external ? TV.external(c.url) : TV.link(c.url));
+  }
+  ctxOpen(b);
+}
+// the menu (tvOS's long press): play · another player · ⭐ favourite
+let CTX = null;
+function ctxOpen(b) {
+  const match = b.dataset.act === 'nextm', list = listOf(b.dataset.ilist), c = match ? { name: 'أقرب مباراة', logo: '' } : list && list[+b.dataset.i];
+  if (!c) return;
+  CTX = { b, c, list, i: +b.dataset.i, match };
+  $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
+  const rows = match ? [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]
+    : [['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
+  $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; CTX = null; if (b && document.body.contains(b)) b.focus(); }
+async function ctxDo(k) {
+  const x = CTX; if (!x) return; ctxClose();
+  if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');
+  if (k === 'play') return playChannel(x.list, x.i);
+  if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
+  if (k === 'fav') { toggleFav(x.c); if (x.b && document.body.contains(x.b)) x.b.classList.toggle('fav', isFav(x.c)); }
 }
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter' || S('hold', 'ext') === 'off') return;
+  if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
   const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm')) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
