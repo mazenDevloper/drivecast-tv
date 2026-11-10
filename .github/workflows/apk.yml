@@ -15,6 +15,9 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/cache@v4
         with: { path: ~/.gradle/wrapper, key: "gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties', '**/*.gradle') }}" }
+      # one signing key for every build: the TV's «⬆️ update» installs a new build over the old one only when the key is the same
+      - uses: actions/cache@v4
+        with: { path: ~/.android/debug.keystore, key: drivecast-tv-signing-key }
       - name: Build
         run: |
           chmod +x gradlew

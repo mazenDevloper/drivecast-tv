@@ -6,6 +6,8 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ⬆️ the update from GitHub (Android asks the person to confirm) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- the adhan to the minute (Android 12+) -->
@@ -70,6 +72,7 @@
             </intent-filter>
         </receiver>
         <receiver android:name=".Adhan" android:exported="true" />
+        <receiver android:name=".Update" android:exported="false" />
         <receiver android:name=".CityReceiver" android:exported="true" />
     </application>
 </manifest>

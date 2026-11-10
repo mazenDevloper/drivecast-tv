@@ -404,6 +404,26 @@ public class HomeActivity extends Activity {
             new Thread(() -> { Adhan.sounds(app); runOnUiThread(() -> Adhan.fire(app, 3, true, "iqama".equals(what))); }, "adhan-try").start();
         }
 
+        /** ⬆️ is there a newer build on GitHub? cb(json {have, latest, newer, url}) */
+        @JavascriptInterface
+        public void updCheck(String cb) {
+            new Thread(() -> { String j = Update.check(HomeActivity.this); runOnUiThread(() -> { if (web != null) web.evaluateJavascript(cb + "(" + j + ")", null); }); }, "upd").start();
+        }
+        /** ⬆️ download it and hand it to Android's installer; cb('down', pct) … cb('install', 100) / cb('allow') / cb('error') */
+        @JavascriptInterface
+        public void updGo(String url, String cb) {
+            if (url == null || !url.startsWith("https://github.com/mazenDevloper/drivecast-tv/releases/")) return;   // only our own releases
+            new Thread(() -> Update.install(HomeActivity.this, url, (st, pct) -> runOnUiThread(() -> { if (web != null) web.evaluateJavascript(cb + "('" + st + "'," + pct + ")", null); })), "upd").start();
+        }
+        @JavascriptInterface
+        public String updFail() { String f = getSharedPreferences("upd", MODE_PRIVATE).getString("fail", ""); getSharedPreferences("upd", MODE_PRIVATE).edit().remove("fail").apply(); return f; }
+        /** an app's page in the TV's store (Google Play), else on the web */
+        @JavascriptInterface
+        public void store(String pkg) {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+            catch (Exception e) { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } }
+        }
+
         /** the settings' time simulation: the adhan / iqamah of that prayer (its own sound: the fajr adhan for fajr) */
         @JavascriptInterface
         public void tryAdhanFor(String what, int prayer) {
