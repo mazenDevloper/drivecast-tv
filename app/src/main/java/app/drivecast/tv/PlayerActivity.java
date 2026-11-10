@@ -247,7 +247,7 @@ public class PlayerActivity extends Activity {
         row = chips2;
         if (a != null) {
             String m = a.sampleMimeType == null ? "" : a.sampleMimeType.replace("audio/", "").replace("mp4a-latm", "AAC").replace("ac3", "Dolby AC-3").replace("eac3", "Dolby E-AC-3").replace("mpeg", "MP3").toUpperCase(Locale.US);
-            String ch = a.channelCount == 6 ? "5.1" : a.channelCount == 8 ? "7.1" : a.channelCount == 2 ? "ستيريو" : a.channelCount == 1 ? "أحادي" : "";
+            String ch = a.channelCount == 6 ? "5.1" : a.channelCount == 8 ? "7.1" : a.channelCount == 2 ? "Stereo" : a.channelCount == 1 ? "Mono" : "";
             String lang = a.language == null || a.language.equals("und") ? "" : " · " + a.language.toUpperCase(Locale.US);
             int nA = audioGroups().size();
             chip(("🔊 " + m + " " + ch + (a.sampleRate > 0 ? " · " + a.sampleRate / 1000 + " kHz" : "") + lang + (nA > 1 ? "  (" + nA + " أصوات)" : "")).trim(), a.channelCount >= 6 ? 0x55B98CFF : 0x2EFFFFFF, Color.WHITE);
