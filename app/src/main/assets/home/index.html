@@ -85,6 +85,17 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .card.radio .pic::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}
 .card.radio.cover .pic{background-size:cover;background-position:center}
 .card.radio.cover:not([data-sura]) .pic::after{content:"▶"}
+/* 🔎 YouTube search, on the Quran shelf's title row */
+.qhead{display:flex;align-items:center;gap:28px}.qhead h2{flex:none}
+.ytbar{flex:1;max-width:760px;display:flex;align-items:center;gap:10px;margin-inline-start:auto;height:64px;padding:0 8px 0 22px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.ytbar::before{content:"";flex:none;width:34px;height:24px;border-radius:7px;background:#ff0033 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 24'%3E%3Cpath d='M14 7l7 5-7 5z' fill='%23fff'/%3E%3C/svg%3E") center/100% no-repeat}
+.ytbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:#fff;font-size:27px;font-weight:500;font-family:inherit;padding:0}
+.ytbar input:focus{outline:none!important;box-shadow:none!important;transform:none!important;background:none!important}
+.ytbar input::-webkit-search-cancel-button{filter:invert(1);opacity:.6}
+.ytbar input::placeholder{color:rgba(255,255,255,.55)}
+.ytbar button{flex:none;width:50px;height:50px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:22px;transform:none!important}
+.ytbar:focus-within{background:rgba(255,255,255,.18);border-color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.25)}
+.ytbar button:focus{outline:3px solid #fff}
 /* ▶ the YouTube app: its red play button on a dark ground */
 .card.radio.yt .pic{background:radial-gradient(120% 120% at 50% 30%,#2a2a2e 0%,#141416 70%)}
 .card.radio.yt .pic::before{content:"";position:absolute;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:96px;height:68px;border-radius:20px;background:#ff0033;box-shadow:0 8px 30px rgba(255,0,51,.35)}
@@ -330,7 +341,7 @@ body.ambient .phrase.on{display:block}
       </div>
       <button class="nextm glass f" id="nextm" data-act="nextm"><small>أقرب مباراة</small><div class="empty">جارٍ التحميل…</div></button>
     </div>
-    <div id="shQuran"><h2>القرآن والأذكار</h2><div class="shelf" id="s-quran"></div></div>
+    <div id="shQuran"><div class="qhead"><h2>القرآن والأذكار</h2><form class="ytbar" id="ytBar" autocomplete="off"><input class="f" id="ytQ" type="search" enterkeyhint="search" placeholder="ابحث في يوتيوب…" aria-label="ابحث في يوتيوب"><button class="f" id="ytGo" type="submit" aria-label="ابحث">🔎</button></form></div><div class="shelf" id="s-quran"></div></div>
     <div id="shLive"><h2>قنوات مباشرة</h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div></div>
   </div></section>
@@ -1153,6 +1164,22 @@ function ytParse(html) {
   walk(d); return out;
 }
 const ytHtml = v => `<button class="vid f" data-yt="${esc(v.id)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" loading="lazy"><span>${esc(v.title)}</span><em>${esc(v.ch)}${v.len ? ' · ' + esc(AR(v.len)) : ''}</em></button>`;
+// 🔎 the search bar: YouTube's results (live streams too) in the same panel as the reciters'; OK plays one in YouTube.
+// On the TV straight from YouTube; where that cannot be read (the web without the TV), through DriveCast's server.
+async function ytQuery(q) {
+  q = String(q || '').trim(); if (!q) return;
+  YTP = { name: null, q };
+  $('#ytpT').textContent = '🔎 ' + q;
+  $('#ytpBody').innerHTML = '<div class="empty">أبحث في يوتيوب…</div>';
+  $('#ytp').classList.add('on');
+  let vids = ytParse(await getText('https://www.youtube.com/results?hl=ar&gl=OM&search_query=' + encodeURIComponent(q)));
+  if (!vids.length) { const j = await getJ('https://studio.c-p.workers.dev/yt/find?q=' + encodeURIComponent(q)); vids = arr(j?.items).map(v => ({ id: v.id, title: v.title, ch: v.channel || '', len: v.len ? `${Math.floor(v.len / 60)}:${String(v.len % 60).padStart(2, '0')}` : '' })); }
+  if (!YTP || YTP.q !== q) return;
+  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 24).map(ytHtml).join('')}</div>`
+    : `<div class="empty">ما طلعت نتائج</div><button class="btn f" data-ytq="${esc(q)}">افتح البحث في يوتيوب</button>`;
+  $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
+}
+$('#ytBar').addEventListener('submit', e => { e.preventDefault(); const q = $('#ytQ').value; $('#ytQ').blur(); ytQuery(q); });
 function ytClose() { $('#ytp').classList.remove('on'); YTP = null; $('.tab.on')?.focus(); }
 let subsAt = 0;
 async function loadSubs() {
@@ -2029,6 +2056,7 @@ document.addEventListener('keyup', e => {
 document.addEventListener('keydown', e => {
   if (/^[0-9]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '') && numberKey(e.key)) { e.preventDefault(); return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+  if (k && document.activeElement?.id === 'ytQ' && (k === 'left' || k === 'right') && $('#ytQ').value) return;
   if (k) { e.preventDefault(); move(k); }
   if (document.body.classList.contains('ambient') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ambient(false); }
   if (e.key === 'Escape' || e.key === 'GoBack') { e.preventDefault(); window.onTvBack(); }
