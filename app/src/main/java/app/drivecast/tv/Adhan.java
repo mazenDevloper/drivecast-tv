@@ -173,6 +173,29 @@ public class Adhan extends BroadcastReceiver {
         }
     }
 
+    /** the sunrise (الشروق) for the day: the user's own table for Salalah, else Aladhan's (cached like the prayers) */
+    static String sunrise(Context c, Calendar day) {
+        String ymd = String.format(Locale.US, "%d-%02d-%02d", day.get(Calendar.YEAR), day.get(Calendar.MONTH) + 1, day.get(Calendar.DAY_OF_MONTH));
+        if (City.mine(c)) {
+            mine(c, ymd);   // refreshes the cached bin if old
+            String body = c.getSharedPreferences("mytimes", Context.MODE_PRIVATE).getString("body", null);
+            try {
+                org.json.JSONArray a = new org.json.JSONArray(body);
+                for (int i = 0; i < a.length(); i++) { JSONObject r = a.optJSONObject(i); if (r != null && ymd.equals(r.optString("date")) && r.has("sunrise")) return r.getString("sunrise").substring(0, 5); }
+            } catch (Exception ignored) { }
+        }
+        String date = String.format(Locale.US, "%02d-%02d-%d", day.get(Calendar.DAY_OF_MONTH), day.get(Calendar.MONTH) + 1, day.get(Calendar.YEAR));
+        SharedPreferences p = c.getSharedPreferences("sunrise" + City.key(c), Context.MODE_PRIVATE);
+        String cached = p.getString(date, null);
+        if (cached != null) return cached;
+        try {
+            String v = new JSONObject(get("https://api.aladhan.com/v1/timings/" + date + "?latitude=" + City.lat(c) + "&longitude=" + City.lon(c)
+                    + "&method=" + City.method(c))).getJSONObject("data").getJSONObject("timings").getString("Sunrise").substring(0, 5);
+            p.edit().putString(date, v).apply();
+            return v;
+        } catch (Exception e) { return null; }
+    }
+
     /** DriveCast's prayer-times bin (Cloudflare copy), re-read every 3 hours so an edit there reaches the TV the same day. */
     static final String MY_BIN = "https://studio.c-p.workers.dev/bin/69a00f6eae596e708f4b7291";
     private static final String[] MY_KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};

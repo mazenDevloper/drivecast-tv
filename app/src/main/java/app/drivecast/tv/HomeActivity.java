@@ -240,6 +240,7 @@ public class HomeActivity extends Activity {
                 String[] n = Adhan.times(HomeActivity.this, tm);
                 return new JSONObject().put("today", t == null ? JSONObject.NULL : new JSONArray(t))
                         .put("tomorrow", n == null ? JSONObject.NULL : new JSONArray(n)).put("city", City.name(HomeActivity.this))
+                        .put("sunrise", String.valueOf(Adhan.sunrise(HomeActivity.this, Calendar.getInstance())))
                         .put("lat", City.lat(HomeActivity.this)).put("lon", City.lon(HomeActivity.this)).put("method", City.method(HomeActivity.this)).toString();
             } catch (Exception e) { return "{}"; }
         }

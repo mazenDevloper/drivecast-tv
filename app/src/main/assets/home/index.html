@@ -454,29 +454,46 @@ function applyWall() {
 // the real sun / stars / moon drawn in each photo's sky. head = where the photo looks (from the sun in the afternoon shot:
 // 15.6° high at azimuth 246° → the picture's centre faces 229°), hor = the horizon (% of the height), 56.9° wide.
 const RK = {
-  day: { head: 229.4, hor: 84 }, sunset: { head: 231, hor: 95 }, after: { head: 233, hor: 100 },
+  day: { head: 229.4, hor: 84 }, morning: { head: 229.4, hor: 84, mask: 'day' }, sunset: { head: 231, hor: 95 }, after: { head: 233, hor: 100 },
   dusk: { head: 231, hor: 97 }, blue: { head: 234, hor: 100 }, night: { head: 234, hor: 100, mask: 'blue' },
 };
 // the sun's height from which each photo is shown (taken about then); below the last, the night (the same shot, lights on, dark sky) fades in
 const RK_SEQ = [[1.5, 'day'], [-1, 'sunset'], [-2.7, 'after'], [-4.8, 'dusk'], [-90, 'blue']];
 const rkScreen = (k, alt, az) => ({ x: 50 + ((((az - k.head + 540) % 360) - 180) / 56.9) * 100, y: k.hor - alt / .32 });
 let rkShown = '';
+function rkPhase(now, alt, az) {
+  const t = P.today, min = (a, b) => (a - b) / 60000;
+  if (!t || !t[3]) {   // no prayer times yet: by the sun's height
+    const morning = az < 180, a = morning ? (alt >= 1.5 ? 'morning' : 'blue') : (RK_SEQ.find(([h]) => alt >= h) || RK_SEQ[RK_SEQ.length - 1])[1];
+    return { a, morning, night: a === 'blue' ? clamp(((morning ? -9 : -6) - alt) / 5) : 0, tint: morning && a === 'blue' ? clamp((alt + 9) / 9) * .85 : 0 };
+  }
+  const fj = at(t[0]), dh = at(t[1]), mg = at(t[3]);
+  let sr = P.sunrise && /^\d\d:\d\d$/.test(P.sunrise) ? at(P.sunrise) : new Date(sunTimes(now)[0] || fj.getTime() + 75 * 60e3);
+  if (now < dh) {   // the morning
+    if (now < fj) return { a: 'blue', morning: true, night: 1, tint: 0 };
+    if (now < sr - 2 * 60e3) { const p = clamp(min(now, fj) / Math.max(10, min(sr, fj))); return { a: 'blue', morning: true, night: 1 - clamp(p * 1.6), tint: clamp(p * 1.2) * .85 }; }
+    return { a: 'morning', morning: true, night: 0, tint: 0 };
+  }
+  const d = min(now, mg);   // minutes from maghrib
+  const a = d < -8 ? 'day' : d < 6 ? 'sunset' : d < 14 ? 'after' : d < 22 ? 'dusk' : 'blue';
+  return { a, morning: false, night: a === 'blue' ? clamp((d - 28) / 22) : 0, tint: 0 };
+}
 function realSky() {
   const now = window.__simTime ? window.__simTime() : new Date(), { alt, az } = sunPos(now, MOSQUE[0], MOSQUE[1]);
   // which photo: they are taken from slightly different places, so one at a time — a 4-second dissolve when it changes
-  // the evening photos have the sunset's glow in the west (where the camera looks); at dawn the light is behind the camera,
-  // so the morning keeps the blue-hour shot and lightens its sky (masked) until the day photo
-  const morning = az < 180;
-  const a = morning ? (alt >= RK_SEQ[0][0] ? 'day' : 'blue') : (RK_SEQ.find(([h]) => alt >= h) || RK_SEQ[RK_SEQ.length - 1])[1], A = $('#rkA'), B = $('#rkB');
+  // which photo, from today's prayer times (الشروق and المغرب, the ones on the TV): the evening shots around maghrib, in the order
+  // they were taken; the morning has the sun behind the camera — the blue-hour shot lightening from fajr to sunrise, then the
+  // same view in morning light (lit from the front, a clean blue sky) until dhuhr, then the afternoon shot with the real sun
+  const ph = rkPhase(now, alt, az), morning = ph.morning, a = ph.a, A = $('#rkA'), B = $('#rkB');
   if (!A.dataset.f) { A.style.backgroundImage = `url(wall/rk-${a}.webp)`; A.dataset.f = a; }
   else if (A.dataset.f !== a && B.dataset.f !== a) {
     B.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.style.backgroundImage = `url(wall/rk-${a}.webp)`;
     requestAnimationFrame(() => requestAnimationFrame(() => { B.style.transition = 'opacity 4s ease'; B.style.opacity = 1; }));
     setTimeout(() => { A.style.backgroundImage = B.style.backgroundImage; A.dataset.f = a; B.style.transition = 'none'; B.style.opacity = 0; B.dataset.f = ''; }, 4300);
   }
-  const night = a === 'blue' ? clamp(((morning ? -9 : -6) - alt) / 5) : 0;
+  const night = ph.night;
   $('#rkN').style.opacity = night.toFixed(3);
-  $('#rkTint').style.opacity = (morning && a === 'blue' ? clamp((alt + 9) / 9) * .85 : 0).toFixed(3);
+  $('#rkTint').style.opacity = ph.tint.toFixed(3);
   const back = $('#wallBack'); if (back && back.dataset.f !== a) { back.style.backgroundImage = `url(wall/rk-${a}.webp)`; back.dataset.f = a; }
   const cur = night > .5 ? 'night' : a, K = RK[cur], mk = window.RKM && RKM[K.mask || cur];
   const box = $('#rkSky');
