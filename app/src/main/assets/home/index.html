@@ -69,8 +69,10 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .card b{font-size:34px} .card span{font-size:19px;opacity:.8}
 /* 📻 the Quran radio card: a picture with ▶ on top, the title and its line under it (as quran.com's «Popular Recitations») */
 .card.radio{padding:0;justify-content:stretch;gap:0;overflow:hidden;background:#20242a;position:relative}
-.card.radio .pic{flex:1;position:relative;background:radial-gradient(120% 90% at 60% 55%,#8a5a22 0%,#4a2f12 38%,#1c130a 78%),#2a1b0c;display:grid;place-items:center;overflow:hidden}
-.card.radio .pic::before{content:"";position:absolute;width:150px;height:104px;border-radius:9px;transform:perspective(420px) rotateX(46deg) rotateZ(-14deg);background:radial-gradient(circle at 50% 50%,rgba(255,221,140,.5) 0 13%,transparent 14%),repeating-linear-gradient(45deg,rgba(255,214,130,.20) 0 3px,transparent 3px 8px),linear-gradient(135deg,#6b2f1e,#3d190f);border:3px solid #c9973d;box-shadow:0 0 0 7px #55241a,0 0 0 9px #b88a36,10px 22px 30px rgba(0,0,0,.55)}
+.card.radio .pic{flex:1;position:relative;background:#2a1b0c url(wall/radio.webp) center/cover no-repeat;display:grid;place-items:center;overflow:hidden}
+.card.radio .pic::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.28)}
+.card.radio.cover .pic{background-size:cover;background-position:center}
+.card.radio.cover:not([data-sura]) .pic::after{content:"▶"}
 .card.radio .pic::after{content:"▶";position:relative;font-size:30px;color:#fff;opacity:.95;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .card.radio.on .pic::after{content:"";width:34px;height:26px;background:linear-gradient(#fff,#fff) 0 100%/6px 100% no-repeat,linear-gradient(#fff,#fff) 9px 100%/6px 60% no-repeat,linear-gradient(#fff,#fff) 18px 100%/6px 85% no-repeat,linear-gradient(#fff,#fff) 27px 100%/6px 45% no-repeat;animation:eq 1s ease-in-out infinite alternate;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
 @keyframes eq{to{background-size:6px 40%,6px 100%,6px 50%,6px 90%}}
@@ -386,12 +388,13 @@ const NOW = () => window.__simTime ? window.__simTime() : new Date();
 const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 const NAMES = ['الفجر', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
 // noor-tv's videos (MIT, majedphotos): Surat Al-Kahf, Al-Baqara, morning and evening adhkar, ruqya
+// the Quran & adhkar cards, each with its video's cover; سورة الكهف plays as sound here (the chosen reciter), the others open the video
 const CARDS = [
-  { t: 'سورة الكهف', s: 'يوم الجمعة', v: '9k1U0aGQRNA', c: '#1f5e4a' },
-  { t: 'سورة البقرة', s: 'تُقرأ في البيت', v: '9HW7j9lZZTU', c: '#2b3a55' },
-  { t: 'أذكار الصباح', s: 'بعد الفجر', v: 'fD4uDIoCn3M', c: '#6b4a1f' },
-  { t: 'أذكار المساء', s: 'بعد العصر', v: 'rQnNno3Do60', c: '#3a2c55' },
   { t: 'الرقية الشرعية', s: 'للبيت وأهله', v: 'BVtCjMyJ320', c: '#1f4a5e' },
+  { t: 'سورة الكهف', s: 'يوم الجمعة · صوت', v: '9k1U0aGQRNA', c: '#1f5e4a', sura: 18 },
+  { t: 'أذكار الصباح', s: 'بعد الفجر', v: 'fD4uDIoCn3M', c: '#6b4a1f' },
+  { t: 'سورة البقرة', s: 'تُقرأ في البيت', v: '9HW7j9lZZTU', c: '#2b3a55' },
+  { t: 'أذكار المساء', s: 'بعد العصر', v: 'rQnNno3Do60', c: '#3a2c55' },
 ];
 const CITIES = [
   ['مسقط', 23.588, 58.383, 8], ['صلالة', 17.019, 54.089, 8], ['صحار', 24.347, 56.709, 8], ['نزوى', 22.933, 57.533, 8],
@@ -747,7 +750,7 @@ async function playSurah(n) {
   if (radioOn) { radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); homeCards(); }
   const r = RECITERS.find(x => x[0] === getRec()) || RECITERS[0];
   try { audio.src = await surahUrl(r, n); await audio.play(); } catch (e) { $('#plSub').textContent = 'تعذّر التشغيل — تحقق من الإنترنت'; }
-  playing = n; $('#player').hidden = false;
+  playing = n; $('#player').hidden = false; setTimeout(homeCards, 0);
   $('#plTitle').textContent = 'سورة ' + SURAHS[n - 1]; $('#plSub').textContent = r[1]; $('#plToggle').textContent = 'إيقاف';
   quranUi();
 }
@@ -833,7 +836,7 @@ let miniT = 0; audio.addEventListener('timeupdate', () => { if (Date.now() - min
 audio.addEventListener('play', miniAudio); audio.addEventListener('pause', miniAudio);
 audio.onended = () => { if (radioOn) return radioTune(true); if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
 audio.onerror = () => { if (radioOn && audio.src) setTimeout(() => radioOn && radioTune(true), 4000); };
-function closePlayer() { const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); if (wasRadio) setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
+function closePlayer() { const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
 let pauseT = 0;
 audio.onpause = () => { clearTimeout(pauseT); pauseT = setTimeout(() => { if (audio.paused && playing) closePlayer(); }, 8000); };
 audio.onplay = () => clearTimeout(pauseT);
@@ -1300,7 +1303,7 @@ function homeCards() {
 }
 function cardsHtml(home) {
   const u = TV.phoneUrl();
-  return (home ? lastHtml() + radioHtml() : '') + CARDS.map((c, i) => `<button class="card f" style="background:${c.c}" data-yt="${c.v}"><span>${c.s}</span><b>${c.t}</b></button>`).join('')
+  return (home ? lastHtml() + radioHtml() : '') + CARDS.map(c => `<button class="card f radio cover${c.sura && playing === c.sura ? ' on' : ''}" ${c.sura ? `data-sura="${c.sura}"` : `data-yt="${c.v}"`}><div class="pic" style="background-image:url('https://i.ytimg.com/vi/${c.v}/hqdefault.jpg');background-color:${c.c}"></div><div class="txt"><b>${c.t}</b><span>${c.s}</span></div></button>`).join('')
     + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
 }
 let APPS = [];
@@ -1610,6 +1613,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'ytclose') return ytClose();
   if (b.dataset.ch) return TV.channel ? TV.channel(b.dataset.ch) : TV.link('https://www.youtube.com/channel/' + b.dataset.ch);
   if (b.dataset.rec) { try { localStorage.rec = b.dataset.rec; } catch (x) {} if (playing) playSurah(playing); return quranUi(); }
+  if (b.dataset.sura && b.closest('#s-quran') && playing === +b.dataset.sura && !audio.paused) return closePlayer();   // the card again: stop
   if (b.dataset.sura) return playSurah(+b.dataset.sura);
   if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }

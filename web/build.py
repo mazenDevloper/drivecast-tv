@@ -19,7 +19,13 @@ h = h[:main.start()] + '<script type="text/dctv">\n' + h[main.end():]   # waits 
 h = h.replace('<head>', '<head>\n<script src="hub.js"></script>', 1)
 h = h.replace('<meta name="viewport" content="width=1920">', '<meta name="viewport" content="width=device-width,initial-scale=1">', 1)
 h = h.replace('<title>DriveCast TV</title>', '<title>DriveCast TV · ويب</title>', 1)
-h = h.replace('</body>', '<script src="web.js"></script>\n</body>', 1)
+import subprocess, time
+ver = (subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip() or str(int(time.time())))
+# a browser keeps the page ~10 min (GitHub Pages): the scripts carry the version, and an old page that finds a newer one reloads itself
+h = h.replace('<script src="hub.js"></script>', f'<script src="hub.js?v={ver}"></script>', 1)
+h = h.replace('</body>', f'<script src="web.js?v={ver}"></script>\n</body>', 1)
+h = h.replace('<head>', '<head>\n<script>(function(){var V="' + ver + '";try{fetch("version.txt?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.text():""}).then(function(v){v=(v||"").trim();if(v&&v!==V&&sessionStorage.getItem("dctv-v")!==v){sessionStorage.setItem("dctv-v",v);var q=new URLSearchParams(location.search);q.set("v",v);location.replace(location.pathname+"?"+q+location.hash);}})}catch(e){}})();</script>', 1)
+(site / 'version.txt').write_text(ver)
 (site / 'index.html').write_text(h, encoding='utf-8')
 
 p = (root / 'app/src/main/assets/phone/index.html').read_text(encoding='utf-8')
