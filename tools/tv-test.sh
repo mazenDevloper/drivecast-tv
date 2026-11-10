@@ -88,6 +88,7 @@ if command -v node >/dev/null && [ -n "$WID" ]; then
     for z in $(seq 1 30); do a shell input keyevent KEYCODE_DPAD_UP; sleep 0.15; done; sleep 3
     for z in $(seq 1 15); do a shell input keyevent KEYCODE_DPAD_DOWN; sleep 0.4; done; sleep 8
     shot 18-zapping "after 45 fast channel changes"
+    a shell input keyevent KEYCODE_DPAD_CENTER; sleep 2; shot 19-player-info "OK: the channel's info bar (resolution, codec, bit depth…)"
     top=$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:')
     pid2=$(a shell pidof $PKG | tr -d '\r')
     echo "$top" | grep -q PlayerActivity && [ "$pid" = "$pid2" ] && ok "zapping: still in the player, same process" || bad "zapping left the player ($top, pid $pid → $pid2)"
