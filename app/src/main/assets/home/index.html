@@ -363,7 +363,7 @@ body.ambient .phrase.on{display:block}
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <h2>القنوات العربية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
+    <h2>كل القنوات — العربية والعالمية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -1297,13 +1297,13 @@ function markScan() {
   });
 }
 // ---- filters (checkboxes) on the scan's findings + a name search
-const FILT = { ok: false, k4: false, fhd: false, hd: false, hdr: false, b10: false, avc: false, hevc: false, q: '' };
+const FILT = { ok: true, k4: false, fhd: false, hd: false, hdr: false, b10: false, avc: false, hevc: false, q: '' };
 const FILT_CHIPS = [['ok', '✅ تعمل فقط'], ['k4', '4K'], ['fhd', 'FHD ↑'], ['hd', 'HD ↑'], ['hdr', 'HDR'], ['b10', '10-bit'], ['avc', 'H.264'], ['hevc', 'HEVC']];
 const filtOn = () => FILT.q.trim() !== '' || FILT_CHIPS.some(([k]) => FILT[k]);
 function passFilt(c) {
   const v = SCAN[c.url], o = v && typeof v === 'object' ? v : {};
   if (FILT.q.trim() && !c.name.toLowerCase().includes(FILT.q.trim().toLowerCase())) return false;
-  if (FILT.ok && !isOk(c)) return false;
+  if (FILT.ok && SCAN[c.url] === 0) return false;   // «تعمل»: what the scan found dead is hidden; not checked yet → still shown
   if (FILT.k4 && !(o.h >= 2000)) return false;
   if (FILT.fhd && !(o.h >= 1000)) return false;
   if (FILT.hd && !(o.h >= 700)) return false;
@@ -1335,15 +1335,66 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
 }
 setInterval(scanMaybe, 3600e3);
 const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
+/** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
+function allChannels() {
+  const seen = new Set(), out = [];
+  const add = (c, g) => { if (!c || !c.url || seen.has(c.url)) return; seen.add(c.url); out.push(g ? { ...c, group: g } : c); };
+  DYNCH.forEach(c => c.url && add(c));
+  ILIST.forEach(c => add(c));
+  (SPORTS?.list || []).forEach(c => add(c, 'رياضة عالمية'));
+  return out;
+}
 function iptvUi() {
-  const groups = ['all', ...new Set(ILIST.map(c => c.group))].slice(0, 30);
+  const ALL = allChannels();
+  const groups = ['all', ...new Set(ALL.map(c => c.group).filter(Boolean))].slice(0, 30);
   $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
   filtUi();
-  let pool = ILIST.filter(c => IGROUP === 'all' || c.group === IGROUP);
-  if (filtOn()) { const seen = new Set(); pool = [...MYFAV, ...IFAV, ...ILIST].filter(c => c && c.url && !seen.has(c.url) && seen.add(c.url)).filter(passFilt); }   // filtering searches every list
+  let pool = ALL.filter(c => IGROUP === 'all' || c.group === IGROUP);
+  if (FILT.q.trim()) { const seen = new Set(pool.map(c => c.url)); pool = pool.concat([...MYFAV, ...IFAV].filter(c => c && c.url && !seen.has(c.url) && seen.add(c.url))); }   // a name search also looks in the favourites
+  pool = pool.filter(passFilt);
+  // working ones first (green), then not checked yet
+  pool.sort((a, b) => (isOk(b) ? 1 : 0) - (isOk(a) ? 1 : 0));
   const shown = pool.slice(0, 400);
   window.__shown = shown;
   $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || '<div class="empty">جارٍ التحميل…</div>';
+}
+// ⚡ sports channels whose links change: each time, every link for them in the maintained public lists (Free-TV, iptv-org) is
+// gathered and tried — the first that answers plays. Free-to-air channels only. ثمانية from its own YouTube live.
+const DYN = [
+  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i], ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i],
+  ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i], ['دبي الرياضية 2', /dubai sports? ?2\b/i], ['دبي الرياضية 3', /dubai sports? ?3\b/i],
+  ['الكأس 1', /al ?kass ?(one|1)\b/i], ['الكأس 2', /al ?kass ?(two|2)\b/i], ['الكأس 3', /al ?kass ?(three|3)\b/i], ['الكأس 4', /al ?kass ?(four|4)\b/i],
+  ['ثمانية', null, 'ثمانية بث مباشر'],
+];
+const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/countries/sa.m3u'];
+let DYNCH = [], DYNC = {}, dynAt = 0;   // DYNCH: one channel each (its best link so far); DYNC: every link found for it
+async function loadDyn() {
+  if (Date.now() - dynAt < 30 * 60e3) return; dynAt = Date.now();
+  const all = (await Promise.all(DYN_SRC.map(u => getText(u)))).flatMap(t => parseM3u(t)).filter(c => !/geo-blocked/i.test(c.name));
+  DYNC = {};
+  for (const [name, re] of DYN) if (re) DYNC[name] = [...new Map(all.filter(c => re.test(c.name)).map(c => [c.url, c])).values()];
+  DYNCH = DYN.map(([name, re, q]) => {
+    const c = re ? DYNC[name] : null, best = c && (c.find(isOk) || c.find(x => SCAN[x.url] !== 0) || c[0]);
+    return q ? { name, url: 'yt-search:' + q, logo: '', group: '⚡ رياضية متجددة', dyn: 1 }
+      : best ? { name, url: best.url, logo: best.logo || '', group: '⚡ رياضية متجددة', dyn: 1 } : null;
+  }).filter(Boolean);
+  const urls = Object.values(DYNC).flat().map(c => c.url);
+  if (urls.length && TV.scanStart && TV !== FAKE) TV.scanStart(JSON.stringify(urls), false);   // all their links join the scan
+  iptvUi();
+}
+/** a link that answers now: a quick look at each of the channel's links (its playlist must start with #EXTM3U) */
+async function dynResolve(c) {
+  if (/^yt-search:/.test(c.url)) {   // ثمانية: its live stream on YouTube now
+    const t = await getText('https://www.youtube.com/results?sp=EgJAAQ%253D%253D&hl=ar&search_query=' + encodeURIComponent(c.url.slice(10)));
+    const v = ytParse(t).find(x => /ثمانية|thmanyah/i.test(x.ch + ' ' + x.title));
+    return v ? { ...c, url: 'https://www.youtube.com/watch?v=' + v.id } : null;
+  }
+  const cands = (DYNC[c.name] || [c]).slice().sort((a, b) => (isOk(b) ? 2 : SCAN[b.url] === 0 ? 0 : 1) - (isOk(a) ? 2 : SCAN[a.url] === 0 ? 0 : 1));
+  for (const x of cands) {
+    const t = await Promise.race([getText(x.url), new Promise(r => setTimeout(() => r(null), 6000))]);
+    if (t && String(t).trimStart().startsWith('#EXTM3U')) return { ...c, url: x.url };
+  }
+  return cands.length ? { ...c, url: cands[0].url } : null;
 }
 const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countries/ae', 'الإمارات'], ['countries/sa', 'السعودية'], ['countries/qa', 'قطر'], ['countries/kw', 'الكويت']];
 let listsAt = 0, LIVE = [];
@@ -1353,7 +1404,7 @@ async function loadLists() {
   const texts = await Promise.all(LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u')));
   const seen = new Set(); ILIST = [];
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  liveUi(); iptvUi(); scanMaybe();
+  liveUi(); iptvUi(); scanMaybe(); loadDyn();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
@@ -1541,6 +1592,12 @@ async function resolveChannel(c) {
   return fresh ? { ...c, url: fresh.url, logo: c.logo || fresh.logo } : c;
 }
 async function playChannel(list, i) {
+  if (list && list[i] && list[i].dyn) {
+    const r = await dynResolve(list[i]);
+    if (!r) return;
+    if (/youtu\.?be/.test(r.url)) { lastSet({ k: 'yt', id: ytId(r.url), t: r.name }); return TV.youtube(ytId(r.url)); }
+    list = list.map((x, k) => k === i ? r : x).filter(x => !/^yt-search:/.test(x.url)); i = list.indexOf(r);
+  }
   // favourites and the home shelf are kept by name: their links come from the newest lists (the chosen one also from YouTube live)
   if (list && list[i] && (list === MYFAV || list === LIVE || /^yt-live:/.test(list[i].url))) {
     const chosen = await resolveChannel(list[i]);
@@ -2070,7 +2127,13 @@ setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { 
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();
 // a TV that reports a smaller CSS width (720p / 1080p at a density): the 1920×1080 design scaled to fit
-function fit() { document.body.style.zoom = String(Math.min(innerWidth / 1920, innerHeight / 1080)); }
+let fitW = 0, fitH = 0;
+function fit() {
+  const w = innerWidth, h = innerHeight, typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
+  if (fitW && w === fitW && h < fitH && typing) return;   // the keyboard took part of the window: keep the size
+  fitW = w; fitH = h;
+  document.body.style.zoom = String(Math.min(w / 1920, h / 1080));
+}
 fit(); addEventListener('resize', fit);
 </script>
 </body>

@@ -27,6 +27,8 @@ import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.TrackSelectionOverride;
+import androidx.media3.common.Tracks;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.DecoderReuseEvaluation;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -59,7 +61,8 @@ public class PlayerActivity extends Activity {
     private String decoder = "", digits = "";
 
     private LinearLayout bar;
-    private TextView num, name, group, note, clock;
+    private TextView num, name, group, note, clock, hint;
+    private int cur = -1, prevI = -1, audioPick = -1;   // the channel playing, the one before it (◀ / LAST), the sound track chosen
     private ImageView logo;
     private LinearLayout chips, chips2;
     private View[] signal = new View[5];
@@ -182,6 +185,10 @@ public class PlayerActivity extends Activity {
         chips2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout.LayoutParams chp2 = new LinearLayout.LayoutParams(-1, -2); chp2.topMargin = (int) dp(6);
         bar.addView(chips2, chp2);
+        // what the remote does here (changes with the stream: a recording can be wound, a live channel cannot)
+        hint = text(11, med, 0x99FFFFFF);
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-2, -2); hp.topMargin = (int) dp(8);
+        bar.addView(hint, hp);
         note = text(13, med, 0xFFFFD27A); note.setVisibility(View.GONE);
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2); np.topMargin = (int) dp(8);
         bar.addView(note, np);
@@ -196,9 +203,10 @@ public class PlayerActivity extends Activity {
     }
 
     private LinearLayout row;
-    private void chip(String s, int bg, int fg) {
-        TextView t = text(12, Typeface.create("sans-serif-medium", Typeface.BOLD), fg);
-        t.setText(s); t.setPadding((int) dp(10), (int) dp(4), (int) dp(10), (int) dp(4));
+    private void chip(String s, int bg, int fg) { chip(s, bg, fg, 12); }
+    private void chip(String s, int bg, int fg, float sp) {
+        TextView t = text(sp, Typeface.create("sans-serif-medium", Typeface.BOLD), fg);
+        t.setText(s); t.setPadding((int) dp(sp > 12 ? 12 : 10), (int) dp(sp > 12 ? 5 : 4), (int) dp(sp > 12 ? 12 : 10), (int) dp(sp > 12 ? 5 : 4));
         t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         GradientDrawable d = new GradientDrawable(); d.setColor(bg); d.setCornerRadius(dp(10)); t.setBackground(d);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2); p.setMarginEnd((int) dp(6));
@@ -211,37 +219,101 @@ public class PlayerActivity extends Activity {
     private void fill0() {
         if (player == null) return;
         chips.removeAllViews(); chips2.removeAllViews(); row = chips;
-        boolean ready = player.getPlaybackState() == Player.STATE_READY;
-        chip(ready ? "● مباشر" : "… يتصل", ready ? 0xE6E5484D : 0x40FFFFFF, Color.WHITE);
+        boolean ready = player.getPlaybackState() == Player.STATE_READY, paused = !player.getPlayWhenReady();
+        long behind = behindLive();
+        if (paused) chip("⏸ متوقف", 0xE6F2994A, 0xFF1A0E00);
+        else if (!ready) chip("⏳ يتصل…", 0x40FFFFFF, Color.WHITE);
+        else if (behind > 15000) chip("⏪ متأخر " + mmss(behind) + "  · ⏯ للمباشر", 0xE6F2994A, 0xFF1A0E00);
+        else if (player.isCurrentMediaItemLive() || player.getDuration() == C.TIME_UNSET) chip("🔴 مباشر", 0xE6E5484D, Color.WHITE);
+        else chip("▶ " + mmss(player.getCurrentPosition()) + " / " + mmss(player.getDuration()), 0x40FFFFFF, Color.WHITE);
         Format v = player.getVideoFormat(), a = player.getAudioFormat();
         long need = 0;
         if (v != null && v.height > 0) {
-            int hh = Math.min(v.height, v.width > 0 ? v.width * 9 / 16 + 8 : v.height);
+            // the quality first, large and in its colour: 4K gold, QHD / FHD green, HD blue, SD grey
             String q = v.height >= 2100 ? "4K UHD" : v.height >= 1400 ? "QHD" : v.height >= 1000 ? "FHD" : v.height >= 700 ? "HD" : "SD";
-            chip(q + "  " + v.width + "×" + v.height, 0xF2FFFFFF, 0xFF0B1014);
+            int qb = v.height >= 2100 ? 0xFFF5C94C : v.height >= 1000 ? 0xFF3DDC97 : v.height >= 700 ? 0xFF4DA3FF : 0xFF8A96A3;
+            chip(q + "  " + v.height + "p", qb, 0xFF07110C, 15);
             String c = codec(v);
-            if (!c.isEmpty()) chip(c, 0x2EFFFFFF, Color.WHITE);
-            chip(bits(v) + "-bit", 0x2EFFFFFF, Color.WHITE);
-            if (v.frameRate > 0) chip(String.format(Locale.US, "%.0f fps", v.frameRate), 0x2EFFFFFF, Color.WHITE);
+            if (!c.isEmpty()) chip("🎞 " + c, 0x2EFFFFFF, Color.WHITE);
+            int b = bits(v);
+            chip("🎨 " + b + "-bit", b >= 10 ? 0x55B98CFF : 0x2EFFFFFF, Color.WHITE);
+            if (v.frameRate > 0) chip(String.format(Locale.US, "⏱ %.0f fps", v.frameRate), v.frameRate >= 49 ? 0x553DDC97 : 0x2EFFFFFF, Color.WHITE);
             String hdr = hdr(v.colorInfo);
-            chip(hdr, hdr.equals("SDR") ? 0x33FFFFFF : 0xE6F5C94C, hdr.equals("SDR") ? Color.WHITE : 0xFF1A1405);
+            chip(hdr.equals("SDR") ? "☀ SDR" : "✨ " + hdr, hdr.equals("SDR") ? 0x2EFFFFFF : 0xE6F5C94C, hdr.equals("SDR") ? 0xCCFFFFFF : 0xFF1A1405);
             int br = v.averageBitrate > 0 ? v.averageBitrate : v.bitrate > 0 ? v.bitrate : v.peakBitrate;
-            if (br > 0) { chip(String.format(Locale.US, "%.1f Mbps", br / 1e6), 0x2EFFFFFF, Color.WHITE); need = br; }
+            if (br > 0) { chip(String.format(Locale.US, "📶 %.1f Mbps", br / 1e6), 0x2EFFFFFF, Color.WHITE); need = br; }
+            if (v.width > 0) chip(v.width + "×" + v.height, 0x1AFFFFFF, 0x99FFFFFF);
         }
         row = chips2;
         if (a != null) {
             String m = a.sampleMimeType == null ? "" : a.sampleMimeType.replace("audio/", "").replace("mp4a-latm", "AAC").replace("ac3", "Dolby AC-3").replace("eac3", "Dolby E-AC-3").replace("mpeg", "MP3").toUpperCase(Locale.US);
-            String ch = a.channelCount == 6 ? "5.1" : a.channelCount == 8 ? "7.1" : a.channelCount == 2 ? "2.0" : a.channelCount == 1 ? "1.0" : "";
-            chip(("♪ " + m + " " + ch + (a.sampleRate > 0 ? " · " + a.sampleRate / 1000 + " kHz" : "")).trim(), 0x2EFFFFFF, Color.WHITE);
+            String ch = a.channelCount == 6 ? "5.1" : a.channelCount == 8 ? "7.1" : a.channelCount == 2 ? "ستيريو" : a.channelCount == 1 ? "أحادي" : "";
+            String lang = a.language == null || a.language.equals("und") ? "" : " · " + a.language.toUpperCase(Locale.US);
+            int nA = audioGroups().size();
+            chip(("🔊 " + m + " " + ch + (a.sampleRate > 0 ? " · " + a.sampleRate / 1000 + " kHz" : "") + lang + (nA > 1 ? "  (" + nA + " أصوات)" : "")).trim(), a.channelCount >= 6 ? 0x55B98CFF : 0x2EFFFFFF, Color.WHITE);
         }
         if (!decoder.isEmpty()) {
             boolean sw = decoder.startsWith("OMX.google") || decoder.startsWith("c2.android") || decoder.contains(".sw.");
-            chip((sw ? "فك برمجي · " : "فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), 0x2EFFFFFF, 0xCCFFFFFF);
+            chip((sw ? "⚙ فك برمجي · " : "⚡ فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), sw ? 0x33F2994A : 0x2EFFFFFF, 0xCCFFFFFF);
         }
+        hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً مشغّل آخر"
+            : "▲▼ قناة  ·  ◀ القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ حجم الصورة  ·  ⏯ إيقاف مؤقت  ·  🔊 صوت آخر");
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
         int bars = !ready ? 1 : need <= 0 ? (have > 8e6 ? 5 : have > 4e6 ? 4 : have > 2e6 ? 3 : 2) : (int) Math.max(1, Math.min(5, Math.round(have / (double) need * 1.6)));
         for (int k = 0; k < 5; k++) ((GradientDrawable) signal[k].getBackground()).setColor(k < bars ? (bars <= 2 ? 0xFFF2994A : 0xFF3DDC97) : 0x40FFFFFF);
+    }
+
+    private static String mmss(long ms) { long sec = Math.max(0, ms / 1000); return sec >= 3600 ? String.format(Locale.US, "%d:%02d:%02d", sec / 3600, sec / 60 % 60, sec % 60) : String.format(Locale.US, "%d:%02d", sec / 60, sec % 60); }
+    private String label(int k) { return names != null && k < names.length && names[k] != null && !names[k].isEmpty() ? names[k] : String.valueOf(k + 1); }
+    /** a recording, or a live stream with a window to wind back in (≥ 1 min) */
+    private boolean canWind() {
+        if (player == null || !player.isCurrentMediaItemSeekable()) return false;
+        long d = player.getDuration();
+        return d != C.TIME_UNSET && d > 60000;
+    }
+    /** how far behind the live edge (a live stream wound back or paused), ms */
+    private long behindLive() {
+        if (player == null || !player.isCurrentMediaItemLive()) return 0;
+        long d = player.getDuration(); if (d == C.TIME_UNSET) return 0;
+        return Math.max(0, d - player.getCurrentPosition());
+    }
+    private java.util.List<Tracks.Group> audioGroups() {
+        java.util.List<Tracks.Group> out = new java.util.ArrayList<>();
+        if (player == null) return out;
+        for (Tracks.Group g : player.getCurrentTracks().getGroups()) if (g.getType() == C.TRACK_TYPE_AUDIO && g.isSupported()) out.add(g);
+        return out;
+    }
+    private void flash(String s) { setNote(s); fill(); showBar(3500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 3500); }
+    private void wind(long by) {
+        long d = player.getDuration(), to = Math.max(0, Math.min(d == C.TIME_UNSET ? Long.MAX_VALUE : d - 2000, player.getCurrentPosition() + by));
+        player.seekTo(to);
+        flash((by < 0 ? "⏪ " : "⏩ ") + Math.abs(by / 1000) + " ث" + (player.isCurrentMediaItemLive() ? "  · متأخر " + mmss(Math.max(0, d - to)) : "  · " + mmss(to)));
+    }
+    private void recall() {
+        if (prevI < 0 || prevI >= urls.length || prevI == i) { flash("ما فيه قناة سابقة بعد"); return; }
+        i = prevI; play();
+    }
+    /** 🔊 the next sound track (language / commentary), when the channel has more than one */
+    private void nextAudio() {
+        java.util.List<Tracks.Group> g = audioGroups();
+        if (g.size() < 2) { flash("🔊 صوت واحد فقط في هذه القناة"); return; }
+        int now = 0; for (int k = 0; k < g.size(); k++) if (g.get(k).isSelected()) now = k;
+        audioPick = (now + 1) % g.size();
+        Tracks.Group t = g.get(audioPick);
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setOverrideForType(new TrackSelectionOverride(t.getMediaTrackGroup(), 0)).build());
+        String l = t.getTrackFormat(0).language, lb = t.getTrackFormat(0).label;
+        flash("🔊 الصوت " + (audioPick + 1) + " من " + g.size() + (lb != null ? " · " + lb : l != null && !l.equals("und") ? " · " + l.toUpperCase(Locale.US) : ""));
+    }
+    /** ⏯ pause / go on; a live channel paused a while comes back at the live edge */
+    private long pausedAt = 0;
+    private void playPause(Boolean want) {
+        boolean on = want != null ? want : !player.getPlayWhenReady();
+        if (on) {
+            boolean jumpLive = player.isCurrentMediaItemLive() && (!canWind() || System.currentTimeMillis() - pausedAt > 5 * 60000);
+            if (jumpLive) player.seekToDefaultPosition();
+            player.play(); flash(jumpLive ? "▶ رجوع للمباشر" : "▶ متابعة");
+        } else { player.pause(); pausedAt = System.currentTimeMillis(); setNote("⏸ متوقف مؤقتاً · ⏯ أو OK للمتابعة"); fill(); showBar(0); }
     }
 
     private static String codec(Format f) {
@@ -308,7 +380,10 @@ public class PlayerActivity extends Activity {
 
     private void play() { try { play0(); } catch (Throwable t) { Crash.note(this, "player play: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private void play0() {
-        errors = 0; offered = false; decoder = "";
+        errors = 0; offered = false; decoder = ""; audioPick = -1;
+        if (cur >= 0 && cur != i) prevI = cur;
+        cur = i;
+        try { player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().clearOverridesOfType(C.TRACK_TYPE_AUDIO).build()); } catch (Throwable ignored) { }
         net.removeCallbacksAndMessages(null);
         num.setText(String.valueOf(i + 1));
         name.setText(names != null && i < names.length ? names[i] : "");
@@ -374,10 +449,32 @@ public class PlayerActivity extends Activity {
         if (ok && e.getRepeatCount() == 8) { openOtherPlayer(); return true; }   // OK held ≈ ½ s: another player
         if (ok && e.getRepeatCount() > 0) return true;
         if (ok && offered) { openOtherPlayer(); return true; }
-        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {   // ◀ ▶ : smart / original / fill
-            fitMode = (fitMode + (code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 2)) % 3; fit();
-            fill(); setNote("حجم الصورة: " + FIT_NAMES[fitMode] + "  ◀ ▶"); showBar(3500);
-            h.removeCallbacks(clearNote); h.postDelayed(clearNote, 3500); return true;
+        if (ok && !player.getPlayWhenReady()) { playPause(true); return true; }
+        boolean wind = canWind();
+        // ◀ ▶ — a stream that can be wound: back / on 10 s (held: 30 s at a time). A plain live channel: ◀ the channel before
+        // (like a receiver's «recall»), ▶ the picture's size
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            boolean right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
+            if (wind) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }
+            if (e.getRepeatCount() > 0) return true;
+            if (!right) { recall(); return true; }
+            fitMode = (fitMode + 1) % 3; fit();
+            flash("حجم الصورة: " + FIT_NAMES[fitMode] + "  ▶"); return true;
+        }
+        // the remote's media keys
+        switch (code) {
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: case KeyEvent.KEYCODE_SPACE: playPause(null); return true;
+            case KeyEvent.KEYCODE_MEDIA_PLAY: playPause(true); return true;
+            case KeyEvent.KEYCODE_MEDIA_PAUSE: playPause(false); return true;
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD: if (wind) wind(30000); else { i = (i + 1) % urls.length; play(); } return true;
+            case KeyEvent.KEYCODE_MEDIA_REWIND: if (wind) wind(-30000); else { i = (i - 1 + urls.length) % urls.length; play(); } return true;
+            case KeyEvent.KEYCODE_MEDIA_NEXT: i = (i + 1) % urls.length; play(); return true;
+            case KeyEvent.KEYCODE_MEDIA_PREVIOUS: i = (i - 1 + urls.length) % urls.length; play(); return true;
+            case KeyEvent.KEYCODE_LAST_CHANNEL: recall(); return true;
+            case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: case KeyEvent.KEYCODE_PROG_YELLOW: nextAudio(); return true;
+            case KeyEvent.KEYCODE_MEDIA_STOP: finish(); return true;
+            case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); return true;
+            default: break;
         }
         if (ok || code == KeyEvent.KEYCODE_INFO) { fill(); showBar(6000); return true; }
         return super.onKeyDown(code, e);

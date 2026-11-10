@@ -7,7 +7,13 @@
   const $ = s => document.querySelector(s);
 
   // the page is drawn for a 1920×1080 screen: scaled to the window
-  const fit = () => { document.body.style.zoom = Math.min(innerWidth / 1920, innerHeight / 1080); };
+  // the phone's keyboard makes the window shorter while typing: the page keeps its size (it does not shrink to a corner)
+  let fw = 0, fh = 0;
+  const fit = () => {
+    const w = innerWidth, h = innerHeight, typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
+    if (fw && h < fh && typing && Math.abs(w - fw) < 40) return;
+    fw = w; fh = h; document.body.style.zoom = Math.min(w / 1920, h / 1080);
+  };
   fit(); addEventListener('resize', fit);
 
   // ---- the bar: the TV's state, where things play, the remote
