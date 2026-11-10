@@ -71,6 +71,7 @@ public class Adhan extends BroadcastReceiver {
                     at.set(Calendar.MINUTE, Integer.parseInt(hm[1]));
                     at.set(Calendar.SECOND, 0);
                     at.set(Calendar.MILLISECOND, 0);
+                    at.add(Calendar.MINUTE, setting(app, i, "offsetMinutes", 0));   // DriveCast's own shift, as the home screen shows it
                     if (at.getTimeInMillis() > now.getTimeInMillis() + 30_000) {
                         set(app, at.getTimeInMillis(), i);
                         return;
@@ -116,38 +117,68 @@ public class Adhan extends BroadcastReceiver {
         return f.length() > 50_000 ? f : null;
     }
 
-    /** DriveCast's iqamah gap for the prayer (master bin prayerSettings: offset + duration), else the usual Oman gaps */
+    /** DriveCast's iqamah gap for the prayer (master bin prayerSettings: iqamahDuration), else the usual Oman gaps */
     static int iqamaMinutes(Context c, int prayer) {
         SharedPreferences st = Access.set(c);
         if ("custom".equals(st.getString("iqsrc", "dc"))) {
             try { return Integer.parseInt(st.getString("iq" + prayer, String.valueOf(IQAMA_MIN[prayer]))); } catch (Exception ignored) { }
         }
-        try {
-            JSONObject m = new JSONObject(get("https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a"));
-            org.json.JSONArray a = m.optJSONArray("prayerSettings");
-            String id = new String[]{"fajr", "dhuhr", "asr", "maghrib", "isha"}[prayer];
-            for (int k = 0; a != null && k < a.length(); k++) {
-                JSONObject r = a.optJSONObject(k);
-                if (r != null && id.equals(r.optString("id")) && r.has("iqamahDuration")) return r.optInt("iqamahDuration", IQAMA_MIN[prayer]);
-            }
-        } catch (Exception ignored) { }
-        return IQAMA_MIN[prayer];
+        return setting(c, prayer, "iqamahDuration", IQAMA_MIN[prayer]);
     }
 
-    private static void setIqama(Context c, int prayer) {
-        new Thread(() -> {
-            long when = System.currentTimeMillis() + iqamaMinutes(c, prayer) * 60_000L;
-            Intent fire = new Intent(c, Adhan.class).setAction(IQAMA).putExtra("p", prayer);
-            PendingIntent pi = PendingIntent.getBroadcast(c, 2, fire, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            c.getSystemService(AlarmManager.class).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
-        }, "iqama").start();
+    /** a value of DriveCast's prayer settings (master bin prayerSettings), kept on the TV so it holds with no Internet; re-read every 3 h */
+    static synchronized int setting(Context c, int prayer, String key, int dflt) {
+        SharedPreferences p = c.getSharedPreferences("pset", Context.MODE_PRIVATE);
+        String body = p.getString("body", null);
+        if (body == null || System.currentTimeMillis() - p.getLong("at", 0) > 3 * 3600_000L) {
+            try {
+                org.json.JSONArray a = new JSONObject(get("https://studio.c-p.workers.dev/bin/69c782cbb7ec241ddcb0b99a")).optJSONArray("prayerSettings");
+                if (a != null) { body = a.toString(); p.edit().putString("body", body).putLong("at", System.currentTimeMillis()).apply(); }
+            } catch (Exception ignored) { }
+        }
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(body);
+            String id = MY_KEYS[prayer];
+            for (int k = 0; k < a.length(); k++) {
+                JSONObject r = a.optJSONObject(k);
+                if (r != null && id.equals(r.optString("id")) && r.has(key)) return r.optInt(key, dflt);
+            }
+        } catch (Exception ignored) { }
+        return dflt;
+    }
+
+    /** the iqamah: <minutes> after the adhan's own time (not after the moment the alarm happened to run) */
+    private static void setIqama(Context c, int prayer, long adhanAt, double minutes) {
+        long when = Math.max(adhanAt, System.currentTimeMillis() - 60_000L) + (long) (minutes * 60_000L);
+        Intent fire = new Intent(c, Adhan.class).setAction(IQAMA).putExtra("p", prayer);
+        PendingIntent pi = PendingIntent.getBroadcast(c, 2, fire, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        exact(c, when, pi);
     }
 
     private static void set(Context c, long when, int prayer) {
-        Intent fire = new Intent(c, Adhan.class).setAction(FIRE).putExtra("p", prayer);
+        Intent fire = new Intent(c, Adhan.class).setAction(FIRE).putExtra("p", prayer).putExtra("at", when);
         PendingIntent pi = PendingIntent.getBroadcast(c, 1, fire,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        c.getSystemService(AlarmManager.class).setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
+        exact(c, when, pi);
+        c.getSharedPreferences("pset", Context.MODE_PRIVATE).edit().putString("next", prayer + "@" + when).apply();
+    }
+
+    /** to the minute, also in deep sleep; on Android 12+ without the exact-alarm right, as close as the system allows (never a crash) */
+    private static void exact(Context c, long when, PendingIntent pi) {
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
+            else am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi);
+        } catch (Exception e) {
+            try { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pi); } catch (Exception ignored) { }
+        }
+    }
+
+    /** the test (tools/tv-test.sh): the real alarm path — the adhan of «prayer» in <sec> seconds, its iqamah <iqSec> after it */
+    static void test(Context c, int sec, int iqSec) {
+        Context app = c.getApplicationContext();
+        app.getSharedPreferences("pset", Context.MODE_PRIVATE).edit().putInt("testIq", iqSec).apply();
+        set(app, System.currentTimeMillis() + sec * 1000L, 3);
     }
 
     /** "HH:mm" for Fajr..Isha on that day, from Aladhan (noor.method), cached per day for offline days. */
@@ -228,9 +259,19 @@ public class Adhan extends BroadcastReceiver {
         int prayer = i.getIntExtra("p", 1);
         SharedPreferences st = Access.set(app);
         String mode = st.getString(iqama ? "iqama" : "adhan", "sound");
-        if (!iqama) { schedule(app); if (!"off".equals(st.getString("iqama", "sound"))) setIqama(app, prayer); }
+        if (!iqama) {
+            schedule(app);
+            long at = i.getLongExtra("at", System.currentTimeMillis());
+            SharedPreferences ps = app.getSharedPreferences("pset", Context.MODE_PRIVATE);
+            int testIq = ps.getInt("testIq", 0);
+            if (testIq > 0) ps.edit().remove("testIq").apply();
+            if (!"off".equals(st.getString("iqama", "sound"))) {
+                PendingResult pr = goAsync();   // the iqamah gap may need the network: off the main thread, the receiver kept alive
+                new Thread(() -> { try { setIqama(app, prayer, at, testIq > 0 ? testIq / 60.0 : iqamaMinutes(app, prayer)); } finally { pr.finish(); } }, "iqama").start();
+            }
+        }
         if ("off".equals(mode)) return;
-        if (!app.getSystemService(PowerManager.class).isInteractive()) return; // TV is off
+        if (!app.getSystemService(PowerManager.class).isInteractive()) { log(app, (iqama ? "iqama" : "adhan") + " — the TV is off"); return; }
         boolean loud = "sound".equals(mode) && !(prayer == 0 && !iqama && "banner".equals(st.getString("fajr", "on")));
         fire(app, prayer, loud && idle(app), iqama);
     }
@@ -248,11 +289,14 @@ public class Adhan extends BroadcastReceiver {
     static void fire(Context app, int prayer, boolean play, boolean iqama) {
         String text = iqama ? "🕌 أُقيمت صلاة " + NAMES[prayer] : "🕌 حان الآن موعد أذان " + NAMES[prayer];
         if (!play) {
+            log(app, (iqama ? "iqama " : "adhan ") + NAMES[prayer] + " — banner only (something else is playing or the home screen is not in front)");
             banner(app, text, iqama ? 15_000 : 30_000);
             return;
         }
         stop();
+        ctx = app;
         java.io.File f = sound(app, iqama, prayer);
+        log(app, (iqama ? "iqama " : "adhan ") + NAMES[prayer] + (f == null ? " — no sound file yet" : " — " + f.getName()));
         try {
             if (f != null) {
                 player = new MediaPlayer();
@@ -268,6 +312,7 @@ public class Adhan extends BroadcastReceiver {
             banner(app, text, 30_000);
             return;
         }
+        audible(app);
         player.setOnCompletionListener(mp -> stop());
         try { float v = Integer.parseInt(Access.set(app).getString("vol", "100")) / 100f; player.setVolume(v, v); } catch (Exception ignored) { }
         player.start();
@@ -292,6 +337,30 @@ public class Adhan extends BroadcastReceiver {
         }, 1500);
     }
 
+    private static int volBefore = -1;
+    /** the TV box's media volume muted or almost silent: raised to half for the adhan (put back in stop()) */
+    private static void audible(Context app) {
+        AudioManager am = app.getSystemService(AudioManager.class);
+        try {
+            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), v = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+            boolean muted = android.os.Build.VERSION.SDK_INT >= 23 && am.isStreamMute(AudioManager.STREAM_MUSIC);
+            if (muted || v < max * 0.2) {
+                volBefore = muted ? 0 : v;
+                if (muted) am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0);
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, Math.max(1, max / 2), 0);
+            }
+        } catch (Exception ignored) { }
+        log(app, "adhan sound: volume " + am.getStreamVolume(AudioManager.STREAM_MUSIC) + "/" + am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+    }
+
+    /** the last adhan / iqamah events, for the test and for «آخر مشكلة» */
+    static void log(Context c, String s) {
+        SharedPreferences p = c.getSharedPreferences("pset", Context.MODE_PRIVATE);
+        String old = p.getString("log", "");
+        String line = new java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(new java.util.Date()) + " " + s;
+        p.edit().putString("log", (line + "\n" + old).substring(0, Math.min(2000, (line + "\n" + old).length()))).apply();
+    }
+
     static void stop() {
         if (player == null) return;
         try {
@@ -300,7 +369,12 @@ public class Adhan extends BroadcastReceiver {
         }
         player.release();
         player = null;
+        if (volBefore >= 0 && ctx != null) {
+            try { ctx.getSystemService(AudioManager.class).setStreamVolume(AudioManager.STREAM_MUSIC, volBefore, 0); } catch (Exception ignored) { }
+            volBefore = -1;
+        }
     }
+    private static Context ctx;
 
     /** The app in front, from usage events (GET_USAGE_STATS is granted over adb), or null if unknown. */
     static String topApp(Context c) {

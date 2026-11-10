@@ -325,6 +325,24 @@ public class HomeActivity extends Activity {
             }, "fetch").start();
         }
 
+        /** ⭐ the favourite channels, shared with DriveCast: saved in its IPTV favourites (that one cloud list only), cb(true|false) */
+        @JavascriptInterface
+        public void saveFavs(String json, String cb) {
+            new Thread(() -> {
+                boolean ok = false;
+                try {
+                    new JSONObject(json);
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL("https://studio.c-p.workers.dev/bin/69a87b8bd0ea881f40eeec0c?from=dctv-" + Remote.id(HomeActivity.this)).openConnection();
+                    c.setRequestMethod("PUT"); c.setDoOutput(true); c.setConnectTimeout(10000); c.setReadTimeout(15000);
+                    c.setRequestProperty("Content-Type", "application/json");
+                    try (java.io.OutputStream o = c.getOutputStream()) { o.write(json.getBytes("UTF-8")); }
+                    ok = c.getResponseCode() == 200; c.disconnect();
+                } catch (Exception ignored) { }
+                final String js = cb + "(" + ok + ")";
+                runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
+            }, "favs").start();
+        }
+
         /** every setting of the TV's settings panel, as JSON (the adhan, the player and the mouse read them too) */
         @JavascriptInterface
         public String prefs() { return new JSONObject(Access.set(HomeActivity.this).getAll()).toString(); }

@@ -102,6 +102,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
+            else if (first.startsWith("GET /adhan-log")) { android.content.SharedPreferences ap = getSharedPreferences("pset", MODE_PRIVATE); reply(s.getOutputStream(), "text/plain", "next " + ap.getString("next", "-") + "\n" + ap.getString("log", "")); }   // the adhan's last events (the test)
             else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
             else reply(s.getOutputStream(), "text/html", page());
             return;
@@ -157,6 +158,7 @@ public class MessageServer extends Service {
         } else if (first.startsWith("POST /adhan")) {   // try the Haram adhan / iqamah from the phone (body: adhan | iqama | stop)
             String w = body.trim();
             if (w.equals("stop")) main.post(Adhan::stop);
+            else if (w.startsWith("alarm")) Adhan.test(this, 15, 25);   // the test: the real alarm, then the iqamah
             else new Thread(() -> { Adhan.sounds(this); main.post(() -> Adhan.fire(this, 3, true, w.equals("iqama"))); }, "adhan-try").start();
         } else if (first.startsWith("POST /key")) {
             String k = body.trim();

@@ -291,10 +291,10 @@ body.ambient .phrase.on{display:block}
     <h2>المحفوظة</h2><div class="shelf" id="s-saved" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
-    <div id="favwrap"><h2>⭐ قنواتي المفضّلة</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
+    <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
-    <h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div>
+    <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
     <h2>القنوات العربية</h2><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
@@ -796,14 +796,76 @@ function parseM3u(t) {
   }
   return out;
 }
-// ⭐ my favourite channels: kept on the TV (settings «favs»), by name — the link is looked up again in the fresh lists when played
-let MYFAV = [];
-function loadFavs() { try { MYFAV = JSON.parse(S('favs', '[]')) || []; } catch (e) { MYFAV = []; } }
-const isFav = c => MYFAV.some(f => f.name === c.name);
-function toggleFav(c) {
+// ⭐ the favourite channels: ONE list with DriveCast — its IPTV favourites in the cloud. A star on the TV shows in DriveCast and the
+// other way round (DriveCast's server says when the list changed). A copy stays on the TV (settings «favs») for days with no Internet.
+// By name: the link is looked up again in the fresh lists when played.
+let MYFAV = [], FAVCLOUD = false;
+const favKey = c => String(c && c.name || '').trim().toLowerCase();
+// a YouTube channel's live stream travels as its /live page (DriveCast opens it as a web channel); the TV plays it as «yt-live:@…»
+const ytOut = u => { const m = /^yt-live:(.+)$/.exec(u || ''); return m ? 'https://www.youtube.com/' + m[1] + '/live' : u; };
+const ytIn = u => { const m = /^https:\/\/www\.youtube\.com\/(@[^/?#]+|channel\/[^/?#]+)\/live\/?$/.exec(u || ''); return m ? 'yt-live:' + m[1] : u; };
+const cloudFavs = fav => arr(fav?.iptv, fav?.channels, fav).filter(c => c && c.url && c.name);
+const realList = fav => !!fav && (Array.isArray(fav.iptv) || Array.isArray(fav.channels) || Array.isArray(fav));   // an error reply is never taken as «no favourites»
+function loadFavs() { if (FAVCLOUD) return; try { MYFAV = JSON.parse(S('favs', '[]')) || []; } catch (e) { MYFAV = []; } }
+const isFav = c => { const k = favKey(c); return MYFAV.some(f => favKey(f) === k); };
+const favRec = c => {   // a TV channel as DriveCast keeps an IPTV favourite
+  let h = 0; for (const ch of String(c.url || c.name)) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return { name: c.name, stream_id: 'tv-' + (h >>> 0).toString(36), stream_icon: c.logo || '', category_id: 'drivecast-tv', url: ytOut(c.url), type: /^yt-live:/.test(c.url) ? 'web' : 'iptv', group: c.group || 'DriveCast TV' };
+};
+function fromCloud(fav) {
+  IFAV = cloudFavs(fav).map(c => ({ name: c.name, logo: c.stream_icon || '', url: ytIn(c.url), group: c.group || '' }));
+  MYFAV = IFAV; FAVCLOUD = true;
+  setPref('favs', JSON.stringify(MYFAV.slice(0, 300)));
+}
+function saveCloud(list) {
+  const body = JSON.stringify({ iptv: list });
+  if (window.TV && TV.saveFavs && TV !== FAKE) return new Promise(res => { const n = '__fv' + (++cbN); window[n] = ok => { delete window[n]; res(ok); }; TV.saveFavs(body, n); });
+  return fetch(BIN(BINS.iptv) + '?from=dctv-web', { method: 'PUT', body }).then(r => r.ok).catch(() => false);
+}
+/** the cloud list now; the first time, the stars made on the TV before the sync join it (nothing is dropped) */
+async function pullFavs() {
+  const fav = await getJ(BIN(BINS.iptv) + '?t=' + Date.now());
+  if (!realList(fav)) return false;
+  if (S('favsync', '') !== '1') {
+    let old = []; try { old = JSON.parse(S('favs', '[]')) || []; } catch (e) {}
+    const list = cloudFavs(fav), have = new Set(list.map(favKey));
+    const add = old.filter(c => c && c.name && c.url && !have.has(favKey(c)));
+    if (!add.length || await saveCloud([...list, ...add.map(favRec)])) { setPref('favsync', '1'); if (add.length) fav.iptv = [...list, ...add.map(favRec)]; }
+  }
+  fromCloud(fav); favUi(); liveUi();
+  if ($('#s-ifav')) $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
+  return true;
+}
+async function toggleFav(c) {
   loadFavs();
-  if (isFav(c)) MYFAV = MYFAV.filter(f => f.name !== c.name); else MYFAV.unshift({ name: c.name, url: c.url, logo: c.logo || '' });
-  setPref('favs', JSON.stringify(MYFAV.slice(0, 60))); favUi(); liveUi();
+  const on = !isFav(c), k = favKey(c), before = MYFAV;
+  MYFAV = on ? [{ name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' }, ...MYFAV] : MYFAV.filter(f => favKey(f) !== k);   // at once on the screen
+  favUi(); liveUi();
+  // then in DriveCast: on its latest list (so nothing added there meanwhile is lost)
+  const fav = await getJ(BIN(BINS.iptv) + '?t=' + Date.now());
+  let ok = false;
+  if (realList(fav)) {
+    let list = cloudFavs(fav);
+    if (on) { if (!list.some(x => favKey(x) === k)) list = [...list, favRec(c)]; } else list = list.filter(x => favKey(x) !== k);
+    ok = await saveCloud(list);
+    if (ok) { fav.iptv = list; delete fav.channels; fromCloud(fav); }
+  }
+  if (!ok) { MYFAV = before; favNote('ما قدرت أحفظها في DriveCast — تأكد من الإنترنت وجرّب مرة ثانية'); }
+  favUi(); liveUi();
+}
+function favNote(t) { const h = $('#favwrap h2'); if (!h) return; h.textContent = '⭐ ' + t; clearTimeout(favNote.t); favNote.t = setTimeout(() => { h.textContent = '⭐ قنواتي المفضّلة · مع DriveCast'; }, 6000); }
+// DriveCast's server tells every open screen the moment a cloud list is saved: the TV takes the favourites at once
+function watchFavs() {
+  const go = () => {
+    let ws; try { ws = new WebSocket('wss://studio.c-p.workers.dev/live'); } catch (e) { setTimeout(go, 60000); return; }
+    ws.onmessage = e => {
+      if (typeof e.data !== 'string' || e.data.length > 400 || e.data.indexOf('"bin"') < 0) return;
+      try { const m = JSON.parse(e.data); if (m.type === 'bin' && m.id === BINS.iptv && !/^dctv-/.test(m.from || '')) pullFavs(); } catch (x) {}
+    };
+    ws.onclose = () => setTimeout(go, 30000);
+  };
+  go();
+  setInterval(pullFavs, 10 * 60000);   // and every 10 minutes anyway
 }
 function favUi() {
   loadFavs();
@@ -821,8 +883,7 @@ const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countrie
 let listsAt = 0, LIVE = [];
 async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
-  const fav = await getJ(BIN(BINS.iptv));
-  IFAV = arr(fav?.iptv, fav?.channels, fav).filter(c => c && c.url).map(c => ({ name: c.name, logo: c.stream_icon, url: c.url, group: c.group || '' }));
+  await pullFavs();
   const texts = await Promise.all(LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u')));
   const seen = new Set(); ILIST = [];
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
@@ -1459,7 +1520,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(); $('#s-quran2').innerHTML = cardsHtml();
-homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters();
+homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs();
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();
