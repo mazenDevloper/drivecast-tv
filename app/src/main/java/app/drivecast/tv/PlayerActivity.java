@@ -57,6 +57,37 @@ public class PlayerActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
     static PlayerActivity live;
+    /** a channel is playing here now (also in the corner) */
+    static boolean playing() { PlayerActivity p = live; try { return p != null && p.player != null && p.player.getPlayWhenReady(); } catch (Throwable t) { return false; } }
+    /** 🕌 the adhan / iqamah sounds: the channel's own sound off until it ends (the picture goes on) */
+    private boolean hushed;
+    static void hush(boolean on, String why) {
+        PlayerActivity p = live; if (p == null || p.player == null) return;
+        try {
+            if (on == p.hushed) return; p.hushed = on;
+            p.player.setVolume(on ? 0f : 1f);
+            if (on) { p.setNote(why); p.showBar(8000); } else { p.setNote(null); }
+        } catch (Throwable ignored) { }
+    }
+    // ---- ⏳ under the clock, in the last 10 minutes only: the countdown to the adhan, then to the iqamah
+    private TextView count;
+    private final Handler cd = new Handler(Looper.getMainLooper());
+    private static long[] parse(String v) { try { String[] a = v.split("@"); return new long[] { Long.parseLong(a[0]), Long.parseLong(a[1]) }; } catch (Exception e) { return null; } }
+    private final Runnable countTick = new Runnable() { @Override public void run() {
+        cd.removeCallbacks(this);
+        if (count == null) return;
+        String out = null; long now = System.currentTimeMillis();
+        try {
+            android.content.SharedPreferences ps = getSharedPreferences("pset", MODE_PRIVATE), st = Access.set(PlayerActivity.this);
+            long[] iq = parse(ps.getString("iqnext", "")), ad = parse(ps.getString("next", ""));
+            if (iq != null && !"off".equals(st.getString("iqama", "sound")) && iq[1] > now && iq[1] - now <= 600_000L) out = "إقامة " + Adhan.NAMES[(int) iq[0]] + " بعد " + mmss(iq[1] - now);
+            else if (ad != null && !"off".equals(st.getString("adhan", "sound")) && ad[1] > now && ad[1] - now <= 600_000L) out = "أذان " + Adhan.NAMES[(int) ad[0]] + " بعد " + mmss(ad[1] - now);
+        } catch (Throwable ignored) { }
+        boolean pip = android.os.Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode();
+        if (out == null || pip) count.setVisibility(View.GONE); else { count.setText("🕌 " + out); count.setVisibility(View.VISIBLE); }
+        cd.postDelayed(this, out != null ? 1000 : 15000);
+    } };
+    private static String mmss(long ms) { long s = Math.max(0, ms / 1000); return String.format(Locale.US, "%d:%02d", s / 60, s % 60); }
     /** other addresses of a channel (first address → the rest), tried in turn when it does not play */
     static Map<String, String[]> ALTS = new HashMap<>();
     private final Map<Integer, Integer> altAt = new HashMap<>();   // channel → how many of its other sources were tried
@@ -260,6 +291,14 @@ public class PlayerActivity extends Activity {
         root.addView(hang, tp);
         if ("off".equals(Access.set(this).getString("pclock", "on"))) hang.setVisibility(View.GONE);
         topTick.run();
+        count = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+        count.setShadowLayer(dp(5), 0, dp(1), 0xCC000000);
+        GradientDrawable cb = new GradientDrawable(); cb.setColor(0xB3101216); cb.setCornerRadius(dp(16)); count.setBackground(cb);
+        count.setPadding((int) dp(14), (int) dp(6), (int) dp(14), (int) dp(6));
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        cp.setMargins(0, (int) dp(66), (int) dp(30), 0);
+        root.addView(count, cp); count.setVisibility(View.GONE);
+        countTick.run();
     }
 
     // ---- OK: the channel list at the side, like a receiver's. ↑↓ choose (held: fast), ◀ ▶ ten at a time, OK plays it
@@ -635,7 +674,7 @@ public class PlayerActivity extends Activity {
     protected void onStop() {
         super.onStop();
         if (live == this) live = null;
-        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null);
+        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null);
         Scan.paused = false;
         try { if (player != null) { player.release(); } } catch (Throwable ignored) { }
         player = null;

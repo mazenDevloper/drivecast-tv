@@ -49,7 +49,7 @@ public class Adhan extends BroadcastReceiver {
     private static final int[] IQAMA_MIN = {25, 20, 20, 10, 20};
     static final String HOME = "app.drivecast.tv";   // this app is the home screen
     private static final String[] KEYS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
-    private static final String[] NAMES = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
+    static final String[] NAMES = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
 
     private static MediaPlayer player;
 
@@ -153,6 +153,7 @@ public class Adhan extends BroadcastReceiver {
         Intent fire = new Intent(c, Adhan.class).setAction(IQAMA).putExtra("p", prayer);
         PendingIntent pi = PendingIntent.getBroadcast(c, 2, fire, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         exact(c, when, pi);
+        c.getSharedPreferences("pset", Context.MODE_PRIVATE).edit().putString("iqnext", prayer + "@" + when).apply();
     }
 
     private static void set(Context c, long when, int prayer) {
@@ -273,7 +274,8 @@ public class Adhan extends BroadcastReceiver {
         if ("off".equals(mode)) return;
         if (!app.getSystemService(PowerManager.class).isInteractive()) { log(app, (iqama ? "iqama" : "adhan") + " — the TV is off"); return; }
         boolean loud = "sound".equals(mode) && !(prayer == 0 && !iqama && "banner".equals(st.getString("fajr", "on")));
-        fire(app, prayer, loud && idle(app), iqama);
+        // a channel playing in DriveCast's own player: the adhan is heard and the channel's sound is muted until it ends
+        fire(app, prayer, loud && (PlayerActivity.playing() || idle(app)), iqama);
     }
 
     /** the home screen is in front and nothing else is playing (usage access may be missing: then the home screen's own word) */
@@ -313,6 +315,7 @@ public class Adhan extends BroadcastReceiver {
             return;
         }
         audible(app);
+        PlayerActivity.hush(true, (iqama ? "🕌 إقامة صلاة " : "🕌 أذان ") + NAMES[prayer] + " — صوت القناة مكتوم لين يخلص");
         player.setOnCompletionListener(mp -> stop());
         try { float v = Integer.parseInt(Access.set(app).getString("vol", "100")) / 100f; player.setVolume(v, v); } catch (Exception ignored) { }
         player.start();
@@ -369,6 +372,7 @@ public class Adhan extends BroadcastReceiver {
         }
         player.release();
         player = null;
+        PlayerActivity.hush(false, null);
         if (volBefore >= 0 && ctx != null) {
             try { ctx.getSystemService(AudioManager.class).setStreamVolume(AudioManager.STREAM_MUSIC, volBefore, 0); } catch (Exception ignored) { }
             volBefore = -1;
