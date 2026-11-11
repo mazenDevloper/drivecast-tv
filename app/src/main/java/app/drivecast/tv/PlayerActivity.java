@@ -56,6 +56,28 @@ public class PlayerActivity extends Activity {
     private int i;
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
+    static PlayerActivity live;
+    // ---- 📺 picture in picture: HOME while a channel plays → it goes on in a corner over the home screen
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        try {
+            if (!"on".equals(Access.set(this).getString("pip", "on")) || player == null || !player.getPlayWhenReady()) return;
+            if (!getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) return;
+            int w = vw > 0 ? Math.round(vw) : 16, hh = vh > 0 ? Math.round(vh) : 9;
+            float r = (float) w / hh; if (r < 1f || r > 2.3f) { w = 16; hh = 9; }
+            enterPictureInPictureMode(new android.app.PictureInPictureParams.Builder().setAspectRatio(new android.util.Rational(w, hh)).build());
+        } catch (Throwable t) { Crash.note(this, "pip: " + t); }
+    }
+    @Override
+    public void onPictureInPictureModeChanged(boolean pip, android.content.res.Configuration c) {
+        super.onPictureInPictureModeChanged(pip, c);
+        int v = pip ? View.GONE : View.VISIBLE;
+        if (bar != null) bar.setVisibility(v);
+        if (hang != null && !"off".equals(Access.set(this).getString("pclock", "on"))) hang.setVisibility(v);
+        if (pip && listOn) listShow(false);
+        if (!pip) showBar(3000);
+    }
     private final Handler zz = new Handler(Looper.getMainLooper());     // ⏲ the sleep timer
     private boolean zzWarned = false;
     /** ⏲ the sleep timer (Settings → «مؤقت النوم»): no key for N minutes → a minute's warning on the screen, then the channel stops */
@@ -89,6 +111,8 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        if (live != null && live != this) live.finish();   // one player at a time (the one in the corner gives way)
+        live = this;
         try { TRIES = Integer.parseInt(Access.set(this).getString("tries", "6")); } catch (Exception ignored) { }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         Intent in = getIntent();
@@ -368,7 +392,7 @@ public class PlayerActivity extends Activity {
             chip((sw ? "⚙ فك برمجي · " : "⚡ فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), sw ? 0x33F2994A : 0x2EFFFFFF, 0xCCFFFFFF);
         }
         hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً مشغّل آخر"
-            : "▲▼ قناة  ·  ◀ القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ حجم الصورة  ·  ⏯ إيقاف مؤقت  ·  🔊 صوت آخر");
+            : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ حجم الصورة  ·  ⏯ إيقاف مؤقت  ·  🔊 صوت آخر");
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
         int bars = !ready ? 1 : need <= 0 ? (have > 8e6 ? 5 : have > 4e6 ? 4 : have > 2e6 ? 3 : 2) : (int) Math.max(1, Math.min(5, Math.round(have / (double) need * 1.6)));
@@ -596,6 +620,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        if (live == this) live = null;
         net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null);
         Scan.paused = false;
         try { if (player != null) { player.release(); } } catch (Throwable ignored) { }

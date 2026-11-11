@@ -55,7 +55,18 @@ public class HomeActivity extends Activity {
         MessageServer.start(this);
         bridge = new Bridge();
         makeWeb();
+        if (!booted) { booted = true; if (android.os.SystemClock.elapsedRealtime() < 5 * 60_000L) wake = "boot"; }
+        if (waker == null) {
+            waker = new android.content.BroadcastReceiver() {
+                @Override public void onReceive(android.content.Context c, Intent i) {
+                    HomeActivity a = front;
+                    if (a != null && a.web != null) a.web.postDelayed(() -> { if (front == a && a.web != null) a.web.evaluateJavascript("window.onTvWake && onTvWake('screen')", null); }, 2500);
+                }
+            };
+            getApplicationContext().registerReceiver(waker, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
+        }
     }
+    static boolean booted; static String wake = ""; static android.content.BroadcastReceiver waker;
 
     /**
      * The page's WebView. While a channel plays, Android may stop the WebView's drawing process to free memory (a TV box
@@ -203,6 +214,9 @@ public class HomeActivity extends Activity {
     }
 
     class Bridge {
+        /** "boot" once, just after the TV started; then "" */
+        @JavascriptInterface
+        public String wake() { String w = wake; wake = ""; return w; }
         /** installed apps that can be opened: [{pkg, label, art (PNG data URL: TV banner, else icon), tv}] */
         @JavascriptInterface
         public String apps() {

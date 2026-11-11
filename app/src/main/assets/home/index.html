@@ -206,6 +206,10 @@ body.nightdim #nightVeil{opacity:.42}
 #p-iptv .fold>h2:focus small{color:#333}
 #p-iptv .fold>h2 .cnt{margin-inline-start:auto;font-size:20px;font-weight:600;opacity:.75}
 #p-iptv .fold.closed>:not(h2){display:none!important}
+.ichan .pno{flex:none;display:inline-grid;place-items:center;min-width:34px;height:30px;padding:0 7px;margin-inline-end:10px;border-radius:9px;background:rgba(52,199,89,.9);color:#fff;font-size:18px;font-weight:800;vertical-align:2px}
+#numIn{position:fixed;top:120px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;z-index:9002;padding:18px 40px;border-radius:28px;background:rgba(16,18,22,.92);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:44px;font-weight:800;box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .2s;pointer-events:none;text-align:center}
+#numIn small{display:block;font-size:22px;font-weight:500;opacity:.75;margin-top:4px}
+#numIn.on{opacity:1;transform:translateX(-50%) scale(1)}
 .ichan .pin{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer;margin-inline-end:8px}
 .ichan.pinned .pin{color:#fff;background:rgba(52,199,89,.55)}
 .ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
@@ -365,7 +369,7 @@ body.ambient .phrase.on{display:block}
     <div><div class="wx" id="wx"></div><div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div></div>
   </div>
 
-  <div id="nightVeil"></div><div id="offline" role="status"></div>
+  <div id="nightVeil"></div><div id="numIn"></div><div id="offline" role="status"></div>
   <section class="page on" id="p-home"><div class="scroll" id="homeScroll">
     <div class="heroRow">
       <div class="hero glass" id="heroP">
@@ -1345,12 +1349,14 @@ function watchFavs() {
 // 📌 channels pinned to the top of the Channels tab (kept by name, newest first; played from today's working link)
 let PINS = [];
 const pinRaw = () => { try { return JSON.parse(S('pins', '[]')) || []; } catch (e) { return []; } };
-const isPin = c => !!c && pinRaw().some(p => favKey(p) === favKey(c));
+let PINNO = null;   // name → its fixed number (1 = the first pinned), like a receiver's
+const pinNo = c => { if (!PINNO) { PINNO = new Map(); pinRaw().forEach((p, k) => PINNO.set(favKey(p), k + 1)); } return (c && PINNO.get(favKey(c))) || 0; };
+const isPin = c => pinNo(c) > 0;
 function togglePin(c) {
   setTimeout(() => { try { liveUi(); } catch (e) {} }, 0);
   const k = favKey(c), all = pinRaw(), on = !all.some(p => favKey(p) === k);
   const keep = { name: c.name, url: /^(dyn|yt-search):/.test(c.url) ? c.url : c.url, logo: c.logo || '', group: c.group || '', dyn: c.dyn ? 1 : undefined };
-  setPref('pins', JSON.stringify(on ? [keep, ...all].slice(0, 40) : all.filter(p => favKey(p) !== k)));
+  setPref('pins', JSON.stringify(on ? [...all, keep].slice(0, 99) : all.filter(p => favKey(p) !== k))); PINNO = null;
   pinUi();
 }
 function pinUi() {
@@ -1419,7 +1425,7 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
 }
 setInterval(scanMaybe, 3600e3);
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
 function allChannels() {
   const seen = new Set(), out = [];
@@ -1810,7 +1816,7 @@ function lastSet(x) { try { localStorage.last = JSON.stringify({ ...x, at: Date.
 function lastPlay() {
   const x = lastGet(); if (!x) return;
   if (x.k === 'yt') return TV.youtube(x.id);
-  const same = [...MYFAV, ...ILIST].find(c => c.name === x.name);   // today's link for it, when the lists have it
+  const same = [...DYNCH, ...GSP, ...MYFAV, ...ILIST].find(c => c.name === x.name);   // today's link for it, when the lists have it
   playChannel([same || { name: x.name, url: x.url, logo: x.logo, group: x.group }], 0);
 }
 function lastHtml() {
@@ -2031,6 +2037,8 @@ function sections() {
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
+      { k: 'pip', l: '📺 صورة داخل صورة (Home والقناة شغّالة → تكمل في الزاوية)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'autolast', l: '▶ آخر قناة لما يشتغل التلفزيون', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'sleep', l: '⏲ مؤقت النوم (يوقف القناة إذا ما لمست الريموت)', o: [['0', 'إيقاف'], ['30', '٣٠ د'], ['60', 'ساعة'], ['90', 'ساعة ونص'], ['120', 'ساعتين'], ['180', '٣ ساعات']], d: '0' },
       { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
       { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['menu', 'قائمة (مفضّلة، مشغّل آخر)'], ['ext', 'مشغّل آخر مباشرة'], ['off', 'لا شيء']], d: 'menu' },
@@ -2145,7 +2153,22 @@ function homeLayout() {
 }
 // the remote's numbers: 1 = the first tab … (0 = settings)
 document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.dataset.act === 'settings' ? '0' : String(i + 1));
+let NUMS = '', NUMT = null;
 function numberKey(n) {
+  if (!pinRaw().length) return tabKey(n);
+  if ($('#bedit').classList.contains('on') || $('#panel').classList.contains('on')) return tabKey(n);
+  NUMS = (NUMS + n).slice(-2); clearTimeout(NUMT);
+  pinUi(); const k = +NUMS, c = PINS[k - 1], box = $('#numIn');
+  box.innerHTML = `${NUMS}_<small>${c ? esc(c.name) : k > PINS.length && NUMS.length === 1 && document.querySelector(`.tabs .tab[data-n="${NUMS}"]`) ? 'تاب ' + esc(document.querySelector(`.tabs .tab[data-n="${NUMS}"]`).textContent.replace(/\d/g, '').trim()) : 'ما فيه قناة بهالرقم'}</small>`;
+  box.classList.add('on');
+  NUMT = setTimeout(() => {
+    const s = NUMS; NUMS = ''; box.classList.remove('on');
+    const i = +s - 1; if (PINS[i]) { if (document.body.classList.contains('ambient')) ambient(false); return playChannel(PINS, i); }
+    if (s.length === 1) tabKey(s);
+  }, 1300);
+  return true;
+}
+function tabKey(n) {
   const t = document.querySelector(`.tabs .tab[data-n="${n}"]`); if (!t) return false;
   if (document.body.classList.contains('ambient')) ambient(false);
   if (YTP) ytClose();
@@ -2211,6 +2234,14 @@ function foldToggle(id, open) {
 setTimeout(foldInit, 0); setInterval(foldCounts, 4000);
 document.addEventListener('click', e => { const h = e.target.closest && e.target.closest('h2[data-fold]'); if (h && !e.target.closest('button')) foldToggle(h.dataset.fold); });
 document.addEventListener('keydown', e => { const h = document.activeElement; if (e.key === 'Enter' && h && h.dataset && h.dataset.fold) { e.preventDefault(); e.stopImmediatePropagation(); foldToggle(h.dataset.fold); } }, true);
+window.onTvWake = why => {
+  if (S('autolast', 'on') !== 'on') return;
+  const x = lastGet(); if (!x || x.k !== 'ch') return;
+  const go = (n = 0) => navigator.onLine === false && n < 20 ? setTimeout(() => go(n + 1), 1500) : lastPlay();
+  const b = $('#offline'); if (b) { b.className = 'on back'; b.textContent = '▶ أرجّعك على ' + x.name + '…'; setTimeout(() => b.className = '', 3000); }
+  setTimeout(go, why === 'boot' ? 2500 : 800);
+};
+setTimeout(() => { try { if (window.TV && TV.wake && TV.wake() === 'boot') onTvWake('boot'); } catch (e) {} }, 3500);
 window.onTvResume = () => { loadApps(); loadPrayers(); nightTick(); setTimeout(backFocus, 120); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
