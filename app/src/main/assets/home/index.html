@@ -295,7 +295,23 @@ body.ambient .wall{transform:scale(1,.92) translateY(-5%);transform-origin:50% 5
 #wallBack{position:fixed;inset:-6%;z-index:-3;background-size:cover;background-position:center;filter:blur(46px) saturate(1.15) brightness(.55);opacity:0;transition:opacity .9s}
 body.ambient #wallBack{opacity:1}
 body.ambient .veil{background:linear-gradient(180deg,rgba(10,14,19,.45) 0%,rgba(10,14,19,0) 22%,rgba(10,14,19,0) 70%,rgba(10,14,19,.55) 100%)}
-body.ambient .clock b{font-size:64px}
+body.ambient .clock b{font-size:104px;font-weight:600;line-height:1;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+.day span.greg{font-size:28px;opacity:.8;margin-top:-2px}
+/* the photo view's widgets under the clock: the weather now, tonight's moon */
+.awid{position:absolute;top:176px;inset-inline-start:56px;display:none;flex-direction:column;gap:14px;pointer-events:none;z-index:3}
+body.ambient .awid{display:flex}
+.wd{display:flex;align-items:center;gap:16px;padding:14px 22px;border-radius:26px;min-width:300px}
+.wd .ic{font-size:44px;line-height:1}.wd img{width:58px;height:58px;border-radius:50%}
+.wd b{display:block;font-size:26px;font-weight:600}.wd span{font-size:18px;color:var(--dim)}
+.wd .bar{height:4px;border-radius:4px;background:rgba(255,255,255,.14);margin-top:7px;overflow:hidden}.wd .bar i{display:block;height:100%;background:#f5e9c4}
+/* a living picture, light: a few birds cross the sky now and then (one small element), the picture breathes very slowly */
+#birds{position:absolute;top:22%;left:-6%;width:70px;height:26px;display:none;pointer-events:none;z-index:1;opacity:.75;
+  background:radial-gradient(ellipse 9px 3px at 12px 8px,#1a2230 60%,transparent 62%),radial-gradient(ellipse 8px 3px at 38px 15px,#1a2230 60%,transparent 62%),radial-gradient(ellipse 7px 2.5px at 58px 6px,#1a2230 60%,transparent 62%)}
+body.ambient.livepic #birds.fly{display:block;animation:fly 38s linear 1,flap .45s ease-in-out infinite alternate}
+@keyframes fly{from{transform:translate(0,0)}to{transform:translate(118vw,-9vh)}}
+@keyframes flap{from{height:26px}to{height:20px}}
+body.ambient.livepic .wall{animation:breathe 90s ease-in-out infinite alternate;will-change:transform}   /* one layer moves: the whole picture, on the GPU */
+@keyframes breathe{from{transform:scale(1,.92) translateY(-5%)}to{transform:scale(1.022,.94) translateY(-5%)}}
 body.ambient .tabs,body.ambient .clock span{visibility:hidden}
 /* the day in the middle, big (the user's font when sent from the phone: e.g. Thmanyah), the hijri date under it */
 .day{position:absolute;top:40px;left:0;right:0;display:none;flex-direction:column;align-items:center;gap:4px;text-align:center;pointer-events:none;text-shadow:0 4px 30px rgba(0,0,0,.55)}
@@ -361,7 +377,7 @@ body.ambient .phrase.on{display:block}
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
     <div style="margin-bottom:10px"><button class="chip f" data-act="gofilt">🎚️ فلترة وبحث القنوات (الجودة · HDR · عمق اللون · H.264)</button></div>
-    <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· أبوظبي الرياضية · دبي الرياضية · الكأس · ثمانية — يدوّر على رابط شغّال كل مرة</small></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
+    <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
     <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
@@ -377,7 +393,9 @@ body.ambient .phrase.on{display:block}
   </div></section>
   <section class="page" id="p-apps"><div class="scroll"><h2>كل التطبيقات</h2><div class="appgrid" id="s-apps2"></div><div id="sugg2"></div></div></section>
 
-  <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span><em id="skyNote"></em></div>
+  <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span><span class="greg" id="dayGreg"></span><em id="skyNote"></em></div>
+  <div class="awid" id="awid"><div class="glass wd" id="wdWx"></div><div class="glass wd" id="wdMoon"></div></div>
+  <i id="birds"></i>
   <div class="phrase" id="phrase"></div>
   <div class="mini" id="mini"><div class="glass" id="miniA"></div><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
@@ -449,6 +467,8 @@ function tick() {
   const wd = d.toLocaleDateString('ar', { weekday: 'long' });
   $('#dayName').textContent = KASH[wd] || wd;
   $('#dayHijri').textContent = hijri.replace(/\s*هـ$/, '') + ' هـ';
+  $('#dayGreg').textContent = d.toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) + ' م';
+  ambWidgets();
 }
 let P = {};
 function loadPhrase() {
@@ -581,23 +601,32 @@ function weather() {
       WX = { cloud: +c.cloud_cover || 0, code: +c.weather_code || 0, vis: c.visibility == null ? 20000 : +c.visibility, t: c.temperature_2m, wind: +c.wind_speed_10m || 8 };
       try { localStorage.wx = JSON.stringify({ ...WX, at: Date.now() }); } catch (e) {}
       if (getWall() === 'rawas') realSky();
+      ambWidgets();
     }).catch(() => {});
 }
 try { const w = JSON.parse(localStorage.wx || 'null'); if (w && Date.now() - w.at < 3 * 3600e3) WX = w; } catch (e) {}
 const wxNow = () => window.__wx || WX || { cloud: 0, code: 0, vis: 20000 };
 /** the weather as words (for the line under the date) */
-function wxWords(w) {
+function wxWords(w, always) {
   const c = w.code;
   if (c >= 95) return '⛈️ عواصف رعدية';
   if (c >= 80) return '🌦️ زخات مطر';
-  if (c >= 61) return '🌧️ مطر';
+  if (c >= 61) return '🌧️ ماطر';
   if (c >= 51) return '🌦️ رذاذ';
   if (c === 45 || c === 48) return '🌫️ ضباب';
   if (w.vis < 5000) return '🌫️ غبار أو ضباب خفيف';
   if (w.cloud >= 85) return '☁️ غائم';
-  if (w.cloud >= 45) return '⛅ غائم جزئياً';
+  if (w.cloud >= 45) return '⛅ شبه غائم';
   if (w.cloud >= 15) return '🌤️ قليل الغيوم';
-  return '';
+  if (!always) return '';
+  // clear: by the hour and the wind
+  const n = NOW(), h = n.getHours() + n.getMinutes() / 60, calm = (w.wind ?? 8) < 12;
+  const mg = P.today && P.today[3] ? at(P.today[3]) : null, fj = P.today && P.today[0] ? at(P.today[0]) : null;
+  if (fj && mg && (n < fj || n > mg.getTime() + 40 * 60e3)) return calm ? '🌙 ليلة صافية هادئة' : '🌙 ليلة صافية';
+  if (mg && Math.abs(n - mg) < 45 * 60e3) return '🌇 غروب صافٍ';
+  if (h < 9) return calm ? '🌅 صباح هادئ' : '🌅 صباح مشمس';
+  if (h >= 15) return calm ? '🌤️ شمس هادئة' : '☀️ مشمس';
+  return (w.wind ?? 0) >= 25 ? '🌬️ مشمس ورياح' : '☀️ مشمس';
 }
 // the clouds: two seamless strips of soft clouds (a near one, a far one) drawn once for today's cover and light, then drifting
 // with the wind at their own speeds — the sky keeps changing. Lit from above: bright tops, greyer bellies. Drawn a few rows at a
@@ -672,6 +701,25 @@ function meteors(on, rate) {
   const every = Math.min(480, Math.max(25, 3600 / rate * 3.5)) * (.5 + Math.random());
   metT = setTimeout(() => meteors(true, rate), every * 1000);
 }
+// ---- the photo view's widgets and its small life
+const MOONN = d => d <= 1 ? 'محاق' : d <= 6 ? 'هلال أول الشهر' : d <= 8 ? 'تربيع أول' : d <= 12 ? 'أحدب متزايد' : d <= 16 ? 'بدر' : d <= 21 ? 'أحدب متناقص' : d <= 23 ? 'تربيع أخير' : d <= 28 ? 'هلال آخر الشهر' : 'محاق';
+function ambWidgets() {
+  const w = wxNow(), x = $('#wdWx'), m = $('#wdMoon'); if (!x || !m) return;
+  const words = wxWords(w, true), ic = words.split(' ')[0], tx = words.slice(ic.length + 1);
+  x.innerHTML = `<i class="ic" style="font-style:normal">${ic}</i><div><b>${esc(tx)}</b><span>${[w.t != null ? AR(Math.round(w.t)) + '°' : '', P.city || '', w.wind != null ? 'رياح ' + AR(Math.round(w.wind)) + ' كم/س' : ''].filter(Boolean).join(' · ')}</span></div>`;
+  const hd = hijriDay(), lit = Math.round((1 - Math.cos((hd - .5) / 29.53 * 2 * Math.PI)) / 2 * 100);
+  m.innerHTML = `<img src="https://phasesmoon.com/moonpng/220/moon-phase-${hd}.webp" alt="" onerror="this.style.visibility='hidden'"><div style="flex:1"><b>${MOONN(hd)}</b><span>ليلة ${AR(hd)} · مضيء ${AR(lit)}٪</span><div class="bar"><i style="width:${lit}%"></i></div></div>`;
+}
+// birds: in daylight, now and then (every 2–5 minutes), at a new height each time
+function birdsGo() {
+  const b = $('#birds'); if (!b) return;
+  const n = NOW().getHours();
+  if (document.body.classList.contains('ambient') && document.body.classList.contains('livepic') && n >= 6 && n < 18 && wxNow().code < 51) {
+    b.classList.remove('fly'); b.style.top = (10 + Math.random() * 22) + '%'; void b.offsetWidth; b.classList.add('fly');
+  }
+  setTimeout(birdsGo, (120 + Math.random() * 180) * 1000);
+}
+setTimeout(birdsGo, 20000);
 /** today's weather on the photo: clouds in its sky, a greyer / softer light when it is overcast, haze or dust, rain */
 function wxApply(a, alt, night) {
   const w = wxNow(), c = Math.min(1, w.cloud / 100), oc = clamp((c - .3) / .7);
@@ -1342,7 +1390,7 @@ const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}
 function allChannels() {
   const seen = new Set(), out = [];
   const add = (c, g) => { if (!c || !c.url || seen.has(c.url)) return; seen.add(c.url); out.push(g ? { ...c, group: g } : c); };
-  DYNCH.forEach(c => c.url && add(c));
+  DYNCH.forEach(c => c.st === 'ok' && add(c));
   ILIST.forEach(c => add(c));
   (SPORTS?.list || []).forEach(c => add(c, 'رياضة عالمية'));
   return out;
@@ -1361,61 +1409,92 @@ function iptvUi() {
   window.__shown = shown;
   $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || '<div class="empty">جارٍ التحميل…</div>';
 }
-// ⚡ sports channels whose links change: each time, every link for them in the maintained public lists (Free-TV, iptv-org) is
-// gathered and tried — the first that answers plays. Free-to-air channels only. ثمانية from its own YouTube live.
+// ⚡ sports channels whose links change. For each channel every known address is gathered — its broadcaster's own stream on each
+// of its servers (Al Kass: alkassdigital.net; Dubai / Abu Dhabi: their mangomolo servers), plus whatever the maintained public
+// lists carry today — and all are asked at once: the first server that answers plays, and the card shows a green dot.
+// Free-to-air channels only. ثمانية from its own YouTube live.
+const MGD = ['cdn.mangomolo.com', 'cdn.mgmlcdn.com'];
+const mgm = (hosts, n) => hosts.flatMap(h => MGD.flatMap(d => [`https://${h}.${d}/${n}/smil:${n}.stream.smil/chunklist.m3u8`, `https://${h}.${d}/${n}/smil:${n}.smil/index.m3u8`, `https://${h}.${d}/${n}/smil:${n}.stream.smil/playlist.m3u8`]));
+const DMI = ['dmitnthfr', 'dmitwlvvll', 'dmithrvll', 'dmisxthvll', 'dmisvthvll'], ADM = ['admdn2', 'admdn1', 'admdn3', 'admdn4', 'admdn5'];
+const kass = n => ['liveeu-gcp', 'googlecdn1', 'liveakgr', 'liveus-gcp'].map(h => `https://${h}.alkassdigital.net/alkass${n}-p/main.m3u8`);
+const KASSN = ['one', 'two', 'three', 'four', 'five', 'six'];
 const DYN = [
-  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i], ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i],
-  ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i], ['دبي الرياضية 2', /dubai sports? ?2\b/i], ['دبي الرياضية 3', /dubai sports? ?3\b/i],
-  ['الكأس 1', /al ?kass ?(one|1)\b/i], ['الكأس 2', /al ?kass ?(two|2)\b/i], ['الكأس 3', /al ?kass ?(three|3)\b/i], ['الكأس 4', /al ?kass ?(four|4)\b/i],
-  ['ثمانية', null, 'ثمانية بث مباشر'],
+  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i, () => mgm(ADM, 'adsports1')],
+  ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i, () => mgm(ADM, 'adsports2')],
+  ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i, () => mgm(DMI, 'dubaisports')],
+  ['دبي الرياضية 2', /dubai sports? ?2\b/i, () => mgm(DMI, 'dubaisportshd')],
+  ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => mgm(DMI, 'dubaisportshd5')],
+  ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
+  ['ثمانية', null, null, 'ثمانية بث مباشر'],
 ];
-// their own YouTube channels, when no link answers (a search for their live stream, the channel's name must match)
+// their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
 const DYN_YT = { 'أبوظبي': ['أبوظبي الرياضية بث مباشر', /أبوظبي الرياضية|abu ?dhabi sports|ad sports/i], 'دبي': ['دبي الرياضية بث مباشر', /دبي الرياضية|dubai sports/i], 'الكأس': ['قناة الكأس بث مباشر', /الكأس|al ?kass/i] };
-const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/countries/sa.m3u'];
-let DYNCH = [], DYNC = {}, dynAt = 0;   // DYNCH: one channel each (its best link so far); DYNC: every link found for it
-async function loadDyn() {
-  if (Date.now() - dynAt < 30 * 60e3) return; dynAt = Date.now();
-  const all = (await Promise.all(DYN_SRC.map(u => getText(u)))).flatMap(t => parseM3u(t)).filter(c => !/geo-blocked/i.test(c.name));
-  DYNC = {};
-  const pool = all.concat(ILIST, SPORTS?.list || []);   // also whatever the other lists have of them
-  for (const [name, re] of DYN) if (re) DYNC[name] = [...new Map(pool.filter(c => re.test(c.name) && !/geo-blocked/i.test(c.name)).map(c => [c.url, c])).values()];
-  // every one of them is listed, even with no link that answers today: OK tries them all, then the channel's YouTube
-  DYNCH = DYN.map(([name, re, q]) => {
-    const c = re ? DYNC[name] : null, best = c && (c.find(isOk) || c.find(x => SCAN[x.url] !== 0) || c[0]);
-    return { name, url: q ? 'yt-search:' + q : best ? best.url : 'dyn:' + name, logo: best?.logo || '', group: '⚡ رياضية متجددة', dyn: 1, n: c ? c.length : 0 };
+const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/categories/sports.m3u'];
+let DYNCH = DYN.map(([name, , , q]) => ({ name, url: q ? 'yt-search:' + q : 'dyn:' + name, logo: '', group: '⚡ رياضية متجددة', dyn: 1, st: q ? 'yt' : 'wait' }));
+let DYNC = {}, dynAt = 0, dynBusy = false;
+/** does this address answer with a playlist now? (the TV asks with the channel's own site as Referer; a browser through DriveCast's server) */
+async function probe(u) {
+  const timed = (pr, ms) => Promise.race([pr, new Promise(r => setTimeout(() => r(null), ms))]);
+  let t = await timed(getText(u), 8000);
+  if (!t && location.protocol !== 'file:') t = await timed(fetch('https://studio.c-p.workers.dev/tv?u=' + encodeURIComponent(u)).then(r => r.ok ? r.text() : null).catch(() => null), 8000);
+  return !!t && String(t).trimStart().startsWith('#EXTM3U');
+}
+/** the first of <urls> that answers (6 asked at a time, the rest dropped once one does): { url, n (which server), of } */
+function firstUp(urls) {
+  return new Promise(res => {
+    let k = 0, live = 0, done = false;
+    const next = () => {
+      if (done) return;
+      if (k >= urls.length) { if (!live) res(null); return; }
+      const i = k++, u = urls[i]; live++;
+      probe(u).then(ok => { live--; if (done) return; if (ok) { done = true; res({ url: u, n: i + 1, of: urls.length }); } else next(); });
+    };
+    for (let j = 0; j < 6; j++) next();
   });
-  dynUi();
-  const urls = Object.values(DYNC).flat().map(c => c.url);
-  if (urls.length && TV.scanStart && TV !== FAKE) TV.scanStart(JSON.stringify(urls), false);   // all their links join the scan
-  iptvUi();
+}
+const dynCands = c => { const d = DYN.find(x => x[0] === c.name); return [...new Set([...(DYNC[c.name] || []).map(x => x.url), ...(d && d[2] ? d[2]() : [])])]; };
+/** look for a working server for every channel (one channel after the other; the cards turn green / red as answers come) */
+async function loadDyn(force) {
+  if (dynBusy || (!force && Date.now() - dynAt < 10 * 60e3)) return; dynBusy = true; dynAt = Date.now();
+  try {
+    const all = (await Promise.all(DYN_SRC.map(u => getText(u)))).flatMap(t => parseM3u(t)).concat(ILIST, SPORTS?.list || []).filter(c => !/geo-blocked/i.test(c.name));
+    for (const [name, re] of DYN) if (re) DYNC[name] = [...new Map(all.filter(c => re.test(c.name)).map(c => [c.url, c])).values()];
+    for (const c of DYNCH) {
+      if (c.st === 'yt') continue;
+      const logo = (DYNC[c.name] || []).find(x => x.logo)?.logo; if (logo) c.logo = logo;
+      c.st = 'look'; dynUi();
+      const r = await firstUp(dynCands(c));
+      if (r) { c.url = r.url; c.st = 'ok'; c.at = Date.now(); c.srv = `سيرفر ${AR(r.n)} من ${AR(r.of)}`; } else { c.url = 'dyn:' + c.name; c.st = 'bad'; }
+      dynUi();
+    }
+  } finally { dynBusy = false; }
 }
 function dynUi() {
   const box = $('#s-dyn'); if (!box) return;
-  window.__dyn = DYNCH;
-  box.innerHTML = DYNCH.map((c, i) => ichHtml(c, i, 'dyn')).join('') || '<div class="empty">أجمع الروابط…</div>';
-  // under each: how many links were found and whether one answered in the scan
-  box.querySelectorAll('[data-ilist="dyn"]').forEach(b => { const c = DYNCH[+b.dataset.i], at = b.querySelector('.at'); if (at) at.textContent = /^yt-search:/.test(c.url) ? 'من بثها في يوتيوب' : c.n ? `${AR(c.n)} روابط${(DYNC[c.name] || []).some(isOk) ? ' · ✅ رابط يعمل' : ''}` : 'من يوتيوب إن وُجد بث'; });
+  const a = document.activeElement, was = box.contains(a) ? a.dataset.i : null;
+  box.innerHTML = DYNCH.map((c, i) => ichHtml(c, i, 'dyn')).join('');
+  box.querySelectorAll('[data-ilist="dyn"]').forEach(b => {
+    const c = DYNCH[+b.dataset.i], at = b.querySelector('.at');
+    b.classList.remove('ok', 'bad'); if (c.st === 'ok') b.classList.add('ok'); if (c.st === 'bad') b.classList.add('bad');
+    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب' : '';
+  });
+  if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
 async function ytLiveOf(q, re) {   // a live stream on YouTube now whose channel / title matches
   const t = await getText('https://www.youtube.com/results?sp=EgJAAQ%253D%253D&hl=ar&search_query=' + encodeURIComponent(q));
   const v = ytParse(t).find(x => re.test(x.ch + ' ' + x.title));
   return v ? 'https://www.youtube.com/watch?v=' + v.id : null;
 }
-/** a link that answers now: a quick look at each of the channel's links (its playlist must start with #EXTM3U), then its YouTube */
+/** the address to play now: the server found a moment ago, else all of them asked again, else the channel's own YouTube live */
 async function dynResolve(c) {
-  if (/^yt-search:/.test(c.url)) {   // ثمانية: its live stream on YouTube now
-    const u = await ytLiveOf(c.url.slice(10), /ثمانية|thmanyah/i);
-    return u ? { ...c, url: u } : null;
-  }
-  const yt = Object.entries(DYN_YT).find(([k]) => c.name.startsWith(k));
-  if (!DYNC[c.name] || !DYNC[c.name].length) { const u = yt && await ytLiveOf(yt[1][0], yt[1][1]); return u ? { ...c, url: u } : null; }
-  const cands = (DYNC[c.name] || [c]).slice().sort((a, b) => (isOk(b) ? 2 : SCAN[b.url] === 0 ? 0 : 1) - (isOk(a) ? 2 : SCAN[a.url] === 0 ? 0 : 1));
-  for (const x of cands) {
-    const t = await Promise.race([getText(x.url), new Promise(r => setTimeout(() => r(null), 6000))]);
-    if (t && String(t).trimStart().startsWith('#EXTM3U')) return { ...c, url: x.url };
-  }
-  const u = yt && await ytLiveOf(yt[1][0], yt[1][1]);   // no link answered: the channel's own YouTube live, if it is on
-  return u ? { ...c, url: u } : cands.length ? { ...c, url: cands[0].url } : null;
+  if (c.st === 'yt') { const u = await ytLiveOf(c.url.slice(10), /ثمانية|thmanyah/i); return u ? { ...c, url: u } : null; }
+  if (c.st === 'ok' && Date.now() - (c.at || 0) < 5 * 60e3) return c;
+  c.st = 'look'; dynUi();
+  const r = await firstUp(dynCands(c));
+  if (r) { c.url = r.url; c.st = 'ok'; c.at = Date.now(); c.srv = `سيرفر ${AR(r.n)} من ${AR(r.of)}`; dynUi(); return c; }
+  c.st = 'bad'; dynUi();
+  const yt = Object.entries(DYN_YT).find(([k]) => c.name.startsWith(k)), u = yt && await ytLiveOf(yt[1][0], yt[1][1]);
+  return u ? { ...c, url: u } : null;
 }
 const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countries/ae', 'الإمارات'], ['countries/sa', 'السعودية'], ['countries/qa', 'قطر'], ['countries/kw', 'الكويت']];
 let listsAt = 0, LIVE = [];
@@ -1533,7 +1612,7 @@ function big5Ui() {
     || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
 }
 async function loadIptv() {
-  favUi(); big5Ui(); loadSports().then(() => { dynAt = 0; loadDyn(); }); loadYtLive(); dynUi();
+  favUi(); big5Ui(); loadSports().then(() => loadDyn()); loadYtLive(); dynUi();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
   iptvUi(); await loadLists(); big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
@@ -1615,7 +1694,7 @@ async function resolveChannel(c) {
 async function playChannel(list, i) {
   if (list && list[i] && list[i].dyn) {
     const r = await dynResolve(list[i]);
-    if (!r) return;
+    if (!r) { const b = document.querySelector(`#s-dyn [data-i="${DYNCH.indexOf(list[i])}"] .at`); if (b) b.textContent = '⛔ لا سيرفر ولا بث يوتيوب الآن — جرّب بعد شوي'; return; }
     if (/youtu\.?be/.test(r.url)) { lastSet({ k: 'yt', id: ytId(r.url), t: r.name }); return TV.youtube(ytId(r.url)); }
     list = list.map((x, k) => k === i ? r : x).filter(x => !/^(yt-search|dyn):/.test(x.url)); i = list.indexOf(r);
   }
@@ -1870,6 +1949,8 @@ function sections() {
     ]],
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
     ['📺', 'القنوات والمشغّل', [
+      { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
+      { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
       { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
       { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['menu', 'قائمة (مفضّلة، مشغّل آخر)'], ['ext', 'مشغّل آخر مباشرة'], ['off', 'لا شيء']], d: 'menu' },
@@ -2045,6 +2126,7 @@ document.addEventListener('click', e => {
   }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.act === 'upd') return updGo();
+  if (b.dataset.act === 'dyn-again') return loadDyn(true);
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
   if (b.dataset.store) { TV.store ? TV.store(b.dataset.store) : TV.link('https://play.google.com/store/apps/details?id=' + b.dataset.store); return; }
   if (b.dataset.snd) return SND && SND.k === b.dataset.snd ? closePlayer() : sndPlay(b.dataset.snd);
@@ -2094,12 +2176,13 @@ function skyNote() {
   const sw = shower(now, 10);
   if (sw) out.unshift(sw.d <= 0 ? `🌠 ${sw.name} الليلة — بعد ٩ مساءً، أوضح بعد منتصف الليل` : `🌠 ${sw.name} بعد ${AR(sw.d)} ${sw.d === 1 ? 'يوم' : sw.d === 2 ? 'يومين' : 'أيام'}`);
   const ww = wxWords(wxNow()), cl = wxNow().cloud >= 70;
-  $('#skyNote').textContent = [ww ? 'الطقس الآن: ' + ww : '', out.length ? (cl ? 'خلف الغيوم الليلة: ' : 'في السماء الليلة: ') + out.join(' · ') : ''].filter(Boolean).join(' — ');
+  $('#skyNote').textContent = [out.length ? (cl ? 'خلف الغيوم الليلة: ' : 'في السماء الليلة: ') + out.join(' · ') : ''].filter(Boolean).join(' — ');
 }
 function ambient(on) {
   if (on) skyNote();
   document.body.classList.toggle('ambient', on);
-  if (on) { loadPhrase(); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
+  document.body.classList.toggle('livepic', on && S('livepic', 'on') !== 'off');
+  if (on) { ambWidgets(); loadPhrase(); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
 }
 function move(dir) {

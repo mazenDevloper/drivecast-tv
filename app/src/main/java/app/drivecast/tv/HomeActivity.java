@@ -124,6 +124,18 @@ public class HomeActivity extends Activity {
     }
 
     /** a page from the Internet as text, with the headers each site wants (the page's getText; the web version too) */
+    /** the page a channel's own site plays its stream from: some CDNs answer only with it (Referer / Origin), and a browser's name */
+    static String siteOf(String url) {
+        if (url == null) return null;
+        if (url.contains("alkassdigital.net")) return "https://www.alkass.net";
+        if (url.contains("cdn.mangomolo.com") || url.contains("cdn.mgmlcdn.com")) {
+            String h = android.net.Uri.parse(url).getHost();
+            return h != null && h.startsWith("adm") ? "https://adtv.ae" : h != null && h.startsWith("dmi") ? "https://www.dubaisports.ae" : "https://www.awaan.ae";
+        }
+        return null;
+    }
+    static final String BROWSER = "Mozilla/5.0 (Linux; Android 12; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
     static String download(String url) {
         try {
             java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
@@ -134,6 +146,9 @@ public class HomeActivity extends Activity {
             } else if (url.contains("365scores.com")) {   // the fixtures API answers a browser
                 c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Safari/537.36");
                 c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
+            } else if (siteOf(url) != null) {
+                c.setConnectTimeout(6000); c.setReadTimeout(8000);
+                c.setRequestProperty("User-Agent", BROWSER); c.setRequestProperty("Referer", siteOf(url) + "/"); c.setRequestProperty("Origin", siteOf(url));
             } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
             java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
             in.mark(2);

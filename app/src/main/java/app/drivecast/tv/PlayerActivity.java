@@ -61,7 +61,13 @@ public class PlayerActivity extends Activity {
     private String decoder = "", digits = "";
 
     private LinearLayout bar;
-    private TextView num, name, group, note, clock, hint;
+    private TextView num, name, group, note, clock, hint, top;
+    private final Runnable topTick = new Runnable() { @Override public void run() {
+        if (top == null) return;
+        java.util.Calendar c = java.util.Calendar.getInstance(); int hh = c.get(java.util.Calendar.HOUR); if (hh == 0) hh = 12;
+        top.setText(String.format(Locale.US, "%d:%02d", hh, c.get(java.util.Calendar.MINUTE)) + (c.get(java.util.Calendar.AM_PM) == 0 ? " ص" : " م"));
+        h.removeCallbacks(this); h.postDelayed(this, (60 - c.get(java.util.Calendar.SECOND)) * 1000L + 200);
+    } };
     private int cur = -1, prevI = -1, audioPick = -1;   // the channel playing, the one before it (◀ / LAST), the sound track chosen
     private ImageView logo;
     private LinearLayout chips, chips2;
@@ -92,7 +98,9 @@ public class PlayerActivity extends Activity {
         setContentView(root);
 
         meter = new DefaultBandwidthMeter.Builder(this).build();
-        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).build();
+        http = new androidx.media3.datasource.DefaultHttpDataSource.Factory().setUserAgent(HomeActivity.BROWSER).setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
+        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter)
+                .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
@@ -196,6 +204,14 @@ public class PlayerActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         lp.setMargins((int) dp(40), 0, (int) dp(40), (int) dp(26));
         root.addView(bar, lp);
+        // 🕒 the clock hung at the top, light and see-through, all the time (as in the home's photo view); setting «pclock» = off hides it
+        top = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xD9FFFFFF);
+        top.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        tp.setMargins(0, (int) dp(22), (int) dp(34), 0);
+        root.addView(top, tp);
+        if ("off".equals(Access.set(this).getString("pclock", "on"))) top.setVisibility(View.GONE);
+        topTick.run();
     }
 
     private TextView text(float sp, Typeface tf, int color) {
@@ -214,7 +230,13 @@ public class PlayerActivity extends Activity {
     }
 
     /** what is really coming in, as chips */
-    private void open() { try { if (player == null) return; player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+    private androidx.media3.datasource.DefaultHttpDataSource.Factory http;
+    private void open() { try { if (player == null) return;
+        // the channel's own site as Referer / Origin where its CDN wants it
+        java.util.Map<String, String> hd = new java.util.HashMap<>(); String site = HomeActivity.siteOf(urls[i]);
+        if (site != null) { hd.put("Referer", site + "/"); hd.put("Origin", site); }
+        http.setDefaultRequestProperties(hd);
+        player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private void fill() { try { fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
         if (player == null) return;

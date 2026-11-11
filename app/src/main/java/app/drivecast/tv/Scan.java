@@ -76,6 +76,7 @@ public class Scan {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         c.setConnectTimeout(6000); c.setReadTimeout(7000); c.setInstanceFollowRedirects(true);
         c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; TV) AppleWebKit/537.36 Chrome/120 Safari/537.36");
+        if (HomeActivity.siteOf(u) != null) { c.setRequestProperty("Referer", HomeActivity.siteOf(u) + "/"); c.setRequestProperty("Origin", HomeActivity.siteOf(u)); }
         return c;
     }
 
