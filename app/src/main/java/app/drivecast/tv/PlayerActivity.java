@@ -57,6 +57,53 @@ public class PlayerActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
     static PlayerActivity live;
+    // ---- 🔥 what is watched: minutes per channel (and per part of the day), kept on the TV — the launcher's «الأكثر مشاهدة»
+    private long since; private String sinceName;
+    static int part() { int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); return h >= 5 && h < 12 ? 0 : h < 17 && h >= 12 ? 1 : h >= 17 && h < 22 ? 2 : 3; }
+    private void tally() {
+        try {
+            if (sinceName == null || since == 0) return;
+            long ms = Math.min(System.currentTimeMillis() - since, 6 * 3600_000L); String nm = sinceName; since = 0; sinceName = null;
+            if (ms < 60_000L || nm.isEmpty()) return;
+            android.content.SharedPreferences p = getSharedPreferences("watch", MODE_PRIVATE);
+            org.json.JSONObject all = new org.json.JSONObject(p.getString("s", "{}"));
+            org.json.JSONObject o = all.optJSONObject(nm); if (o == null) o = new org.json.JSONObject();
+            double m = ms / 60000.0; String pk = "p" + part();
+            o.put("m", Math.round((o.optDouble("m", 0) + m) * 10) / 10.0).put(pk, Math.round((o.optDouble(pk, 0) + m) * 10) / 10.0).put("t", System.currentTimeMillis());
+            all.put(nm, o); p.edit().putString("s", all.toString()).apply();
+        } catch (Throwable ignored) { }
+    }
+    static String stats(android.content.Context c) { return c.getSharedPreferences("watch", MODE_PRIVATE).getString("s", "{}"); }
+    /** the channels watched most at this time of day (names), best first */
+    private java.util.List<String> usual() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        try {
+            org.json.JSONObject all = new org.json.JSONObject(stats(this)); final String pk = "p" + part();
+            java.util.List<String> ks = new java.util.ArrayList<>(); java.util.Iterator<String> it = all.keys(); while (it.hasNext()) ks.add(it.next());
+            final java.util.Map<String, Double> sc = new HashMap<>();
+            for (String k : ks) { org.json.JSONObject o = all.getJSONObject(k); if (o.optDouble("m", 0) >= 5) sc.put(k, o.optDouble("m", 0) + 3 * o.optDouble(pk, 0)); }
+            out.addAll(sc.keySet()); java.util.Collections.sort(out, (a, b) -> Double.compare(sc.get(b), sc.get(a)));
+            if (out.size() > 20) out = new java.util.ArrayList<>(out.subList(0, 20));
+        } catch (Throwable ignored) { }
+        return out;
+    }
+    // ---- 📌 pinned to the top of the Channels tab (the launcher's own list, settings «pins»): a long OK in the side list
+    private java.util.Set<String> pinned() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        try { org.json.JSONArray a = new org.json.JSONArray(Access.set(this).getString("pins", "[]")); for (int k = 0; k < a.length(); k++) out.add(a.getJSONObject(k).optString("name").trim().toLowerCase(Locale.ROOT)); } catch (Throwable ignored) { }
+        return out;
+    }
+    private boolean pinToggle(int ch) {
+        try {
+            String nm = names != null && ch < names.length && names[ch] != null ? names[ch] : ""; if (nm.isEmpty()) return false;
+            String key = nm.trim().toLowerCase(Locale.ROOT);
+            org.json.JSONArray a = new org.json.JSONArray(Access.set(this).getString("pins", "[]")), b = new org.json.JSONArray(); boolean had = false;
+            for (int k = 0; k < a.length(); k++) { org.json.JSONObject o = a.getJSONObject(k); if (o.optString("name").trim().toLowerCase(Locale.ROOT).equals(key)) had = true; else b.put(o); }
+            if (!had) b.put(new org.json.JSONObject().put("name", nm).put("url", key0(ch)).put("logo", logos != null && ch < logos.length && logos[ch] != null ? logos[ch] : "").put("group", gOf(ch)));
+            Access.set(this).edit().putString("pins", b.toString()).apply();
+            return !had;
+        } catch (Throwable t) { return false; }
+    }
     /** 📅 the guide: a channel's first address → its coming programmes [[start s, stop s, title], …] */
     static Map<String, org.json.JSONArray> EPG = new HashMap<>();
     private TextView prog;
@@ -347,13 +394,16 @@ public class PlayerActivity extends Activity {
         listScroll.addView(listCol);
         box.addView(listScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView tip = text(10.5f, Typeface.DEFAULT, 0x99FFFFFF); tip.setGravity(Gravity.END);
-        tip.setText("↑↓ اختر · ▶ القائمة التالية · ◀ بالحرف · OK شغّل"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
+        tip.setText("↑↓ اختر · ▶ القائمة التالية · ◀ بالحرف · OK شغّل · OK مطوّلاً 📌 ثبّت"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
         box.addView(tip);
         listPanel.addView(box, new FrameLayout.LayoutParams(-1, -1));
         root.addView(listPanel, new FrameLayout.LayoutParams((int) dp(400), -1, Gravity.RIGHT));
         listPanel.setVisibility(View.GONE);
     }
     // the list's lists: «الكل», then each group (country / list) in the order met — ▶ moves to the next one
+    private static final String USUAL = "🔥 المعتادة";
+    private java.util.List<String> usualNow = new java.util.ArrayList<>(); private java.util.Set<String> pins = new java.util.HashSet<>();
+    private boolean okDown;
     private final java.util.List<String> lists = new java.util.ArrayList<>();
     private int li = 0;                                   // the list shown
     private int[] lview = new int[0];                      // its channels (indexes into urls)
@@ -371,11 +421,15 @@ public class PlayerActivity extends Activity {
         lists.clear(); lists.add("الكل");
         for (int k = 0; k < urls.length; k++) { String g = gOf(k); if (!g.isEmpty() && !lists.contains(g)) lists.add(g); }
         if (lists.size() == 2) lists.remove(1);   // one group only: «الكل» is it
+        usualNow = usual(); pins = pinned();
+        boolean any = false; for (int k = 0; k < urls.length && !any; k++) any = usualNow.contains(nOf(k));
+        if (any && urls.length > 8) lists.add(1, USUAL);
     }
     private void listView() {
         java.util.List<Integer> v = new java.util.ArrayList<>();
         String g = lists.get(li);
-        for (int k = 0; k < urls.length; k++) if (li == 0 || g.equals(gOf(k))) v.add(k);
+        if (USUAL.equals(g)) { for (String nm : usualNow) for (int k = 0; k < urls.length; k++) if (nm.equals(nOf(k))) { v.add(k); break; } }
+        else for (int k = 0; k < urls.length; k++) if (li == 0 || g.equals(gOf(k))) v.add(k);
         lview = new int[v.size()]; for (int k = 0; k < lview.length; k++) lview[k] = v.get(k);
     }
     private int posOf(int ch) { for (int k = 0; k < lview.length; k++) if (lview[k] == ch) return k; return -1; }
@@ -391,7 +445,7 @@ public class PlayerActivity extends Activity {
             TextView t = text(15, Typeface.DEFAULT, 0xFFFFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
             String fl = fOf(k);
             String on = nowNext(k)[0].replaceFirst("  \\(باقي.*$", "");
-            t.setText((k == cur ? "▶  " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k) + (on.isEmpty() ? "" : "  ·  " + on));
+            t.setText((k == cur ? "▶  " : "") + (pins.contains(nOf(k).trim().toLowerCase(Locale.ROOT)) ? "📌 " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k) + (on.isEmpty() ? "" : "  ·  " + on));
             t.setPadding((int) dp(8), 0, 0, 0);
             r.addView(n); r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
             listCol.addView(r, new LinearLayout.LayoutParams(-1, -2));
@@ -414,7 +468,7 @@ public class PlayerActivity extends Activity {
         h.removeCallbacks(listHide); h.postDelayed(listHide, letterOn ? 20000 : 10000);
     }
     private void listShow(boolean on) {
-        listOn = on; letterOn = false;
+        listOn = on; letterOn = false; okDown = false;
         if (on) {
             listsBuild(); if (li >= lists.size()) li = 0;
             listView(); if (posOf(Math.max(0, cur)) < 0) { li = 0; listView(); }
@@ -432,6 +486,17 @@ public class PlayerActivity extends Activity {
         String L = letters.get(letterAt);
         for (int q = 0; q < lview.length; q++) if (first(nOf(lview[q])).equals(L)) { sel = q; break; }
         listMark();
+    }
+    @Override
+    public boolean onKeyUp(int code, KeyEvent e) {
+        try {
+            if (listOn && okDown && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+                okDown = false;
+                if (sel < lview.length) { if (lview[sel] == cur) listShow(false); else { i = lview[sel]; listShow(false); play(); fill(); showBar(6000); } }   // chosen: the list goes, the bar shows the channel
+                return true;
+            }
+        } catch (Throwable t) { Crash.note(this, "player list: " + t); }
+        return super.onKeyUp(code, e);
     }
     private boolean listKey(int code, KeyEvent e) {
         int n = lview.length;
@@ -459,9 +524,13 @@ public class PlayerActivity extends Activity {
                 letterAt = Math.max(0, letters.indexOf(now)); letterOn = true; listMark(); return true;
             }
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
-                if (e.getRepeatCount() > 0) return true;
-                if (lview[sel] == cur) { listShow(false); return true; }
-                i = lview[sel]; listShow(false); play(); fill(); showBar(6000); return true;   // chosen: the list goes, the bar shows the channel
+                // a short OK plays (on release); held: the channel is pinned to the top of the Channels tab (or taken off)
+                if (e.getRepeatCount() == 0) { okDown = true; return true; }
+                if (okDown && e.getRepeatCount() >= 6) {
+                    okDown = false; boolean on = pinToggle(lview[sel]); pins = pinned(); int keep = sel; listFill(); sel = keep; listMark();
+                    listHead.setText(on ? "📌 ثُبّتت في أعلى تاب القنوات" : "أُزيلت من المثبّتة");
+                }
+                return true;
             case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: listShow(false); return true;
         }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { listShow(false); return false; }
@@ -657,6 +726,7 @@ public class PlayerActivity extends Activity {
 
     private void play() { try { play0(); } catch (Throwable t) { Crash.note(this, "player play: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private void play0() {
+        tally(); since = System.currentTimeMillis(); sinceName = names != null && i < names.length && names[i] != null ? names[i] : "";
         errors = 0; offered = false; decoder = ""; audioPick = -1;
         if (cur >= 0 && cur != i) prevI = cur;
         cur = i;
@@ -763,6 +833,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        tally();
         if (live == this) live = null;
         net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null);
         Scan.paused = false;

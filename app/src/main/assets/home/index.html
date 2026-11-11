@@ -399,6 +399,11 @@ body.ambient .phrase.on{display:block}
   <section class="page" id="p-iptv"><div class="scroll">
     <div style="margin-bottom:10px"><button class="chip f" data-act="gofilt">🎚️ فلترة وبحث القنوات (الجودة · HDR · عمق اللون · H.264)</button></div>
     <div id="pinwrap" hidden><h2>📌 المثبّتة في الأعلى <small style="font-size:18px;font-weight:400;opacity:.6">· ضغطة مطوّلة على أي قناة ← «ثبّت في الأعلى»</small></h2><div class="shelf" id="s-pin" style="flex-wrap:wrap"></div></div>
+    <div id="mostwrap" hidden><h2>🔥 الأكثر مشاهدة <small id="mostn" style="font-size:18px;font-weight:400;opacity:.6"></small></h2><div class="shelf" id="s-most" style="flex-wrap:wrap"></div></div>
+    <div id="m3uwrap"><h2>📂 قوائمي الخاصة (M3U) <small id="m3un" style="font-size:18px;font-weight:400;opacity:.6"></small></h2>
+      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uIn" type="url" placeholder="الصق رابط القائمة هنا: https://…/list.m3u" style="flex:1;min-width:520px;margin:8px 0"><button class="chip f" data-act="m3u-add">➕ أضف القائمة</button></div>
+      <div class="empty" style="margin:2px 6px 10px">الأسهل من الجوال: افتح صفحة الريموت (عنوان التلفزيون :8080) ← الأذكار ← «قائمة قنوات خاصة» والصق الرابط</div>
+      <div class="shelf" id="s-m3u" style="flex-wrap:wrap"></div></div>
     <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
     <div id="gspwrap"><h2>🏟️ كل القنوات الرياضية <small id="gspn" style="font-size:18px;font-weight:400;opacity:.6">· أفحصها…</small></h2><div class="shelf" id="s-gsp" style="flex-wrap:wrap"><div class="empty">أفحص القنوات الرياضية… تظهر هنا اللي تشتغل فقط</div></div></div>
     <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
@@ -1367,6 +1372,38 @@ function pinUi() {
   const w = $('#pinwrap'); if (w) w.hidden = !PINS.length;
   const box = $('#s-pin'); if (box) { box.innerHTML = PINS.map((c, i) => ichHtml(c, i, 'pin')).join(''); box.querySelectorAll('[data-ilist="pin"]').forEach(b => { const c = PINS[+b.dataset.i]; if (c && (c.st === 'ok' || GSP.includes(c))) b.classList.add('ok'); }); }
 }
+// 🔥 the channels watched most — the player counts the minutes (per part of the day); the ones usual at this hour lead.
+// No setting up: the launcher learns it.
+let MOST = [], MOSTM = new Map();
+const dayPart = () => { const h = NOW().getHours(); return h >= 5 && h < 12 ? 0 : h >= 12 && h < 17 ? 1 : h >= 17 && h < 22 ? 2 : 3; };
+function mostUi() {
+  let st = {}; try { st = JSON.parse(TV.watchStats ? TV.watchStats() : '{}') || {}; } catch (e) {}
+  const pk = 'p' + dayPart(), pools = [DYNCH, GSP, MYFAV, ILIST];
+  MOST = Object.entries(st).filter(([, o]) => (o.m || 0) >= 5).map(([name, o]) => ({ name, sc: (o.m || 0) + 3 * (o[pk] || 0), m: o.m || 0 }))
+    .sort((a, b) => b.sc - a.sc).slice(0, 12)
+    .map(x => { for (const l of pools) { const c = (l || []).find(y => favKey(y) === favKey(x)); if (c) { MOSTM.set(favKey(c), x.m); return c; } } return null; }).filter(Boolean);
+  const w = $('#mostwrap'); if (w) w.hidden = !MOST.length;
+  const box = $('#s-most'); if (!box) return;
+  box.innerHTML = MOST.map((c, i) => ichHtml(c, i, 'most')).join('');
+  box.querySelectorAll('[data-ilist="most"]').forEach(b => { const m = MOSTM.get(favKey(MOST[+b.dataset.i])) || 0, at = b.querySelector('.at'); if (at) at.textContent = m >= 90 ? AR(Math.round(m / 60)) + ' ساعة مشاهدة' : AR(Math.round(m)) + ' دقيقة مشاهدة'; });
+  const n = $('#mostn'); if (n) n.textContent = '· ' + ['في الصباح', 'في الظهر', 'في المساء', 'في الليل'][dayPart()] + ' — تترتّب لحالها من مشاهدتك';
+}
+// 📂 the owner's own channel lists (M3U addresses; setting «m3u», one per line — typed here or sent from the phone page)
+const m3uList = () => String(S('m3u', '') || '').split(/\s+/).filter(u => /^https?:\/\//.test(u));
+let M3UN = {};   // address → how many channels it gave
+function m3uUi() {
+  const l = m3uList(), box = $('#s-m3u'); if (!box) return;
+  box.innerHTML = l.map((u, i) => `<button class="chip f" data-act="m3u-del" data-u="${esc(u)}" title="احذف">📂 ${esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;✕</button>`).join('');
+  const n = $('#m3un'); if (n) n.textContent = l.length ? `· ${AR(l.length)} قائمة — قنواتها تحت «كل القنوات» في مجموعة «📂 قائمتي»` : '· أضف رابط قائمتك وتنضاف قنواتها مع الفحص والمصادر الاحتياطية';
+}
+function m3uAdd(u) {
+  u = String(u || '').trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { const n = $('#m3un'); if (n) n.textContent = '· الرابط لازم يبدأ بـ http'; return; }
+  const l = m3uList(); if (!l.includes(u)) setPref('m3u', [...l, u].join('\n'));
+  const q = $('#m3uIn'); if (q) q.value = '';
+  m3uUi(); listsAt = 0; loadLists();
+}
+function m3uDel(u) { setPref('m3u', m3uList().filter(x => x !== u).join('\n')); delete M3UN[u]; m3uUi(); listsAt = 0; loadLists(); }
+window.onM3u = () => { loadSet(); m3uUi(); listsAt = 0; loadLists(); };
 function favUi() {
   loadFavs();
   $('#s-myfav').innerHTML = MYFAV.map((c, i) => ichHtml(c, i, 'my')).join('') || '<div class="empty">اضغط مطوّلاً على أي قناة ← ⭐ أضف للمفضّلة</div>';
@@ -1504,11 +1541,11 @@ const DYN = [
 // servers no longer exist) and moved to its «دبي+» platform (dubaiplus.net, protected playback); Abu Dhabi Media moved to
 // STARZPLAY; Al Kass's own server answers only inside its region. So when no open server answers, OK opens the channel's own
 // app on the TV (or its page in the store), before the YouTube live.
-const DYN_APP = [[/^دبي/, 'دبي+', /dubai ?\+|دبي ?\+|dubaiplus|awaan/i, 'Dubai+ دبي بلس'], [/^أبوظبي/, 'STARZPLAY', /starz/i, 'STARZPLAY'], [/^الكأس/, 'شوف الكأس', /alkass|shoof|الكأس/i, 'Alkass شوف الكأس']];
+const DYN_APP = [[/^دبي/, 'دبي+', /dubai ?\+|دبي ?\+|dubaiplus|awaan/i, 'Dubai+ دبي بلس', 'https://www.dubaiplus.net/live_tv'], [/^أبوظبي/, 'STARZPLAY', /starz/i, 'STARZPLAY'], [/^الكأس/, 'شوف الكأس', /alkass|shoof|الكأس/i, 'Alkass شوف الكأس']];
 function dynApp(c) {
   const a = DYN_APP.find(x => x[0].test(c.name)); if (!a) return null;
   const inst = APPS.find(p => a[2].test(p.label || '') || a[2].test(p.pkg || ''));
-  return { label: a[1], inst, go: () => inst ? TV.open(inst.pkg) : TV.storeFind ? TV.storeFind(a[3]) : TV.link('https://play.google.com/store/search?c=apps&q=' + encodeURIComponent(a[3])) };
+  return { label: a[1], inst, web: !inst && a[4], go: () => inst ? TV.open(inst.pkg) : a[4] ? TV.link(a[4]) : TV.storeFind ? TV.storeFind(a[3]) : TV.link('https://play.google.com/store/search?c=apps&q=' + encodeURIComponent(a[3])) };
 }
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
 const DYN_YT = { 'أبوظبي': ['أبوظبي الرياضية بث مباشر', /أبوظبي الرياضية|abu ?dhabi sports|ad sports/i], 'دبي': ['دبي الرياضية بث مباشر', /دبي الرياضية|dubai sports/i], 'الكأس': ['قناة الكأس بث مباشر', /الكأس|al ?kass/i] };
@@ -1561,7 +1598,7 @@ function dynUi() {
   box.querySelectorAll('[data-ilist="dyn"]').forEach(b => {
     const c = DYNCH[+b.dataset.i], at = b.querySelector('.at');
     b.classList.remove('ok', 'bad'); if (c.st === 'ok') b.classList.add('ok'); if (c.st === 'bad') b.classList.add('bad');
-    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? (dynApp(c) ? `بثها المفتوح متوقف — OK يفتح تطبيق «${dynApp(c).label}»${dynApp(c).inst ? '' : ' في المتجر'}` : 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب') : '';
+    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? (dynApp(c) ? `بثها المفتوح متوقف — OK يفتح ${dynApp(c).web ? 'موقع' : 'تطبيق'} «${dynApp(c).label}»${dynApp(c).inst || dynApp(c).web ? '' : ' في المتجر'}` : 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب') : '';
   });
   if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
@@ -1648,7 +1685,8 @@ let listsAt = 0, LIVE = [];
 async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
   await pullFavs();
-  const [ftv, ...texts] = await Promise.all([getText(FREETV), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
+  const mineU = m3uList();
+  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(u => getText(u))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
   const seen = new Set(), names = new Set(); ILIST = []; ALT = new Map();
   const alt = c => { const k = chKey(c.name); if (!ALT.has(k)) ALT.set(k, []); const a = ALT.get(k); if (!a.includes(c.url) && !/^yt-live:|youtu/.test(c.url)) a.push(c.url); };
   // Free-TV/IPTV: the first source. Its marks (Ⓢ SD, Ⓖ geo-blocked, Ⓨ YouTube) off the names; Arab countries first, in Arabic
@@ -1656,11 +1694,13 @@ async function loadLists() {
     const yt = /youtube\.com|youtu\.be/.test(c.url), m = yt && !/watch\?v=|youtu\.be\//.test(c.url) && /youtube\.com\/(.+?)(?:\/live)?\/?$/.exec(c.url);
     return { ...c, name: c.name.replace(/\s*[ⓈⒼⓎ]+/g, '').trim(), group: FTV_AR[c.group] || c.group, ar: FTV_AR[c.group] ? Object.keys(FTV_AR).indexOf(c.group) : 99, url: m ? 'yt-live:' + m[1] : c.url };
   }).sort((a, b) => a.ar - b.ar);
+  mineT.forEach((t, k) => { const l = parseM3u(t); M3UN[mineU[k]] = l.length; l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
+  m3uUi();
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  lead(); liveUi(); iptvUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg();
+  lead(); liveUi(); iptvUi(); mostUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
@@ -1676,7 +1716,7 @@ function liveUi() {
   }
   loadFavs();
   const mine = MYFAV.filter(f => !picks.some(p => p.name === f.name));
-  pinUi(); const pins = PINS.filter(p => !picks.some(x => favKey(x) === favKey(p)));
+  pinUi(); mostUi(); const pins = [...PINS, ...MOST.slice(0, 4).filter(m => !PINS.some(p => favKey(p) === favKey(m)))].filter(p => !picks.some(x => favKey(x) === favKey(p)));
   LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
@@ -1719,7 +1759,7 @@ const BIG5 = [
   ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'pin' ? PINS : window.__shown;
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'pin' ? PINS : n === 'most' ? MOST : window.__shown;
 // 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
 const YTLEAGUES = [
   ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
@@ -2285,7 +2325,7 @@ function backFocus() {
   const n = document.querySelector(`#${LASTCARD.page} ${LASTCARD.sel}`); if (n) { n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'center', inline: 'nearest' }); }
 }
 // the Channels tab's lists: folded until opened (OK on the title), and each one remembers being open
-const FOLDS = ['dynwrap', 'gspwrap', 'favwrap', 'ytlwrap', 'b5wrap', 'allwrap'];
+const FOLDS = ['m3uwrap', 'dynwrap', 'gspwrap', 'favwrap', 'ytlwrap', 'b5wrap', 'allwrap'];
 let OPEN = {}; try { OPEN = JSON.parse(localStorage.getItem('folds') || '{}') || {}; } catch (e) {}
 function foldInit() {
   for (const id of FOLDS) {
@@ -2326,7 +2366,7 @@ window.onTvWake = why => {
   setTimeout(go, why === 'boot' ? 2500 : 800);
 };
 setTimeout(() => { try { if (window.TV && TV.wake && TV.wake() === 'boot') onTvWake('boot'); } catch (e) {} }, 3500);
-window.onTvResume = () => { loadApps(); loadPrayers(); nightTick(); setTimeout(backFocus, 120); };
+window.onTvResume = () => { loadSet(); PINNO = null; loadApps(); loadPrayers(); nightTick(); try { liveUi(); if ($('#p-iptv').classList.contains('on')) { dynUi(); iptvUi(); } } catch (e) {} setTimeout(backFocus, 120); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
   if (/^[0-9]$/.test(k)) return numberKey(k);
@@ -2382,6 +2422,8 @@ document.addEventListener('click', e => {
   }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.act === 'upd') return updGo();
+  if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
+  if (b.dataset.act === 'm3u-del') return m3uDel(b.dataset.u);
   if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
   if (b.dataset.store) { TV.store ? TV.store(b.dataset.store) : TV.link('https://play.google.com/store/apps/details?id=' + b.dataset.store); return; }
@@ -2484,9 +2526,28 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
+const NEWS = '2026-11-11b', NEWS_ROWS = [
+  ['📋', 'OK والقناة شغّالة: قائمة القنوات — ▶ القائمة التالية · ◀ بالحرف · OK مطوّلاً يثبّت'],
+  ['🔥', '«الأكثر مشاهدة» تترتّب لحالها حسب وقت اليوم — هنا وفي قائمة المشغّل'],
+  ['📅', 'دليل البرامج: الآن وبعده على الكروت وفي شريط القناة'],
+  ['🕌', 'الأذان ينسمع فوق القناة ويكتمها، وعدّ تنازلي في آخر ١٠ دقايق'],
+  ['🔢', 'القنوات المثبّتة لها أرقام: اكتب الرقم من أي مكان'],
+  ['📂', 'قوائمك الخاصة M3U من تاب القنوات أو من صفحة الجوال'],
+  ['🟢', 'الفحص يجرّب كل مصادر القناة ويحفظ الشغّال'],
+];
+function newsMaybe() {
+  if (S('news', '') === NEWS || document.body.classList.contains('ambient') || $('#ctx').classList.contains('on')) return;
+  setPref('news', NEWS);
+  CTX = { news: 1, b: document.activeElement };
+  $('#ctxName').textContent = '✨ الجديد في DriveCast TV'; $('#ctxLogo').src = '';
+  $('#ctxBody').innerHTML = NEWS_ROWS.map(([ic, t], k) => `<button class="f" data-ctx="news"><i>${ic}</i>${t}</button>`).join('') + '<button class="f" data-ctx="news"><i>✓</i><b>تمام</b></button>';
+  $('#ctx').classList.add('on'); $('#ctxBody .f:last-child').focus();
+}
+setTimeout(() => { try { if (window.TV && TV.prefs) newsMaybe(); } catch (e) {} }, 6000);
 function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; CTX = null; if (b && document.body.contains(b)) b.focus(); }
 async function ctxDo(k) {
   const x = CTX; if (!x) return; ctxClose();
+  if (x.news) return;
   if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }

@@ -458,6 +458,10 @@ public class HomeActivity extends Activity {
         public String updFail() { String f = getSharedPreferences("upd", MODE_PRIVATE).getString("fail", ""); getSharedPreferences("upd", MODE_PRIVATE).edit().remove("fail").apply(); return f; }
         /** an app's page in the TV's store (Google Play), else on the web */
         @JavascriptInterface
+        public String watchStats() { return PlayerActivity.stats(HomeActivity.this); }
+
+        /** an app's page in the TV's store, by a search */
+        @JavascriptInterface
         public void storeFind(String q) {
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?c=apps&q=" + Uri.encode(q))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
             catch (Exception e) { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/search?c=apps&q=" + Uri.encode(q))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } }

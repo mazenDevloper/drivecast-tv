@@ -153,6 +153,13 @@ public class MessageServer extends Service {
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
             main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
             Remote.event("phrase");
+        } else if (first.startsWith("POST /m3u")) {   // the phone adds a channel list of the owner's (an M3U address) to the Channels tab
+            String u = body.trim();
+            if (u.matches("https?://\\S{6,600}")) {
+                android.content.SharedPreferences st = Access.set(this); String old = st.getString("m3u", "");
+                if (!java.util.Arrays.asList(old.split("\\s+")).contains(u)) st.edit().putString("m3u", (old + "\n" + u).trim()).apply();
+                main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.onM3u && onM3u()"); });
+            }
         } else if (first.startsWith("POST /mouse-on")) {   // the phone's «شغّل الماوس»: on now if the adb grant is there
             main.post(() -> { if (!Access.force(this)) Access.openSettings(this); });
         } else if (first.startsWith("POST /adhan")) {   // try the Haram adhan / iqamah from the phone (body: adhan | iqama | stop)

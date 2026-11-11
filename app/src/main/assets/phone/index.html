@@ -89,6 +89,8 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div id="zlist"></div>
   <label>صوت الأذان والإقامة (الحرم المكي) — جرّبه على التلفزيون</label>
   <div class="row"><button data-adhan="adhan">🕌 الأذان</button><button data-adhan="iqama">🔔 الإقامة</button><button data-adhan="stop">⏹ وقّف</button></div>
+  <label>📂 قائمة قنوات خاصة (رابط M3U) — تنضاف لتاب القنوات على التلفزيون</label>
+  <div class="row"><input id="m3u" type="url" inputmode="url" placeholder="https://…/list.m3u" style="flex:1;min-width:0"><button id="m3uGo">أضف</button></div>
 </section>
 
 <section id="b" class="hide">
@@ -192,6 +194,7 @@ cv.onpointerup = cv.onpointercancel = () => { flush(); last = null; };
 function flush() { if (q.length < 1) return; const s = (cont ? '+' : '') + col + ' ' + q.map(p => p[0].toFixed(4) + ',' + p[1].toFixed(4)).join(' '); if (last) { q = [last]; cont = true; } else q = []; post('/draw', s); }
 setInterval(() => { if (last && q.length > 1) flush(); }, 80);
 $('clr').onclick = () => { cx.clearRect(0, 0, cv.width, cv.height); post('/clear', ''); };
+$('m3uGo').onclick = () => { const u = $('m3u').value.trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { $('s').textContent = 'اكتب رابط يبدأ بـ http'; return; } post('/m3u', u); $('m3u').value = ''; $('s').textContent = '📂 انضافت القائمة — افتح تاب القنوات على التلفزيون'; };
 document.querySelectorAll('[data-adhan]').forEach(b => b.onclick = () => { post('/adhan', b.dataset.adhan); $('s').textContent = b.dataset.adhan === 'stop' ? 'وقف' : 'يشتغل على التلفزيون… أول مرة ياخذ ثواني لين ينزل الصوت'; });
 fetch('/phrase').then(r => r.text()).then(t => { $('ph').value = t; }).catch(() => {});
 $('phs').onclick = () => post('/phrase', $('ph').value).then(r => r && ($('s').textContent = $('ph').value.trim() ? 'انحفظت العبارة ✅' : 'انشالت العبارة'));
