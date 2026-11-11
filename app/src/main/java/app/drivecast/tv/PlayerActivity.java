@@ -57,6 +57,32 @@ public class PlayerActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
     static PlayerActivity live;
+    /** 📅 the guide: a channel's first address → its coming programmes [[start s, stop s, title], …] */
+    static Map<String, org.json.JSONArray> EPG = new HashMap<>();
+    private TextView prog;
+    private String key0(int k) { return first.containsKey(k) ? first.get(k) : urls[k]; }
+    private static String clock(long s) { java.util.Calendar c = java.util.Calendar.getInstance(); c.setTimeInMillis(s * 1000); int h = c.get(java.util.Calendar.HOUR); return (h == 0 ? 12 : h) + ":" + String.format(Locale.US, "%02d", c.get(java.util.Calendar.MINUTE)); }
+    /** {now, next} of channel k ("" where unknown) */
+    private String[] nowNext(int k) {
+        String[] out = { "", "" };
+        try {
+            org.json.JSONArray a = EPG.get(key0(k)); if (a == null) return out;
+            long now = System.currentTimeMillis() / 1000;
+            for (int q = 0; q < a.length(); q++) {
+                org.json.JSONArray r = a.getJSONArray(q); long st = r.getLong(0), en = r.getLong(1);
+                if (en <= now) continue;
+                if (st <= now) { out[0] = r.getString(2); int left = (int) ((en - now) / 60); if (left > 0) out[0] += "  (باقي " + left + " د)"; }
+                else { out[1] = clock(st) + "  " + r.getString(2); break; }
+            }
+        } catch (Throwable ignored) { }
+        return out;
+    }
+    private void progFill() {
+        if (prog == null) return;
+        String[] nn = nowNext(i);
+        String t = (nn[0].isEmpty() ? "" : "▸ الآن: " + nn[0]) + (nn[1].isEmpty() ? "" : (nn[0].isEmpty() ? "" : "   ·   ") + "بعده " + nn[1]);
+        prog.setText(t); prog.setVisibility(t.isEmpty() ? View.GONE : View.VISIBLE);
+    }
     /** a channel is playing here now (also in the corner) */
     static boolean playing() { PlayerActivity p = live; try { return p != null && p.player != null && p.player.getPlayWhenReady(); } catch (Throwable t) { return false; } }
     /** 🕌 the adhan / iqamah sounds: the channel's own sound off until it ends (the picture goes on) */
@@ -247,7 +273,8 @@ public class PlayerActivity extends Activity {
         LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(0, -2, 1); nl.setMarginStart((int) dp(12));
         name = text(20, bold, Color.WHITE); name.setSingleLine(true);
         group = text(12, med, 0xCCE9EEF2); group.setSingleLine(true);
-        names_.addView(name); names_.addView(group);
+        prog = text(13, med, 0xFF9FE3B4); prog.setSingleLine(true); prog.setEllipsize(android.text.TextUtils.TruncateAt.END); prog.setVisibility(View.GONE);
+        names_.addView(name); names_.addView(group); names_.addView(prog);
         top.addView(names_, nl);
         // the signal meter (from the connection's speed against what the stream needs) and the clock
         LinearLayout sig = new LinearLayout(this); sig.setGravity(Gravity.BOTTOM);
@@ -363,7 +390,8 @@ public class PlayerActivity extends Activity {
             n.setText(String.valueOf(k + 1)); n.setMinWidth((int) dp(40));
             TextView t = text(15, Typeface.DEFAULT, 0xFFFFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
             String fl = fOf(k);
-            t.setText((k == cur ? "▶  " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k));
+            String on = nowNext(k)[0].replaceFirst("  \\(باقي.*$", "");
+            t.setText((k == cur ? "▶  " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k) + (on.isEmpty() ? "" : "  ·  " + on));
             t.setPadding((int) dp(8), 0, 0, 0);
             r.addView(n); r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
             listCol.addView(r, new LinearLayout.LayoutParams(-1, -2));
@@ -463,7 +491,7 @@ public class PlayerActivity extends Activity {
         if (site != null) { hd.put("Referer", site + "/"); hd.put("Origin", site); }
         http.setDefaultRequestProperties(hd);
         player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
-    private void fill() { try { fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
+    private void fill() { try { progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
         if (player == null) return;
         chips.removeAllViews(); chips2.removeAllViews(); row = chips;
