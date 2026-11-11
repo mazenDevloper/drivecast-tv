@@ -104,7 +104,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); Scan.paused = true;   // the daily scan waits while a channel plays
+        buildBar(root); buildList(root); Scan.paused = true;   // the daily scan waits while a channel plays
         setContentView(root);
 
         meter = new DefaultBandwidthMeter.Builder(this).build();
@@ -223,6 +223,84 @@ public class PlayerActivity extends Activity {
         root.addView(hang, tp);
         if ("off".equals(Access.set(this).getString("pclock", "on"))) hang.setVisibility(View.GONE);
         topTick.run();
+    }
+
+    // ---- OK: the channel list at the side, like a receiver's. ↑↓ choose (held: fast), ◀ ▶ ten at a time, OK plays it
+    // (the list stays, OK again on the playing one closes it), BACK closes; it hides by itself after 10 s untouched
+    private FrameLayout listPanel; private android.widget.ScrollView listScroll; private LinearLayout listCol;
+    private TextView listHead; private int sel; private boolean listOn;
+    private final Runnable listHide = () -> listShow(false);
+    private void buildList(FrameLayout root) {
+        listPanel = new FrameLayout(this);
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.RIGHT_LEFT, new int[] { 0xF0101216, 0xD8101216, 0x00101216 });
+        listPanel.setBackground(g);
+        LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding((int) dp(18), (int) dp(26), (int) dp(30), (int) dp(20));
+        listHead = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+        listHead.setGravity(Gravity.END); listHead.setPadding(0, 0, (int) dp(10), (int) dp(12));
+        box.addView(listHead);
+        listScroll = new android.widget.ScrollView(this); listScroll.setVerticalScrollBarEnabled(false); listScroll.setFocusable(false);
+        listCol = new LinearLayout(this); listCol.setOrientation(LinearLayout.VERTICAL);
+        listScroll.addView(listCol);
+        box.addView(listScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        TextView tip = text(10.5f, Typeface.DEFAULT, 0x99FFFFFF); tip.setGravity(Gravity.END);
+        tip.setText("↑↓ اختر · ◀ ▶ عشر عشر · OK شغّل · رجوع يقفل"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
+        box.addView(tip);
+        listPanel.addView(box, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(listPanel, new FrameLayout.LayoutParams((int) dp(400), -1, Gravity.RIGHT));
+        listPanel.setVisibility(View.GONE);
+    }
+    private void listFill() {
+        listCol.removeAllViews();
+        for (int k = 0; k < urls.length; k++) {
+            LinearLayout r = new LinearLayout(this); r.setOrientation(LinearLayout.HORIZONTAL); r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            r.setPadding((int) dp(12), (int) dp(9), (int) dp(12), (int) dp(9));
+            TextView n = text(13, Typeface.create("sans-serif-medium", Typeface.BOLD), 0x99FFFFFF);
+            n.setText(String.valueOf(k + 1)); n.setMinWidth((int) dp(40));
+            TextView t = text(15, Typeface.DEFAULT, 0xFFFFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            t.setText((k == cur ? "▶  " : "") + (names != null && k < names.length && names[k] != null ? names[k] : "قناة " + (k + 1)));
+            t.setPadding((int) dp(8), 0, 0, 0);
+            r.addView(n); r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            listCol.addView(r, new LinearLayout.LayoutParams(-1, -2));
+        }
+    }
+    private void listMark() {
+        for (int k = 0; k < listCol.getChildCount(); k++) {
+            View r = listCol.getChildAt(k);
+            if (k == sel) { GradientDrawable d = new GradientDrawable(); d.setColor(0xF2FFFFFF); d.setCornerRadius(dp(14)); r.setBackground(d); }
+            else if (k == cur) { GradientDrawable d = new GradientDrawable(); d.setColor(0x3334C759); d.setCornerRadius(dp(14)); r.setBackground(d); }
+            else r.setBackground(null);
+            int fg = k == sel ? 0xFF111111 : 0xFFFFFFFF;
+            ((TextView) ((LinearLayout) r).getChildAt(1)).setTextColor(fg);
+            ((TextView) ((LinearLayout) r).getChildAt(0)).setTextColor(k == sel ? 0xFF555555 : 0x99FFFFFF);
+        }
+        String g = groups != null && sel < groups.length && groups[sel] != null ? groups[sel] : "";
+        listHead.setText("📺 القنوات · " + (sel + 1) + " من " + urls.length + (g.isEmpty() ? "" : "  ·  " + g));
+        View r = listCol.getChildAt(sel);
+        if (r != null) listScroll.post(() -> listScroll.smoothScrollTo(0, Math.max(0, r.getTop() - listScroll.getHeight() / 2 + r.getHeight() / 2)));
+        h.removeCallbacks(listHide); h.postDelayed(listHide, 10000);
+    }
+    private void listShow(boolean on) {
+        listOn = on;
+        if (on) { sel = Math.max(0, cur); listFill(); listPanel.setVisibility(View.VISIBLE); listPanel.setAlpha(0f); listPanel.setTranslationX(dp(60)); listPanel.animate().alpha(1f).translationX(0).setDuration(220); listMark(); }
+        else { h.removeCallbacks(listHide); listPanel.animate().alpha(0f).translationX(dp(60)).setDuration(200).withEndAction(() -> { if (!listOn) listPanel.setVisibility(View.GONE); }); }
+    }
+    private boolean listKey(int code, KeyEvent e) {
+        int n = urls.length;
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_CHANNEL_UP: sel = (sel - 1 + n) % n; listMark(); return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_CHANNEL_DOWN: sel = (sel + 1) % n; listMark(); return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT: sel = Math.min(n - 1, sel + 10); listMark(); return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: sel = Math.max(0, sel - 10); listMark(); return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
+                if (e.getRepeatCount() > 0) return true;
+                if (sel == cur) { listShow(false); return true; }
+                i = sel; play(); listFill(); listMark(); return true;
+            case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: listShow(false); return true;
+        }
+        if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { listShow(false); return false; }
+        return false;
     }
 
     private TextView text(float sp, Typeface tf, int color) {
@@ -471,6 +549,7 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
+        if (listOn && listKey(code, e)) return true;
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
@@ -509,6 +588,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); return true;
             default: break;
         }
+        if (ok && urls.length > 1) { listShow(true); fill(); showBar(4000); return true; }
         if (ok || code == KeyEvent.KEYCODE_INFO) { fill(); showBar(6000); return true; }
         return super.onKeyDown(code, e);
     }

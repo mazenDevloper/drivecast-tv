@@ -136,9 +136,12 @@ public class HomeActivity extends Activity {
     }
     static final String BROWSER = "Mozilla/5.0 (Linux; Android 12; TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-    static String download(String url) {
+    static String download(String url) { return download(url, 0); }
+    /** (a redirect from http to https — some channel sites send one — is followed by hand: Java does not cross protocols) */
+    static String download(String url, int hops) {
         try {
             java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            c.setInstanceFollowRedirects(false);
             c.setConnectTimeout(12000); c.setReadTimeout(30000);
             if (url.contains("youtube.com/results")) {   // YouTube search: the normal page, in Arabic
                 c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
@@ -150,6 +153,8 @@ public class HomeActivity extends Activity {
                 c.setConnectTimeout(6000); c.setReadTimeout(8000);
                 c.setRequestProperty("User-Agent", BROWSER); c.setRequestProperty("Referer", siteOf(url) + "/"); c.setRequestProperty("Origin", siteOf(url));
             } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
+            int code = c.getResponseCode();
+            if (code >= 300 && code < 400 && hops < 5) { String to = c.getHeaderField("Location"); c.disconnect(); return to == null ? null : download(new java.net.URL(new java.net.URL(url), to).toString(), hops + 1); }
             java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
             in.mark(2);
             int b0 = in.read(), b1 = in.read();

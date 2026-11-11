@@ -199,6 +199,13 @@ body.nightdim #nightVeil{opacity:.42}
 #offline{position:fixed;top:18px;left:50%;transform:translate(-50%,-140%);z-index:9001;padding:12px 26px;border-radius:999px;background:rgba(255,69,58,.92);color:#fff;font-size:22px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
 #offline.on{transform:translate(-50%,0)}
 #offline.back{background:rgba(52,199,89,.92)}
+#p-iptv .fold>h2{cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 22px;margin:10px 0;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);font-size:30px;outline:none}
+#p-iptv .fold>h2::before{content:'▾';font-size:24px;opacity:.7;transition:transform .25s}
+#p-iptv .fold.closed>h2::before{transform:rotate(90deg)}
+#p-iptv .fold>h2:focus{background:rgba(255,255,255,.95);color:#111}
+#p-iptv .fold>h2:focus small{color:#333}
+#p-iptv .fold>h2 .cnt{margin-inline-start:auto;font-size:20px;font-weight:600;opacity:.75}
+#p-iptv .fold.closed>:not(h2){display:none!important}
 .ichan .pin{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer;margin-inline-end:8px}
 .ichan.pinned .pin{color:#fff;background:rgba(52,199,89,.55)}
 .ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
@@ -392,7 +399,7 @@ body.ambient .phrase.on{display:block}
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <h2>كل القنوات — العربية والعالمية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div>
+    <div id="allwrap"><h2>كل القنوات — العربية والعالمية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -1444,15 +1451,19 @@ const MGD = ['cdn.mangomolo.com', 'cdn.mgmlcdn.com'];
 const mgm = (hosts, n) => hosts.flatMap(h => MGD.flatMap(d => [`https://${h}.${d}/${n}/smil:${n}.stream.smil/chunklist.m3u8`, `https://${h}.${d}/${n}/smil:${n}.smil/index.m3u8`, `https://${h}.${d}/${n}/smil:${n}.stream.smil/playlist.m3u8`]));
 // these host names no longer resolve anywhere (checked from GitHub's servers, 11 Nov 2026) — 2 each kept in case they come back; the rest is asked of the public lists and YouTube
 const DMI = ['dmitnthfr', 'dmitwlvvll'], ADM = ['admdn1', 'admdn2'];
-const kass = n => ['liveeu-gcp', 'googlecdn1', 'liveakgr', 'liveus-gcp'].map(h => `https://${h}.alkassdigital.net/alkass${n}-p/main.m3u8`);
+// free-to-air channels from any source that carries them: the channel's own servers first, then the sites that pass them on
+const KASS_MORE = { 1: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass1'], 2: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass2', 'https://www.tvkaista.net/stream-forwarder/get.php?x=AlkassTwo'], 3: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass3'], 4: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass4'], 5: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass5'], 6: ['http://www.elahmad.com/tv/m3u8/alkass.m3u8?id=alkass6'] };
+const kass = n => ['liveeu-gcp', 'googlecdn1', 'liveakgr', 'liveus-gcp'].map(h => `https://${h}.alkassdigital.net/alkass${n}-p/main.m3u8`).concat(KASS_MORE[n] || []);
+const ORANGE = n => `https://vo-live.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel${n}/HLS/index.m3u8`;
 const KASSN = ['one', 'two', 'three', 'four', 'five', 'six'];
 const DYN = [
-  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i, () => mgm(ADM, 'adsports1')],
-  ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i, () => mgm(ADM, 'adsports2')],
+  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i, () => [ORANGE(1), ...mgm(ADM, 'adsports1')]],
+  ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i, () => [ORANGE(2), ...mgm(ADM, 'adsports2')]],
   ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i, () => mgm(DMI, 'dubaisports')],
   ['دبي الرياضية 2', /dubai sports? ?2\b/i, () => mgm(DMI, 'dubaisportshd')],
   ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => mgm(DMI, 'dubaisportshd5')],
   ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
+  ['إم بي سي أكشن', /mbc ?action/i, () => ['http://37.122.156.107:4000/play/a07h/index.m3u8']],
   ['ثمانية', null, null, 'ثمانية بث مباشر'],
 ];
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
@@ -2172,6 +2183,34 @@ function backFocus() {
   if (a && a !== document.body && document.body.contains(a) && a.offsetParent) return;
   const n = document.querySelector(`#${LASTCARD.page} ${LASTCARD.sel}`); if (n) { n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'center', inline: 'nearest' }); }
 }
+// the Channels tab's lists: folded until opened (OK on the title), and each one remembers being open
+const FOLDS = ['pinwrap', 'dynwrap', 'gspwrap', 'favwrap', 'ytlwrap', 'b5wrap', 'allwrap'];
+let OPEN = {}; try { OPEN = JSON.parse(localStorage.getItem('folds') || '{}') || {}; } catch (e) {}
+function foldInit() {
+  for (const id of FOLDS) {
+    const w = $('#' + id), h = w && w.querySelector(':scope>h2'); if (!h || w.classList.contains('fold')) continue;
+    w.classList.add('fold'); w.classList.toggle('closed', !OPEN[id]);
+    h.classList.add('f'); h.tabIndex = 0; h.dataset.fold = id;
+    const c = document.createElement('span'); c.className = 'cnt'; h.appendChild(c);
+  }
+  foldCounts();
+}
+function foldCounts() {
+  for (const id of FOLDS) {
+    const w = $('#' + id), c = w && w.querySelector(':scope>h2>.cnt'); if (!c) continue;
+    const all = w.querySelectorAll('[data-ilist]').length, ok = w.querySelectorAll('[data-ilist].ok').length;
+    c.textContent = all ? (ok ? `🟢 ${AR(ok)} · ` : '') + `${AR(all)} قناة` : '';
+  }
+}
+function foldToggle(id, open) {
+  const w = $('#' + id); if (!w) return;
+  const on = open ?? w.classList.contains('closed'); w.classList.toggle('closed', !on);
+  OPEN[id] = on; try { localStorage.setItem('folds', JSON.stringify(OPEN)); } catch (e) {}
+  foldCounts();
+}
+setTimeout(foldInit, 0); setInterval(foldCounts, 4000);
+document.addEventListener('click', e => { const h = e.target.closest && e.target.closest('h2[data-fold]'); if (h && !e.target.closest('button')) foldToggle(h.dataset.fold); });
+document.addEventListener('keydown', e => { const h = document.activeElement; if (e.key === 'Enter' && h && h.dataset && h.dataset.fold) { e.preventDefault(); e.stopImmediatePropagation(); foldToggle(h.dataset.fold); } }, true);
 window.onTvResume = () => { loadApps(); loadPrayers(); nightTick(); setTimeout(backFocus, 120); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
@@ -2213,7 +2252,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'nextm') return playMatchChannel();
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
-  if (b.dataset.act === 'gofilt') { const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
+  if (b.dataset.act === 'gofilt') { foldToggle('allwrap', true); const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ifilt) { FILT[b.dataset.ifilt] = !FILT[b.dataset.ifilt]; iptvUi(); const n = document.querySelector(`[data-ifilt="${b.dataset.ifilt}"]`); if (n) n.focus(); return; }
   if (b.dataset.ilist && e.target.closest && e.target.closest('[data-pin]')) {   // the ⬆ on the channel: pin to the top
