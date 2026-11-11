@@ -87,7 +87,7 @@ public class PlayerActivity extends Activity {
         if (out == null || pip) count.setVisibility(View.GONE); else { count.setText("🕌 " + out); count.setVisibility(View.VISIBLE); }
         cd.postDelayed(this, out != null ? 1000 : 15000);
     } };
-    private static String mmss(long ms) { long s = Math.max(0, ms / 1000); return String.format(Locale.US, "%d:%02d", s / 60, s % 60); }
+
     /** other addresses of a channel (first address → the rest), tried in turn when it does not play */
     static Map<String, String[]> ALTS = new HashMap<>();
     private final Map<Integer, Integer> altAt = new HashMap<>();   // channel → how many of its other sources were tried
@@ -295,9 +295,9 @@ public class PlayerActivity extends Activity {
         count.setShadowLayer(dp(5), 0, dp(1), 0xCC000000);
         GradientDrawable cb = new GradientDrawable(); cb.setColor(0xB3101216); cb.setCornerRadius(dp(16)); count.setBackground(cb);
         count.setPadding((int) dp(14), (int) dp(6), (int) dp(14), (int) dp(6));
-        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
-        cp.setMargins(0, (int) dp(66), (int) dp(30), 0);
-        root.addView(count, cp); count.setVisibility(View.GONE);
+        FrameLayout.LayoutParams cdp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        cdp.setMargins(0, (int) dp(66), (int) dp(30), 0);
+        root.addView(count, cdp); count.setVisibility(View.GONE);
         countTick.run();
     }
 
