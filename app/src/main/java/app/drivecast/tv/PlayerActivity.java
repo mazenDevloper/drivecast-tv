@@ -329,7 +329,7 @@ public class PlayerActivity extends Activity {
     // the list's lists: «الكل», then each group (country / list) in the order met — ▶ moves to the next one
     private final java.util.List<String> lists = new java.util.ArrayList<>();
     private int li = 0;                                   // the list shown
-    private int[] view = new int[0];                      // its channels (indexes into urls)
+    private int[] lview = new int[0];                      // its channels (indexes into urls)
     private boolean letterOn; private int letterAt; private java.util.List<String> letters = new java.util.ArrayList<>();
     private String gOf(int k) { return groups != null && k < groups.length && groups[k] != null ? groups[k] : ""; }
     private String nOf(int k) { return names != null && k < names.length && names[k] != null ? names[k] : "قناة " + (k + 1); }
@@ -349,13 +349,13 @@ public class PlayerActivity extends Activity {
         java.util.List<Integer> v = new java.util.ArrayList<>();
         String g = lists.get(li);
         for (int k = 0; k < urls.length; k++) if (li == 0 || g.equals(gOf(k))) v.add(k);
-        view = new int[v.size()]; for (int k = 0; k < view.length; k++) view[k] = v.get(k);
+        lview = new int[v.size()]; for (int k = 0; k < lview.length; k++) lview[k] = v.get(k);
     }
-    private int posOf(int ch) { for (int k = 0; k < view.length; k++) if (view[k] == ch) return k; return -1; }
+    private int posOf(int ch) { for (int k = 0; k < lview.length; k++) if (lview[k] == ch) return k; return -1; }
     private void listFill() {
         listCol.removeAllViews();
-        for (int q = 0; q < view.length; q++) {
-            int k = view[q];
+        for (int q = 0; q < lview.length; q++) {
+            int k = lview[q];
             LinearLayout r = new LinearLayout(this); r.setOrientation(LinearLayout.HORIZONTAL); r.setGravity(Gravity.CENTER_VERTICAL);
             r.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
             r.setPadding((int) dp(12), (int) dp(9), (int) dp(12), (int) dp(9));
@@ -371,14 +371,14 @@ public class PlayerActivity extends Activity {
     }
     private void listMark() {
         for (int q = 0; q < listCol.getChildCount(); q++) {
-            View r = listCol.getChildAt(q); int k = view[q];
+            View r = listCol.getChildAt(q); int k = lview[q];
             if (q == sel) { GradientDrawable d = new GradientDrawable(); d.setColor(0xF2FFFFFF); d.setCornerRadius(dp(14)); r.setBackground(d); }
             else if (k == cur) { GradientDrawable d = new GradientDrawable(); d.setColor(0x3334C759); d.setCornerRadius(dp(14)); r.setBackground(d); }
             else r.setBackground(null);
             ((TextView) ((LinearLayout) r).getChildAt(1)).setTextColor(q == sel ? 0xFF111111 : 0xFFFFFFFF);
             ((TextView) ((LinearLayout) r).getChildAt(0)).setTextColor(q == sel ? 0xFF555555 : 0x99FFFFFF);
         }
-        String head = (lists.size() > 1 ? "◀ " + lists.get(li) + " ▶" : "📺 القنوات") + "  ·  " + (view.length == 0 ? 0 : sel + 1) + " من " + view.length;
+        String head = (lists.size() > 1 ? "◀ " + lists.get(li) + " ▶" : "📺 القنوات") + "  ·  " + (lview.length == 0 ? 0 : sel + 1) + " من " + lview.length;
         if (letterOn && !letters.isEmpty()) head = "🔤 الحرف:  " + letters.get(letterAt) + "   ·  ↑↓ غيّر · OK اختر";
         listHead.setText(head);
         View r = sel < listCol.getChildCount() ? listCol.getChildAt(sel) : null;
@@ -402,11 +402,11 @@ public class PlayerActivity extends Activity {
     }
     private void letterJump() {
         String L = letters.get(letterAt);
-        for (int q = 0; q < view.length; q++) if (first(nOf(view[q])).equals(L)) { sel = q; break; }
+        for (int q = 0; q < lview.length; q++) if (first(nOf(lview[q])).equals(L)) { sel = q; break; }
         listMark();
     }
     private boolean listKey(int code, KeyEvent e) {
-        int n = view.length;
+        int n = lview.length;
         if (letterOn) {
             switch (code) {
                 case KeyEvent.KEYCODE_DPAD_UP: letterAt = (letterAt - 1 + letters.size()) % letters.size(); letterJump(); return true;
@@ -425,15 +425,15 @@ public class PlayerActivity extends Activity {
                 li = (li + 1) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); return true;
             case KeyEvent.KEYCODE_DPAD_LEFT: {  // ◀ by letter
                 java.util.TreeSet<String> ls = new java.util.TreeSet<>();
-                for (int k : view) ls.add(first(nOf(k)));
+                for (int k : lview) ls.add(first(nOf(k)));
                 letters = new java.util.ArrayList<>(ls); if (letters.isEmpty()) return true;
-                String now = sel < n ? first(nOf(view[sel])) : letters.get(0);
+                String now = sel < n ? first(nOf(lview[sel])) : letters.get(0);
                 letterAt = Math.max(0, letters.indexOf(now)); letterOn = true; listMark(); return true;
             }
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 if (e.getRepeatCount() > 0) return true;
-                if (view[sel] == cur) { listShow(false); return true; }
-                i = view[sel]; listShow(false); play(); fill(); showBar(6000); return true;   // chosen: the list goes, the bar shows the channel
+                if (lview[sel] == cur) { listShow(false); return true; }
+                i = lview[sel]; listShow(false); play(); fill(); showBar(6000); return true;   // chosen: the list goes, the bar shows the channel
             case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: listShow(false); return true;
         }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { listShow(false); return false; }
