@@ -57,6 +57,19 @@ public class PlayerActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
     static PlayerActivity live;
+    /** other addresses of a channel (first address → the rest), tried in turn when it does not play */
+    static Map<String, String[]> ALTS = new HashMap<>();
+    private final Map<Integer, Integer> altAt = new HashMap<>();   // channel → how many of its other sources were tried
+    private final Map<Integer, String> first = new HashMap<>();
+    private boolean nextSource() {
+        String key = first.containsKey(i) ? first.get(i) : urls[i]; String[] a = ALTS.get(key);
+        int k = altAt.containsKey(i) ? altAt.get(i) : 0;
+        if (a == null || k >= a.length) return false;
+        first.put(i, key); altAt.put(i, k + 1); urls[i] = a[k]; errors = 0;
+        setNote("المصدر الأول ما اشتغل — أجرّب مصدر آخر (" + (k + 2) + " من " + (a.length + 1) + ")"); showBar(0);
+        net.postDelayed(this::open, 400);
+        return true;
+    }
     // ---- 📺 picture in picture: HOME while a channel plays → it goes on in a corner over the home screen
     @Override
     protected void onUserLeaveHint() {
@@ -507,6 +520,7 @@ public class PlayerActivity extends Activity {
     private void retry() {
         net.removeCallbacksAndMessages(null);
         errors++;
+        if (errors >= 2 && nextSource()) return;
         if (errors >= TRIES) { offerOtherPlayer(); return; }
         setNote("إعادة الاتصال… (" + errors + " من " + TRIES + ")");
         showBar(0);

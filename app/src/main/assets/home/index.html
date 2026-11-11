@@ -172,7 +172,7 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 
 .scroll{overflow:auto;height:930px;padding:0 4px 120px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
 .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:14px;padding:10px 4px 18px}
-.grid.ch{grid-template-columns:repeat(6,1fr)}
+.grid.ch{grid-template-columns:repeat(4,1fr)}
 .sura{height:84px;border-radius:20px;border:1px solid var(--line);background:rgba(20,28,37,.8);color:var(--ink);font-family:inherit;font-size:24px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px}
 .sura small{font-size:16px;color:var(--dim);font-variant-numeric:tabular-nums}
 .sura.on{background:var(--accent);color:#062016}.sura.on small{color:#062016}
@@ -403,7 +403,7 @@ body.ambient .phrase.on{display:block}
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <div id="allwrap"><h2>كل القنوات — العربية والعالمية <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div></div>
+    <div id="allwrap"><h2>كل القنوات — Free-TV أولاً <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: اضغط النجمة، أو مطوّلاً على OK</small></h2><div class="shelf" id="s-ifilt" style="flex-wrap:wrap"></div><input class="f bin" id="s-isearch" type="search" placeholder="🔍 ابحث باسم القناة…" style="margin:8px 0 14px"><div class="shelf" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div></div>
   </div></section>
   <section class="page" id="p-matches"><h2>مباريات اليوم</h2><div class="shelf" id="s-matches" style="flex-wrap:wrap"></div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -1437,7 +1437,7 @@ function allChannels() {
 }
 function iptvUi() {
   const ALL = allChannels();
-  const groups = ['all', ...new Set(ALL.map(c => c.group).filter(Boolean))].slice(0, 30);
+  const groups = ['all', ...new Set(ALL.map(c => c.group).filter(Boolean))].slice(0, 40);
   $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}</button>`).join('');
   filtUi();
   let pool = ALL.filter(c => IGROUP === 'all' || c.group === IGROUP);
@@ -1470,6 +1470,7 @@ const DYN = [
   ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => mgm(DMI, 'dubaisportshd5')],
   ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
   ['إم بي سي أكشن', /mbc ?action/i, () => ['http://37.122.156.107:4000/play/a07h/index.m3u8']],
+  ['بي إن سبورت الإخبارية', null, null, 'beIN SPORTS News بث مباشر'],
   ['ثمانية', null, null, 'ثمانية بث مباشر'],
 ];
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
@@ -1578,14 +1579,33 @@ async function loadGarden(force) {
     show(); pinUi(); try { localStorage.setItem('gsp', JSON.stringify({ at: Date.now(), list: GSP })); } catch (e) {}
   } finally { gspBusy = false; }
 }
+const FREETV = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8';
+const FTV_AR = { 'Oman': 'عُمان', 'United Arab Emirates': 'الإمارات', 'Saudi Arabia': 'السعودية', 'Qatar': 'قطر', 'Kuwait': 'الكويت', 'Bahrain': 'البحرين', 'Iraq': 'العراق', 'Egypt': 'مصر', 'Jordan': 'الأردن', 'Lebanon': 'لبنان', 'Syria': 'سوريا', 'Palestine': 'فلسطين', 'Yemen': 'اليمن', 'Morocco': 'المغرب', 'Algeria': 'الجزائر', 'Tunisia': 'تونس', 'Libya': 'ليبيا', 'Sudan': 'السودان' };
+// a channel's name as a key: «Dubai Sports 1 (1080p) [Geo-blocked]» = «Dubai Sports 1 Ⓢ»
+const chKey = n => String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/[ⓈⒼⓎ]/g, '').replace(/\bhd\b/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+let ALT = new Map();
+/** every other address known for this channel (the other lists, tv.garden's sports, the changing sports' servers) — for the player to fall back on */
+function altsOf(c) {
+  const k = chKey(c.name), out = [...(ALT.get(k) || [])];
+  GSP.forEach(x => chKey(x.name) === k && out.push(x.url)); (SPORTS?.list || []).forEach(x => chKey(x.name) === k && out.push(x.url));
+  return [...new Set(out)].filter(u => u !== c.url && /^https?:/.test(u) && !/youtu/.test(u)).slice(0, 6);
+}
 const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countries/ae', 'الإمارات'], ['countries/sa', 'السعودية'], ['countries/qa', 'قطر'], ['countries/kw', 'الكويت']];
 let listsAt = 0, LIVE = [];
 async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
   await pullFavs();
-  const texts = await Promise.all(LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u')));
-  const seen = new Set(); ILIST = [];
-  texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
+  const [ftv, ...texts] = await Promise.all([getText(FREETV), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
+  const seen = new Set(), names = new Set(); ILIST = []; ALT = new Map();
+  const alt = c => { const k = chKey(c.name); if (!ALT.has(k)) ALT.set(k, []); const a = ALT.get(k); if (!a.includes(c.url) && !/^yt-live:|youtu/.test(c.url)) a.push(c.url); };
+  // Free-TV/IPTV: the first source. Its marks (Ⓢ SD, Ⓖ geo-blocked, Ⓨ YouTube) off the names; Arab countries first, in Arabic
+  const free = parseM3u(ftv).map(c => {
+    const yt = /youtube\.com|youtu\.be/.test(c.url), m = yt && !/watch\?v=|youtu\.be\//.test(c.url) && /youtube\.com\/(.+?)(?:\/live)?\/?$/.exec(c.url);
+    return { ...c, name: c.name.replace(/\s*[ⓈⒼⓎ]+/g, '').trim(), group: FTV_AR[c.group] || c.group, ar: FTV_AR[c.group] ? Object.keys(FTV_AR).indexOf(c.group) : 99, url: m ? 'yt-live:' + m[1] : c.url };
+  }).sort((a, b) => a.ar - b.ar);
+  free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
+  // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
+  texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
   liveUi(); iptvUi(); scanMaybe(); loadDyn(); loadGarden();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
@@ -1782,6 +1802,7 @@ async function playChannel(list, i) {
     list = list.map((x, k) => k === i ? r : x).filter(x => !/^(yt-search|dyn):/.test(x.url)); i = list.indexOf(r);
   }
   // favourites and the home shelf are kept by name: their links come from the newest lists (the chosen one also from YouTube live)
+  if (list && list[i] && /^yt-live:/.test(list[i].url) && list !== MYFAV && list !== LIVE) { const r = await resolveChannel(list[i]); list = [r]; i = 0; }
   if (list && list[i] && (list === MYFAV || list === LIVE || /^yt-live:/.test(list[i].url))) {
     const chosen = await resolveChannel(list[i]);
     list = await Promise.all(list.map((x, k) => k === i ? chosen : /^yt-live:/.test(x.url) ? x : resolveChannel(x)));
@@ -1793,8 +1814,8 @@ async function playChannel(list, i) {
   if (radioOn) closePlayer();
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
-  const streams = list.filter(x => !/youtu\.?be/.test(x.url)), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : '') }))), Math.max(0, k));
+  const streams = list.filter(x => !/youtu\.?be|^yt-live:/.test(x.url)), k = streams.indexOf(c);
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
