@@ -61,11 +61,11 @@ public class PlayerActivity extends Activity {
     private String decoder = "", digits = "";
 
     private LinearLayout bar;
-    private TextView num, name, group, note, clock, hint, top;
+    private TextView num, name, group, note, clock, hint, hang;
     private final Runnable topTick = new Runnable() { @Override public void run() {
-        if (top == null) return;
+        if (hang == null) return;
         java.util.Calendar c = java.util.Calendar.getInstance(); int hh = c.get(java.util.Calendar.HOUR); if (hh == 0) hh = 12;
-        top.setText(String.format(Locale.US, "%d:%02d", hh, c.get(java.util.Calendar.MINUTE)) + (c.get(java.util.Calendar.AM_PM) == 0 ? " ص" : " م"));
+        hang.setText(String.format(Locale.US, "%d:%02d", hh, c.get(java.util.Calendar.MINUTE)) + (c.get(java.util.Calendar.AM_PM) == 0 ? " ص" : " م"));
         h.removeCallbacks(this); h.postDelayed(this, (60 - c.get(java.util.Calendar.SECOND)) * 1000L + 200);
     } };
     private int cur = -1, prevI = -1, audioPick = -1;   // the channel playing, the one before it (◀ / LAST), the sound track chosen
@@ -205,12 +205,12 @@ public class PlayerActivity extends Activity {
         lp.setMargins((int) dp(40), 0, (int) dp(40), (int) dp(26));
         root.addView(bar, lp);
         // 🕒 the clock hung at the top, light and see-through, all the time (as in the home's photo view); setting «pclock» = off hides it
-        top = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xD9FFFFFF);
-        top.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
+        hang = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xD9FFFFFF);
+        hang.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
         FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
         tp.setMargins(0, (int) dp(22), (int) dp(34), 0);
-        root.addView(top, tp);
-        if ("off".equals(Access.set(this).getString("pclock", "on"))) top.setVisibility(View.GONE);
+        root.addView(hang, tp);
+        if ("off".equals(Access.set(this).getString("pclock", "on"))) hang.setVisibility(View.GONE);
         topTick.run();
     }
 
