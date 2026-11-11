@@ -378,6 +378,7 @@ body.ambient .phrase.on{display:block}
   <section class="page" id="p-iptv"><div class="scroll">
     <div style="margin-bottom:10px"><button class="chip f" data-act="gofilt">🎚️ فلترة وبحث القنوات (الجودة · HDR · عمق اللون · H.264)</button></div>
     <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
+    <div id="gspwrap"><h2>🏟️ كل القنوات الرياضية <small id="gspn" style="font-size:18px;font-weight:400;opacity:.6">· أفحصها…</small></h2><div class="shelf" id="s-gsp" style="flex-wrap:wrap"><div class="empty">أفحص القنوات الرياضية… تظهر هنا اللي تشتغل فقط</div></div></div>
     <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
     <div id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><h3 class="sub">🌍 أجنبية — من قوائم IPTV كلها</h3><div class="shelf" id="s-b5f" style="flex-wrap:wrap"></div></div>
@@ -1457,7 +1458,8 @@ const dynCands = c => { const d = DYN.find(x => x[0] === c.name); return [...new
 async function loadDyn(force) {
   if (dynBusy || (!force && Date.now() - dynAt < 10 * 60e3)) return; dynBusy = true; dynAt = Date.now();
   try {
-    const all = (await Promise.all(DYN_SRC.map(u => getText(u)))).flatMap(t => parseM3u(t)).concat(ILIST, SPORTS?.list || []).filter(c => !/geo-blocked/i.test(c.name));
+    const gar = ((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/ae.json')) || []).concat((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/qa.json')) || []).flatMap(x => (x.sources?.streams || []).map(url => ({ name: x.name, url, logo: '' })));
+    const all = (await Promise.all(DYN_SRC.map(u => getText(u)))).flatMap(t => parseM3u(t)).concat(ILIST, SPORTS?.list || []).concat(gar).filter(c => !/geo-blocked/i.test(c.name));
     for (const [name, re] of DYN) if (re) DYNC[name] = [...new Map(all.filter(c => re.test(c.name)).map(c => [c.url, c])).values()];
     for (const c of DYNCH) {
       if (c.st === 'yt') continue;
@@ -1496,6 +1498,41 @@ async function dynResolve(c) {
   const yt = Object.entries(DYN_YT).find(([k]) => c.name.startsWith(k)), u = yt && await ytLiveOf(yt[1][0], yt[1][1]);
   return u ? { ...c, url: u } : null;
 }
+// 🏟️ every sports channel of tv.garden's public list (its checked, free-to-air streams; Arabic first). Each is asked now and
+// only the ones that answer are shown — so every card here has a green dot. What answered is remembered for 3 hours.
+const GARDEN = 'https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/categories/sports.json';
+const GAR_AR = { 'Oman Sports TV': 'عُمان الرياضية', 'Bahrain Sports 1': 'البحرين الرياضية 1', 'Bahrain Sports 2': 'البحرين الرياضية 2', 'KTV Sport': 'الكويت الرياضية', 'KTV Sport Plus': 'الكويت الرياضية بلس', 'Al Iraqia Sport': 'العراقية الرياضية', 'Jordan Sport': 'الأردن الرياضية', 'KSA Sports': 'السعودية الرياضية' };
+let GSP = [], gspAt = 0, gspBusy = false;
+function gspUi(done) {
+  const box = $('#s-gsp'); if (!box) return;
+  const a = document.activeElement, was = box.contains(a) ? a.dataset.i : null;
+  box.innerHTML = GSP.map((c, i) => ichHtml(c, i, 'gsp')).join('') || `<div class="empty">${done ? 'ما فيه قناة ترد الآن — جرّب «افحص من جديد»' : 'أفحص القنوات الرياضية… تظهر هنا اللي تشتغل فقط'}</div>`;
+  box.querySelectorAll('[data-ilist="gsp"]').forEach(b => { b.classList.add('ok'); const c = GSP[+b.dataset.i], at = b.querySelector('.at'); if (at) at.textContent = c.yt ? '✅ بثها في يوتيوب' : '✅ يعمل' + (c.srv ? ' · ' + c.srv : ''); });
+  if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
+}
+async function loadGarden(force) {
+  if (gspBusy || (!force && Date.now() - gspAt < 30 * 60e3)) return; gspBusy = true; gspAt = Date.now();
+  const say = t => { const n = $('#gspn'); if (n) n.textContent = '· ' + t; };
+  try {
+    let mem = null; try { mem = JSON.parse(localStorage.getItem('gsp') || 'null'); } catch (e) {}
+    if (!force && mem && Date.now() - mem.at < 3 * 3600e3 && mem.list.length) { GSP = mem.list; gspUi(true); say(`🟢 ${AR(GSP.length)} قناة تعمل`); return; }
+    const d = await getJ(GARDEN); if (!Array.isArray(d)) { say('ما قدرت أجيب القائمة'); gspUi(true); return; }
+    const all = d.map(x => ({ name: GAR_AR[x.name] || x.name, ar: (x.languages || []).includes('ara') ? 0 : 1, cands: (x.sources?.streams || []).filter(u => /^https?:/.test(u)), ytid: ((x.sources?.youtube || [])[0] || '').split('/embed/')[1] }))
+      .filter(x => x.cands.length || x.ytid).sort((a, b) => a.ar - b.ar);
+    let k = 0, seen = 0; const ok = [];
+    const show = () => { GSP = ok.slice().sort((a, b) => a.ord - b.ord); gspUi(seen === all.length); say(seen < all.length ? `🟢 ${AR(ok.length)} تعمل · فحصت ${AR(seen)} من ${AR(all.length)}` : `🟢 ${AR(ok.length)} قناة تعمل من ${AR(all.length)}`); };
+    const work = async () => {
+      while (k < all.length) {
+        const ord = k++, x = all[ord], r = x.cands.length ? await firstUp(x.cands) : null;
+        if (r) ok.push({ name: x.name, url: r.url, logo: '', group: '🏟️ رياضة', ord, srv: x.cands.length > 1 ? `سيرفر ${AR(r.n)} من ${AR(r.of)}` : '' });
+        else if (x.ytid) ok.push({ name: x.name, url: 'https://www.youtube.com/watch?v=' + x.ytid.split('?')[0], logo: '', group: '🏟️ رياضة', ord, yt: 1 });
+        seen++; if (r || x.ytid || seen % 8 === 0 || seen === all.length) show();
+      }
+    };
+    await Promise.all([work(), work(), work(), work()]);
+    show(); try { localStorage.setItem('gsp', JSON.stringify({ at: Date.now(), list: GSP })); } catch (e) {}
+  } finally { gspBusy = false; }
+}
 const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countries/ae', 'الإمارات'], ['countries/sa', 'السعودية'], ['countries/qa', 'قطر'], ['countries/kw', 'الكويت']];
 let listsAt = 0, LIVE = [];
 async function loadLists() {
@@ -1504,7 +1541,7 @@ async function loadLists() {
   const texts = await Promise.all(LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u')));
   const seen = new Set(); ILIST = [];
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  liveUi(); iptvUi(); scanMaybe(); loadDyn();
+  liveUi(); iptvUi(); scanMaybe(); loadDyn(); loadGarden();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
@@ -1562,7 +1599,7 @@ const BIG5 = [
   ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : window.__shown;
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : window.__shown;
 // 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
 const YTLEAGUES = [
   ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
@@ -2126,7 +2163,7 @@ document.addEventListener('click', e => {
   }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.act === 'upd') return updGo();
-  if (b.dataset.act === 'dyn-again') return loadDyn(true);
+  if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
   if (b.dataset.store) { TV.store ? TV.store(b.dataset.store) : TV.link('https://play.google.com/store/apps/details?id=' + b.dataset.store); return; }
   if (b.dataset.snd) return SND && SND.k === b.dataset.snd ? closePlayer() : sndPlay(b.dataset.snd);
