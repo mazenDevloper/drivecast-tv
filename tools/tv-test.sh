@@ -59,14 +59,15 @@ a shell input keyevent KEYCODE_HOME; sleep 2
 a shell media volume --stream 3 --set 0 >/dev/null 2>&1
 for k in $(seq 1 30); do curl -fsS -m 5 http://127.0.0.1:18080/adhan-log 2>/dev/null | grep -q . && break; sleep 2; done
 curl -fsS -m 10 -X POST --data 'alarm' http://127.0.0.1:18080/adhan >/dev/null
-sleep 22
+# (a busy emulator delivers the alarm some seconds late: wait for it, up to a minute, instead of a fixed time)
+for k in $(seq 1 30); do curl -fsS -m 5 http://127.0.0.1:18080/adhan-log 2>/dev/null | grep -q 'adhan المغرب' && break; sleep 2; done; sleep 3
 curl -fsS -m 10 http://127.0.0.1:18080/adhan-log > "$OUT/adhan-log.txt"
 grep -q 'adhan المغرب — adhan' "$OUT/adhan-log.txt" && ok "adhan at its alarm: the Haram adhan played" || bad "adhan: $(head -4 "$OUT/adhan-log.txt" | tr '\n' ' ')"
 a shell dumpsys audio | grep -q 'state:started' && ok "adhan audible (a player started)" || echo "- ⚠️ adhan: no started audio player seen" >> "$OUT/report.md"
 v=$(grep -o 'volume [0-9]*/[0-9]*' "$OUT/adhan-log.txt" | head -1); case "$v" in "volume 0/"*|"") bad "adhan volume: ${v:-unknown}";; *) ok "adhan: muted box raised to $v";; esac
 shot 10a-adhan "the adhan at its time: banner + sound"
 curl -fsS -m 10 -X POST --data 'stop' http://127.0.0.1:18080/adhan >/dev/null   # (a real iqamah comes minutes after the adhan has ended)
-sleep 30
+for k in $(seq 1 30); do curl -fsS -m 5 http://127.0.0.1:18080/adhan-log 2>/dev/null | grep -q 'iqama المغرب' && break; sleep 2; done; sleep 2
 curl -fsS -m 10 http://127.0.0.1:18080/adhan-log > "$OUT/adhan-log.txt"
 grep -q 'iqama المغرب — iqama' "$OUT/adhan-log.txt" && ok "iqamah at its time after the adhan: played" || bad "iqamah: $(head -4 "$OUT/adhan-log.txt" | tr '\n' ' ')"
 shot 10b-iqama "the iqamah"
