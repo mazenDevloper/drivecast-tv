@@ -1490,16 +1490,26 @@ const kass = n => ['liveeu-gcp', 'googlecdn1', 'liveakgr', 'liveus-gcp'].map(h =
 const ORANGE = n => `https://vo-live.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel${n}/HLS/index.m3u8`;
 const KASSN = ['one', 'two', 'three', 'four', 'five', 'six'];
 const DYN = [
-  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i, () => [ORANGE(1), ...mgm(ADM, 'adsports1')]],
-  ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i, () => [ORANGE(2), ...mgm(ADM, 'adsports2')]],
-  ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i, () => mgm(DMI, 'dubaisports')],
-  ['دبي الرياضية 2', /dubai sports? ?2\b/i, () => mgm(DMI, 'dubaisportshd')],
-  ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => mgm(DMI, 'dubaisportshd5')],
+  ['أبوظبي الرياضية 1', /abu ?dhabi sports? ?1\b|^ad sports? ?1\b/i, () => [ORANGE(1)]],
+  ['أبوظبي الرياضية 2', /abu ?dhabi sports? ?2\b|^ad sports? ?2\b/i, () => [ORANGE(2)]],
+  ['دبي الرياضية 1', /dubai sports? ?1\b|^dubai sports?( \(|$)/i, () => []],
+  ['دبي الرياضية 2', /dubai sports? ?2\b/i, () => []],
+  ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => []],
   ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
   ['إم بي سي أكشن', /mbc ?action/i, () => ['http://37.122.156.107:4000/play/a07h/index.m3u8']],
   ['بي إن سبورت الإخبارية', null, null, 'beIN SPORTS News بث مباشر'],
   ['ثمانية', null, null, 'ثمانية بث مباشر'],
 ];
+// Where these channels went (checked from GitHub's servers, 11 Nov 2026): Dubai Media closed its open streams (the mangomolo
+// servers no longer exist) and moved to its «دبي+» platform (dubaiplus.net, protected playback); Abu Dhabi Media moved to
+// STARZPLAY; Al Kass's own server answers only inside its region. So when no open server answers, OK opens the channel's own
+// app on the TV (or its page in the store), before the YouTube live.
+const DYN_APP = [[/^دبي/, 'دبي+', /dubai ?\+|دبي ?\+|dubaiplus|awaan/i, 'Dubai+ دبي بلس'], [/^أبوظبي/, 'STARZPLAY', /starz/i, 'STARZPLAY'], [/^الكأس/, 'شوف الكأس', /alkass|shoof|الكأس/i, 'Alkass شوف الكأس']];
+function dynApp(c) {
+  const a = DYN_APP.find(x => x[0].test(c.name)); if (!a) return null;
+  const inst = APPS.find(p => a[2].test(p.label || '') || a[2].test(p.pkg || ''));
+  return { label: a[1], inst, go: () => inst ? TV.open(inst.pkg) : TV.storeFind ? TV.storeFind(a[3]) : TV.link('https://play.google.com/store/search?c=apps&q=' + encodeURIComponent(a[3])) };
+}
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
 const DYN_YT = { 'أبوظبي': ['أبوظبي الرياضية بث مباشر', /أبوظبي الرياضية|abu ?dhabi sports|ad sports/i], 'دبي': ['دبي الرياضية بث مباشر', /دبي الرياضية|dubai sports/i], 'الكأس': ['قناة الكأس بث مباشر', /الكأس|al ?kass/i] };
 const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/categories/sports.m3u'];
@@ -1551,7 +1561,7 @@ function dynUi() {
   box.querySelectorAll('[data-ilist="dyn"]').forEach(b => {
     const c = DYNCH[+b.dataset.i], at = b.querySelector('.at');
     b.classList.remove('ok', 'bad'); if (c.st === 'ok') b.classList.add('ok'); if (c.st === 'bad') b.classList.add('bad');
-    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب' : '';
+    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? (dynApp(c) ? `بثها المفتوح متوقف — OK يفتح تطبيق «${dynApp(c).label}»${dynApp(c).inst ? '' : ' في المتجر'}` : 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب') : '';
   });
   if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
@@ -1568,6 +1578,7 @@ async function dynResolve(c) {
   const r = await firstUp(dynCands(c));
   if (r) { c.url = r.url; c.st = 'ok'; c.at = Date.now(); c.srv = `سيرفر ${AR(r.n)} من ${AR(r.of)}`; dynUi(); return c; }
   c.st = 'bad'; dynUi();
+  const ap = dynApp(c); if (ap && ap.inst) return { ...c, app: ap };
   const yt = Object.entries(DYN_YT).find(([k]) => c.name.startsWith(k)), u = yt && await ytLiveOf(yt[1][0], yt[1][1]);
   return u ? { ...c, url: u } : null;
 }
@@ -1841,6 +1852,8 @@ async function resolveChannel(c) {
 async function playChannel(list, i) {
   if (list && list[i] && list[i].dyn) {
     const r = await dynResolve(list[i]);
+    if (r && r.app) return r.app.go();
+    if (!r && dynApp(list[i])) return dynApp(list[i]).go();
     if (!r) { const b = document.querySelector(`#s-dyn [data-i="${DYNCH.indexOf(list[i])}"] .at`); if (b) b.textContent = '⛔ لا سيرفر ولا بث يوتيوب الآن — جرّب بعد شوي'; return; }
     if (/youtu\.?be/.test(r.url)) { lastSet({ k: 'yt', id: ytId(r.url), t: r.name }); return TV.youtube(ytId(r.url)); }
     list = list.map((x, k) => k === i ? r : x).filter(x => !/^(yt-search|dyn):/.test(x.url)); i = list.indexOf(r);
