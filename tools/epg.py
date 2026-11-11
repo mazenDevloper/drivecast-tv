@@ -31,6 +31,9 @@ def main(out):
     sources = [u.strip() for u in re.search(r'x-tvg-url="([^"]*)"', head).group(1).split(',') if u.strip()]
     want = {}                                # normalised id → the playlist's id
     for i in re.findall(r'tvg-id="([^"]+)"', pl): want.setdefault(norm(i), i)
+    byname = {}                              # a channel's name → its id (a guide that names the channel differently still finds it)
+    for nm, i in re.findall(r'tvg-name="([^"]+)"[^\n]*?tvg-id="([^"]+)"', pl): byname.setdefault(norm(re.sub(r'\b(hd|sd|fhd|tv)\b', '', nm.lower())), i)
+    key = lambda s: norm(re.sub(r'\b(hd|sd|fhd|tv)\b', '', (s or '').lower()))
     print(f'{len(want)} channels with an id, {len(sources)} guide files', flush=True)
     now = time.time(); lo, hi = now - HOURS_BACK * 3600, now + HOURS_AHEAD * 3600
     guide, seen_files = {}, 0
@@ -48,7 +51,13 @@ def main(out):
                             t = (el.findtext('title') or '').strip()
                             if t: guide.setdefault(want[k], {})[a] = [a, b, t[:70]]; n += 1
                     el.clear()
-                elif el.tag == 'channel': el.clear()
+                elif el.tag == 'channel':
+                    k = norm(el.get('id'))
+                    if k not in want:
+                        for d in el.findall('display-name'):
+                            i = byname.get(key(d.text))
+                            if i and i not in guide: want[k] = i; break
+                    el.clear()
             seen_files += 1
             print(f'  {n:6d}  {u.rsplit("/", 1)[-1]}', flush=True)
         except Exception as e:
@@ -63,6 +72,7 @@ def main(out):
     print(f'{len(c)} channels have a guide ({seen_files}/{len(sources)} files read) → {os.path.getsize(out) // 1024} KB')
     by = {}
     for i in c: by[i.rsplit('.', 1)[-1]] = by.get(i.rsplit('.', 1)[-1], 0) + 1
+    print('arab:', ' '.join(sorted(i for i in c if i.rsplit('.', 1)[-1] in ('om', 'ae', 'sa', 'qa', 'kw', 'bh', 'eg', 'iq', 'jo', 'lb', 'sy', 'ma', 'dz', 'tn'))))
     print('by country:', ' '.join(f'{k}:{v}' for k, v in sorted(by.items(), key=lambda x: -x[1])[:40]))
     if len(c) < 50: sys.exit('too few channels — the old file is kept')
 
