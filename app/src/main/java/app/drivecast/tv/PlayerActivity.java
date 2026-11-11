@@ -372,7 +372,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 if (e.getRepeatCount() > 0) return true;
                 if (sel == cur) { listShow(false); return true; }
-                i = sel; play(); listFill(); listMark(); return true;
+                i = sel; listShow(false); play(); fill(); showBar(6000); return true;   // chosen: the list goes, the bar shows the channel
             case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: listShow(false); return true;
         }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { listShow(false); return false; }
@@ -665,7 +665,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); return true;
             default: break;
         }
-        if (ok && urls.length > 1) { listShow(true); fill(); showBar(4000); return true; }
+        if (ok && urls.length > 1) { h.removeCallbacks(hide); hide.run(); listShow(true); return true; }   // OK: the list alone
         if (ok || code == KeyEvent.KEYCODE_INFO) { fill(); showBar(6000); return true; }
         return super.onKeyDown(code, e);
     }
