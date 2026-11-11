@@ -206,6 +206,7 @@ body.nightdim #nightVeil{opacity:.42}
 #p-iptv .fold>h2:focus small{color:#333}
 #p-iptv .fold>h2 .cnt{margin-inline-start:auto;font-size:20px;font-weight:600;opacity:.75}
 #p-iptv .fold.closed>:not(h2){display:none!important}
+.ichan .flg{font-style:normal;margin-inline-end:8px}
 .ichan .pno{flex:none;display:inline-grid;place-items:center;min-width:34px;height:30px;padding:0 7px;margin-inline-end:10px;border-radius:9px;background:rgba(52,199,89,.9);color:#fff;font-size:18px;font-weight:800;vertical-align:2px}
 #numIn{position:fixed;top:120px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;z-index:9002;padding:18px 40px;border-radius:28px;background:rgba(16,18,22,.92);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:44px;font-weight:800;box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .2s;pointer-events:none;text-align:center}
 #numIn small{display:block;font-size:22px;font-weight:500;opacity:.75;margin-top:4px}
@@ -1270,7 +1271,7 @@ function parseM3u(t) {
   const out = []; let meta = null;
   for (const raw of String(t || '').split(/\r?\n/)) {
     const l = raw.trim(); if (!l) continue;
-    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', cc: (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '' }; }
+    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', cc: ((a('tvg-country').match(/^[a-z]{2}$/i) || [])[0] || (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '').toLowerCase() }; }
     else if (!l.startsWith('#') && meta) { out.push({ ...meta, url: l }); meta = null; }
   }
   return out;
@@ -1450,7 +1451,7 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
 }
 setInterval(scanMaybe, 3600e3);
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
 function allChannels() {
   const seen = new Set(), out = [];
@@ -1604,6 +1605,10 @@ async function loadGarden(force) {
     show(); pinUi(); try { localStorage.setItem('gsp', JSON.stringify({ at: Date.now(), list: GSP })); } catch (e) {}
   } finally { gspBusy = false; }
 }
+// the flag of a channel's country: from its list's country code, else its Arabic group's
+const LISTCC = { 'عُمان': 'om', 'الإمارات': 'ae', 'السعودية': 'sa', 'قطر': 'qa', 'الكويت': 'kw', 'البحرين': 'bh', 'العراق': 'iq', 'مصر': 'eg', 'الأردن': 'jo', 'لبنان': 'lb', 'سوريا': 'sy', 'فلسطين': 'ps', 'اليمن': 'ye', 'المغرب': 'ma', 'الجزائر': 'dz', 'تونس': 'tn', 'ليبيا': 'ly', 'السودان': 'sd' };
+const ccOf = c => (c && (c.cc || LISTCC[c.group] || (/الكأس|بي إن|al ?kass|bein/i.test(c.name) ? 'qa' : /دبي|أبوظبي|dubai|abu ?dhabi|sharjah|الشارقة/i.test(c.name) ? 'ae' : /ثمانية|إم بي سي|thmanyah|ksa sport|السعودية/i.test(c.name) ? 'sa' : /عُمان|عمان|oman/i.test(c.name) ? 'om' : ''))) || '';
+const flagOf = c => { const cc = ccOf(c); return /^[a-z]{2}$/i.test(cc) ? String.fromCodePoint(...[...cc.toUpperCase()].map(x => 0x1F1A5 + x.charCodeAt(0))) : ''; };
 const FREETV = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8';
 const FTV_AR = { 'Oman': 'عُمان', 'United Arab Emirates': 'الإمارات', 'Saudi Arabia': 'السعودية', 'Qatar': 'قطر', 'Kuwait': 'الكويت', 'Bahrain': 'البحرين', 'Iraq': 'العراق', 'Egypt': 'مصر', 'Jordan': 'الأردن', 'Lebanon': 'لبنان', 'Syria': 'سوريا', 'Palestine': 'فلسطين', 'Yemen': 'اليمن', 'Morocco': 'المغرب', 'Algeria': 'الجزائر', 'Tunisia': 'تونس', 'Libya': 'ليبيا', 'Sudan': 'السودان' };
 // a channel's name as a key: «Dubai Sports 1 (1080p) [Geo-blocked]» = «Dubai Sports 1 Ⓢ»
@@ -1842,7 +1847,7 @@ async function playChannel(list, i) {
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/youtu\.?be|^yt-live:/.test(x.url)), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches

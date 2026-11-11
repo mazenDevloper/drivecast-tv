@@ -317,11 +317,11 @@ public class HomeActivity extends Activity {
         public void watchFull(String channelsJson, int index) {
             try {
                 JSONArray a = new JSONArray(channelsJson);
-                int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n];
-                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); }
+                int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
+                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc"); }
                 PlayerActivity.ALTS = new HashMap<>();
                 for (int k = 0; k < n; k++) { JSONArray al = a.getJSONObject(k).optJSONArray("alts"); if (al == null || al.length() == 0) continue; String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); PlayerActivity.ALTS.put(us[k], x); }
-                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("i", index));
+                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index));
             } catch (Exception ignored) { }
         }
 
