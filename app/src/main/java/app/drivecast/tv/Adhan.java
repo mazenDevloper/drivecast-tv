@@ -319,7 +319,7 @@ public class Adhan extends BroadcastReceiver {
         player.setOnCompletionListener(mp -> stop());
         try { float v = Integer.parseInt(Access.set(app).getString("vol", "100")) / 100f; player.setVolume(v, v); } catch (Exception ignored) { }
         player.start();
-        banner(app, text, player.getDuration());
+        if (!PlayerActivity.playing()) banner(app, text, player.getDuration());   // over a channel in our player: the sound only, no banner
         watch(app);
     }
 

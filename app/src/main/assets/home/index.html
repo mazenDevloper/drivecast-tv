@@ -1533,6 +1533,7 @@ const DYN = [
   ['دبي الرياضية 2', /dubai sports? ?2\b/i, () => []],
   ['دبي الرياضية 3', /dubai sports? ?3\b/i, () => []],
   ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
+  ['الشارقة الرياضية', /sharjah sports?/i, () => []],
   ['إم بي سي أكشن', /mbc ?action/i, () => ['http://37.122.156.107:4000/play/a07h/index.m3u8']],
   ['بي إن سبورت الإخبارية', null, null, 'beIN SPORTS News بث مباشر'],
   ['ثمانية', null, null, 'ثمانية بث مباشر'],
@@ -1542,7 +1543,16 @@ const DYN = [
 // STARZPLAY; Al Kass's own server answers only inside its region. So when no open server answers, OK opens the channel's own
 // app on the TV (or its page in the store), before the YouTube live.
 const DYN_APP = [[/^دبي/, 'دبي+', /dubai ?\+|دبي ?\+|dubaiplus|awaan/i, 'Dubai+ دبي بلس', 'https://www.dubaiplus.net/live_tv'], [/^أبوظبي/, 'STARZPLAY', /starz/i, 'STARZPLAY'], [/^الكأس/, 'شوف الكأس', /alkass|shoof|الكأس/i, 'Alkass شوف الكأس']];
+// 📺 «دراما لايف» (com.sneig.livedrama) installed on the TV: these channels open in it straight away, no server looked for first
+// (it has no link to one channel, so OK opens the app itself)
+const DRAMA_PKG = 'com.sneig.livedrama', DRAMA_CH = /^(الكأس|دبي الرياضية|أبوظبي الرياضية|الشارقة الرياضية|إم بي سي أكشن)/;
+function drama(c) {
+  if (!c || !DRAMA_CH.test(c.name)) return null;
+  const inst = APPS.find(p => p.pkg === DRAMA_PKG);
+  return inst ? { label: 'دراما لايف', inst, go: () => TV.open(DRAMA_PKG) } : null;
+}
 function dynApp(c) {
+  const d = drama(c); if (d) return d;
   const a = DYN_APP.find(x => x[0].test(c.name)); if (!a) return null;
   const inst = APPS.find(p => a[2].test(p.label || '') || a[2].test(p.pkg || ''));
   return { label: a[1], inst, web: !inst && a[4], go: () => inst ? TV.open(inst.pkg) : a[4] ? TV.link(a[4]) : TV.storeFind ? TV.storeFind(a[3]) : TV.link('https://play.google.com/store/search?c=apps&q=' + encodeURIComponent(a[3])) };
@@ -1582,6 +1592,7 @@ async function loadDyn(force) {
     for (const [name, re] of DYN) if (re) DYNC[name] = [...new Map(all.filter(c => re.test(c.name)).map(c => [c.url, c])).values()];
     for (const c of DYNCH) {
       if (c.st === 'yt') continue;
+      if (drama(c)) { c.st = 'app'; dynUi(); continue; }
       const logo = (DYNC[c.name] || []).find(x => x.logo)?.logo; if (logo) c.logo = logo;
       c.st = 'look'; dynUi();
       const r = await firstUp(dynCands(c));
@@ -1598,7 +1609,7 @@ function dynUi() {
   box.querySelectorAll('[data-ilist="dyn"]').forEach(b => {
     const c = DYNCH[+b.dataset.i], at = b.querySelector('.at');
     b.classList.remove('ok', 'bad'); if (c.st === 'ok') b.classList.add('ok'); if (c.st === 'bad') b.classList.add('bad');
-    if (at) at.textContent = c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? (dynApp(c) ? `بثها المفتوح متوقف — OK يفتح ${dynApp(c).web ? 'موقع' : 'تطبيق'} «${dynApp(c).label}»${dynApp(c).inst || dynApp(c).web ? '' : ' في المتجر'}` : 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب') : '';
+    if (at) at.textContent = c.st === 'app' ? '📺 من «دراما لايف» — OK يفتحه' : c.st === 'yt' ? 'من بثها في يوتيوب' : c.st === 'ok' ? '✅ يعمل · ' + c.srv : c.st === 'look' ? '⏳ أدوّر على سيرفر شغّال…' : c.st === 'bad' ? (dynApp(c) ? `بثها المفتوح متوقف — OK يفتح ${dynApp(c).web ? 'موقع' : 'تطبيق'} «${dynApp(c).label}»${dynApp(c).inst || dynApp(c).web ? '' : ' في المتجر'}` : 'ما فيه سيرفر يرد الآن — OK يجرّب يوتيوب') : '';
   });
   if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
@@ -1609,6 +1620,7 @@ async function ytLiveOf(q, re) {   // a live stream on YouTube now whose channel
 }
 /** the address to play now: the server found a moment ago, else all of them asked again, else the channel's own YouTube live */
 async function dynResolve(c) {
+  const dr = drama(c); if (dr) return { ...c, app: dr };
   if (c.st === 'yt') { const u = await ytLiveOf(c.url.slice(10), /ثمانية|thmanyah/i); return u ? { ...c, url: u } : null; }
   if (c.st === 'ok' && Date.now() - (c.at || 0) < 5 * 60e3) return c;
   c.st = 'look'; dynUi();

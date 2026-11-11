@@ -132,14 +132,13 @@ public class PlayerActivity extends Activity {
     }
     /** a channel is playing here now (also in the corner) */
     static boolean playing() { PlayerActivity p = live; try { return p != null && p.player != null && p.player.getPlayWhenReady(); } catch (Throwable t) { return false; } }
-    /** 🕌 the adhan / iqamah sounds: the channel's own sound off until it ends (the picture goes on) */
+    /** 🕌 the adhan / iqamah sounds: the channel's own sound off until it ends (the picture goes on, nothing written over it) */
     private boolean hushed;
     static void hush(boolean on, String why) {
         PlayerActivity p = live; if (p == null || p.player == null) return;
         try {
             if (on == p.hushed) return; p.hushed = on;
             p.player.setVolume(on ? 0f : 1f);
-            if (on) { p.setNote(why); p.showBar(8000); } else { p.setNote(null); }
         } catch (Throwable ignored) { }
     }
     // ---- ⏳ under the clock, in the last 10 minutes only: the countdown to the adhan, then to the iqamah
@@ -357,11 +356,12 @@ public class PlayerActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         lp.setMargins((int) dp(40), 0, (int) dp(40), (int) dp(26));
         root.addView(bar, lp);
-        // 🕒 the clock hung at the top, light and see-through, all the time (as in the home's photo view); setting «pclock» = off hides it
-        hang = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xD9FFFFFF);
+        // 🕒 the clock hung at the top centre, half see-through (50%), all the time; setting «pclock» = off hides it
+        hang = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xFFFFFFFF);
         hang.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
-        tp.setMargins(0, (int) dp(22), (int) dp(34), 0);
+        hang.setAlpha(0.5f);
+        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        tp.setMargins(0, (int) dp(22), 0, 0);
         root.addView(hang, tp);
         if ("off".equals(Access.set(this).getString("pclock", "on"))) hang.setVisibility(View.GONE);
         topTick.run();
@@ -369,8 +369,8 @@ public class PlayerActivity extends Activity {
         count.setShadowLayer(dp(5), 0, dp(1), 0xCC000000);
         GradientDrawable cb = new GradientDrawable(); cb.setColor(0xB3101216); cb.setCornerRadius(dp(16)); count.setBackground(cb);
         count.setPadding((int) dp(14), (int) dp(6), (int) dp(14), (int) dp(6));
-        FrameLayout.LayoutParams cdp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
-        cdp.setMargins(0, (int) dp(66), (int) dp(30), 0);
+        FrameLayout.LayoutParams cdp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        cdp.setMargins(0, (int) dp(66), 0, 0);
         root.addView(count, cdp); count.setVisibility(View.GONE);
         countTick.run();
     }
