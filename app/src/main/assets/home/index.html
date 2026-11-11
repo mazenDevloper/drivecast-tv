@@ -194,6 +194,8 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .chip.chk.on{background:#3ddc97;color:#06281a}
 .ichan>.nm{flex:1;min-width:0}
 /* ⭐ on every channel: tap / click it — with the remote, hold OK on the channel */
+.ichan .pin{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer;margin-inline-end:8px}
+.ichan.pinned .pin{color:#fff;background:rgba(52,199,89,.55)}
 .ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
 .ichan.fav .star{color:#f5c94c;background:rgba(245,201,76,.14)}
 /* the long-press menu, tvOS style: a glass sheet, big rows, the focused one lifts and glows */
@@ -377,6 +379,7 @@ body.ambient .phrase.on{display:block}
   </div></section>
   <section class="page" id="p-iptv"><div class="scroll">
     <div style="margin-bottom:10px"><button class="chip f" data-act="gofilt">🎚️ فلترة وبحث القنوات (الجودة · HDR · عمق اللون · H.264)</button></div>
+    <div id="pinwrap" hidden><h2>📌 المثبّتة في الأعلى <small style="font-size:18px;font-weight:400;opacity:.6">· ⬆ على أي قناة يثبّتها هنا · 📌 مرة ثانية يشيلها</small></h2><div class="shelf" id="s-pin" style="flex-wrap:wrap"></div></div>
     <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
     <div id="gspwrap"><h2>🏟️ كل القنوات الرياضية <small id="gspn" style="font-size:18px;font-weight:400;opacity:.6">· أفحصها…</small></h2><div class="shelf" id="s-gsp" style="flex-wrap:wrap"><div class="empty">أفحص القنوات الرياضية… تظهر هنا اللي تشتغل فقط</div></div></div>
     <div id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
@@ -1326,6 +1329,22 @@ function watchFavs() {
   go();
   setInterval(pullFavs, 10 * 60000);   // and every 10 minutes anyway
 }
+// 📌 channels pinned to the top of the Channels tab (kept by name, newest first; played from today's working link)
+let PINS = [];
+const pinRaw = () => { try { return JSON.parse(S('pins', '[]')) || []; } catch (e) { return []; } };
+const isPin = c => !!c && pinRaw().some(p => favKey(p) === favKey(c));
+function togglePin(c) {
+  const k = favKey(c), all = pinRaw(), on = !all.some(p => favKey(p) === k);
+  const keep = { name: c.name, url: /^(dyn|yt-search):/.test(c.url) ? c.url : c.url, logo: c.logo || '', group: c.group || '', dyn: c.dyn ? 1 : undefined };
+  setPref('pins', JSON.stringify(on ? [keep, ...all].slice(0, 40) : all.filter(p => favKey(p) !== k)));
+  pinUi();
+}
+function pinUi() {
+  const raw = pinRaw(), pools = [DYNCH, GSP, MYFAV, typeof allChannels === 'function' ? allChannels() : []];
+  PINS = raw.map(p => { for (const l of pools) { const x = (l || []).find(y => favKey(y) === favKey(p) && !/^dyn:/.test(y.url) || favKey(y) === favKey(p) && y.dyn); if (x) return x; } return p; });
+  const w = $('#pinwrap'); if (w) w.hidden = !PINS.length;
+  const box = $('#s-pin'); if (box) { box.innerHTML = PINS.map((c, i) => ichHtml(c, i, 'pin')).join(''); box.querySelectorAll('[data-ilist="pin"]').forEach(b => { const c = PINS[+b.dataset.i]; if (c && (c.st === 'ok' || GSP.includes(c))) b.classList.add('ok'); }); }
+}
 function favUi() {
   loadFavs();
   $('#s-myfav').innerHTML = MYFAV.map((c, i) => ichHtml(c, i, 'my')).join('') || '<div class="empty">اضغط مطوّلاً على أي قناة ← ⭐ أضف للمفضّلة</div>';
@@ -1386,7 +1405,7 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
 }
 setInterval(scanMaybe, 3600e3);
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy">` : ''}<span class="nm">${esc(c.name)}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
 function allChannels() {
   const seen = new Set(), out = [];
@@ -1472,6 +1491,7 @@ async function loadDyn(force) {
   } finally { dynBusy = false; }
 }
 function dynUi() {
+  pinUi();
   const box = $('#s-dyn'); if (!box) return;
   const a = document.activeElement, was = box.contains(a) ? a.dataset.i : null;
   box.innerHTML = DYNCH.map((c, i) => ichHtml(c, i, 'dyn')).join('');
@@ -1530,7 +1550,7 @@ async function loadGarden(force) {
       }
     };
     await Promise.all([work(), work(), work(), work()]);
-    show(); try { localStorage.setItem('gsp', JSON.stringify({ at: Date.now(), list: GSP })); } catch (e) {}
+    show(); pinUi(); try { localStorage.setItem('gsp', JSON.stringify({ at: Date.now(), list: GSP })); } catch (e) {}
   } finally { gspBusy = false; }
 }
 const LISTS = [['languages/ara', ''], ['countries/om', 'عُمان'], ['countries/ae', 'الإمارات'], ['countries/sa', 'السعودية'], ['countries/qa', 'قطر'], ['countries/kw', 'الكويت']];
@@ -1599,7 +1619,7 @@ const BIG5 = [
   ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : window.__shown;
+const listOf = n => n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'pin' ? PINS : window.__shown;
 // 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
 const YTLEAGUES = [
   ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
@@ -1649,7 +1669,7 @@ function big5Ui() {
     || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
 }
 async function loadIptv() {
-  favUi(); big5Ui(); loadSports().then(() => loadDyn()); loadYtLive(); dynUi();
+  pinUi(); favUi(); big5Ui(); loadSports().then(() => loadDyn()); loadYtLive(); dynUi();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
   iptvUi(); await loadLists(); big5Ui();
   $('#s-ifav').innerHTML = IFAV.map((c, i) => ichHtml(c, i, 'fav')).join('') || '<div class="empty">لا مفضّلة — أضفها من DriveCast</div>';
@@ -2156,6 +2176,11 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'gofilt') { const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
   if (b.dataset.igroup) { IGROUP = b.dataset.igroup; return iptvUi(); }
   if (b.dataset.ifilt) { FILT[b.dataset.ifilt] = !FILT[b.dataset.ifilt]; iptvUi(); const n = document.querySelector(`[data-ifilt="${b.dataset.ifilt}"]`); if (n) n.focus(); return; }
+  if (b.dataset.ilist && e.target.closest && e.target.closest('[data-pin]')) {   // the ⬆ on the channel: pin to the top
+    const l = listOf(b.dataset.ilist), c = l && l[+b.dataset.i];
+    if (c) { togglePin(c); iptvUi(); dynUi(); gspUi(true); favUi(); (b.dataset.ilist === 'pin' ? $('#s-pin .f') : $(`[data-ilist="${b.dataset.ilist}"][data-i="${b.dataset.i}"]`))?.focus(); }
+    return;
+  }
   if (b.dataset.ilist && e.target.closest && e.target.closest('[data-star]')) {   // the ⭐ on the channel
     const l = listOf(b.dataset.ilist), c = l && l[+b.dataset.i], sel = `[data-ilist="${b.dataset.ilist}"][data-i="${b.dataset.i}"]`;
     if (c) toggleFav(c).then(() => { iptvUi(); big5Ui(); $(sel)?.focus(); });
@@ -2261,7 +2286,7 @@ function ctxOpen(b) {
   CTX = { b, c, list, i: +b.dataset.i, match };
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
   const rows = match ? [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]
-    : [['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
+    : [['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة'], ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
@@ -2271,6 +2296,7 @@ async function ctxDo(k) {
   if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
+  if (k === 'pin') { togglePin(x.c); iptvUi(); dynUi(); gspUi(true); favUi(); return; }
   if (k === 'fav') { toggleFav(x.c); if (x.b && document.body.contains(x.b)) x.b.classList.toggle('fav', isFav(x.c)); }
 }
 document.addEventListener('keydown', e => {
