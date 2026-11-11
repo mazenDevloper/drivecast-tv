@@ -56,6 +56,16 @@ public class PlayerActivity extends Activity {
     private int i;
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
+    private final Handler zz = new Handler(Looper.getMainLooper());     // ⏲ the sleep timer
+    private boolean zzWarned = false;
+    /** ⏲ the sleep timer (Settings → «مؤقت النوم»): no key for N minutes → a minute's warning on the screen, then the channel stops */
+    private void sleepArm() {
+        zz.removeCallbacksAndMessages(null);
+        if (zzWarned) { zzWarned = false; setNote(null); }
+        int m = 0; try { m = Integer.parseInt(Access.set(this).getString("sleep", "0")); } catch (Exception ignored) { }
+        if (m <= 0) return;
+        zz.postDelayed(() -> { zzWarned = true; setNote("⏲ مؤقت النوم: تتوقف القناة بعد دقيقة — اضغط أي زر للاستمرار"); showBar(60000); zz.postDelayed(this::finish, 60000); }, (m - 1) * 60000L);
+    }
     private int TRIES = 6, errors;
     private boolean offered;
     private String decoder = "", digits = "";
@@ -119,6 +129,7 @@ public class PlayerActivity extends Activity {
         });
         play();
         tick.run();
+        sleepArm();
     }
 
     // ---- the picture's width: 0 smart, 1 as it is (black sides stay), 2 fill the screen (crops)
@@ -458,7 +469,7 @@ public class PlayerActivity extends Activity {
     };
 
     @Override
-    public boolean onKeyDown(int code, KeyEvent e) { try { return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
+    public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
@@ -505,7 +516,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
-        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null);
+        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null);
         Scan.paused = false;
         try { if (player != null) { player.release(); } } catch (Throwable ignored) { }
         player = null;

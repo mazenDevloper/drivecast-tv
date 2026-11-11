@@ -194,6 +194,11 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .chip.chk.on{background:#3ddc97;color:#06281a}
 .ichan>.nm{flex:1;min-width:0}
 /* ⭐ on every channel: tap / click it — with the remote, hold OK on the channel */
+#nightVeil{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9000;transition:opacity 4s}
+body.nightdim #nightVeil{opacity:.42}
+#offline{position:fixed;top:18px;left:50%;transform:translate(-50%,-140%);z-index:9001;padding:12px 26px;border-radius:999px;background:rgba(255,69,58,.92);color:#fff;font-size:22px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
+#offline.on{transform:translate(-50%,0)}
+#offline.back{background:rgba(52,199,89,.92)}
 .ichan .pin{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer;margin-inline-end:8px}
 .ichan.pinned .pin{color:#fff;background:rgba(52,199,89,.55)}
 .ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
@@ -353,6 +358,7 @@ body.ambient .phrase.on{display:block}
     <div><div class="wx" id="wx"></div><div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div></div>
   </div>
 
+  <div id="nightVeil"></div><div id="offline" role="status"></div>
   <section class="page on" id="p-home"><div class="scroll" id="homeScroll">
     <div class="heroRow">
       <div class="hero glass" id="heroP">
@@ -1334,6 +1340,7 @@ let PINS = [];
 const pinRaw = () => { try { return JSON.parse(S('pins', '[]')) || []; } catch (e) { return []; } };
 const isPin = c => !!c && pinRaw().some(p => favKey(p) === favKey(c));
 function togglePin(c) {
+  setTimeout(() => { try { liveUi(); } catch (e) {} }, 0);
   const k = favKey(c), all = pinRaw(), on = !all.some(p => favKey(p) === k);
   const keep = { name: c.name, url: /^(dyn|yt-search):/.test(c.url) ? c.url : c.url, logo: c.logo || '', group: c.group || '', dyn: c.dyn ? 1 : undefined };
   setPref('pins', JSON.stringify(on ? [keep, ...all].slice(0, 40) : all.filter(p => favKey(p) !== k)));
@@ -1435,7 +1442,8 @@ function iptvUi() {
 // Free-to-air channels only. ثمانية from its own YouTube live.
 const MGD = ['cdn.mangomolo.com', 'cdn.mgmlcdn.com'];
 const mgm = (hosts, n) => hosts.flatMap(h => MGD.flatMap(d => [`https://${h}.${d}/${n}/smil:${n}.stream.smil/chunklist.m3u8`, `https://${h}.${d}/${n}/smil:${n}.smil/index.m3u8`, `https://${h}.${d}/${n}/smil:${n}.stream.smil/playlist.m3u8`]));
-const DMI = ['dmitnthfr', 'dmitwlvvll', 'dmithrvll', 'dmisxthvll', 'dmisvthvll'], ADM = ['admdn2', 'admdn1', 'admdn3', 'admdn4', 'admdn5'];
+// these host names no longer resolve anywhere (checked from GitHub's servers, 11 Nov 2026) — 2 each kept in case they come back; the rest is asked of the public lists and YouTube
+const DMI = ['dmitnthfr', 'dmitwlvvll'], ADM = ['admdn1', 'admdn2'];
 const kass = n => ['liveeu-gcp', 'googlecdn1', 'liveakgr', 'liveus-gcp'].map(h => `https://${h}.alkassdigital.net/alkass${n}-p/main.m3u8`);
 const KASSN = ['one', 'two', 'three', 'four', 'five', 'six'];
 const DYN = [
@@ -1577,7 +1585,8 @@ function liveUi() {
   }
   loadFavs();
   const mine = MYFAV.filter(f => !picks.some(p => p.name === f.name));
-  LIVE = [...picks, ...mine, ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
+  pinUi(); const pins = PINS.filter(p => !picks.some(x => favKey(x) === favKey(p)));
+  LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   $('#s-live').innerHTML = LIVE.map((c, i) => ichHtml(c, i, 'live')).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
@@ -1761,6 +1770,7 @@ async function playChannel(list, i) {
     list = await Promise.all(list.map((x, k) => k === i ? chosen : /^yt-live:/.test(x.url) ? x : resolveChannel(x)));
     list = list.filter((x, k) => k === i || !/^yt-live:/.test(x.url)); i = list.indexOf(chosen);
   }
+  if (list) { const c0 = list[i]; list = list.filter((x, k) => k === i || !/^(dyn|yt-search):/.test(x.url)); i = list.indexOf(c0); }   // no unresolved card in the player's ↑↓
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
   if (radioOn) closePlayer();
@@ -2001,6 +2011,7 @@ function sections() {
       { k: 'h-quran', l: 'رف القرآن والأذكار', o: SHOW, d: 'on' }, { k: 'h-live', l: 'رف القنوات المباشرة', o: SHOW, d: 'on' },
       { k: 'h-apps', l: 'التطبيقات', o: SHOW, d: 'on' },
       { k: 'clock', l: 'الساعة', o: [['12', '١٢ ساعة'], ['24', '٢٤ ساعة']], d: '12' },
+      { k: 'nightdim', l: '🌙 تخفيف الإضاءة في الليل (١١ م ← الفجر)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'zoom', l: 'تقريب صورة المسجد مع النزول', o: ON, d: 'on' },
       { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
     ]],
@@ -2009,6 +2020,7 @@ function sections() {
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
+      { k: 'sleep', l: '⏲ مؤقت النوم (يوقف القناة إذا ما لمست الريموت)', o: [['0', 'إيقاف'], ['30', '٣٠ د'], ['60', 'ساعة'], ['90', 'ساعة ونص'], ['120', 'ساعتين'], ['180', '٣ ساعات']], d: '0' },
       { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
       { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['menu', 'قائمة (مفضّلة، مشغّل آخر)'], ['ext', 'مشغّل آخر مباشرة'], ['off', 'لا شيء']], d: 'menu' },
       { k: 'big5', l: 'قنوات الدوريات الخمس أعلى صفحة القنوات', o: SHOW, d: 'on' },
@@ -2132,7 +2144,35 @@ function numberKey(n) {
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
 window.onTvBack = () => { if (CTX) return ctxClose(); if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
-window.onTvResume = () => { loadApps(); loadPrayers(); };
+// 🌙 at night (11 pm → fajr) the whole screen is veiled a little, so a lit TV in a dark room does not glare
+function nightTick() {
+  const now = window.__simTime ? new Date(window.__simTime()) : new Date(), m = now.getHours() * 60 + now.getMinutes();
+  let fajr = 5 * 60; try { const t = (P && P.fajr) || ''; const [hh, mm] = String(t).split(':').map(Number); if (hh >= 0) fajr = hh * 60 + (mm || 0); } catch (e) {}
+  document.body.classList.toggle('nightdim', S('nightdim', 'on') === 'on' && (m >= 23 * 60 || m < fajr));
+}
+setInterval(nightTick, 60e3); setTimeout(nightTick, 1500);
+// 📡 no internet: a clear banner instead of empty shelves, and everything fetched again once it is back
+let OFFT = null;
+function netState(on) {
+  const b = $('#offline'); if (!b) return; clearTimeout(OFFT);
+  if (!on) { b.className = 'on'; b.textContent = '📡 لا يوجد إنترنت — أرجع أحمّل كل شي أول ما يرجع'; return; }
+  if (!b.classList.contains('on')) return;
+  b.className = 'on back'; b.textContent = '✅ رجع الإنترنت — أحدّث القنوات والمواعيد';
+  try { loadApps(); loadPrayers(); liveUi(); loadDyn(true); loadGarden(true); } catch (e) {}
+  OFFT = setTimeout(() => { b.className = ''; }, 3500);
+}
+addEventListener('offline', () => netState(false)); addEventListener('online', () => netState(true));
+setInterval(() => { if (navigator.onLine === false) netState(false); else if ($('#offline')?.classList.contains('on') && !$('#offline').classList.contains('back')) netState(true); }, 15e3);
+// ↩ back from a channel or an app: the card you pressed has the focus again (even if its shelf was redrawn meanwhile)
+let LASTCARD = null;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-ilist],[data-app],[data-act]'); if (b) LASTCARD = { page: b.closest('.page')?.id, sel: b.dataset.ilist ? `[data-ilist="${b.dataset.ilist}"][data-i="${b.dataset.i}"]` : b.dataset.app ? `[data-app="${CSS.escape(b.dataset.app)}"]` : `[data-act="${b.dataset.act}"]` }; }, true);
+function backFocus() {
+  if (!LASTCARD || document.body.classList.contains('ambient')) return;
+  const a = document.activeElement;
+  if (a && a !== document.body && document.body.contains(a) && a.offsetParent) return;
+  const n = document.querySelector(`#${LASTCARD.page} ${LASTCARD.sel}`); if (n) { n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'center', inline: 'nearest' }); }
+}
+window.onTvResume = () => { loadApps(); loadPrayers(); nightTick(); setTimeout(backFocus, 120); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
   if (/^[0-9]$/.test(k)) return numberKey(k);
