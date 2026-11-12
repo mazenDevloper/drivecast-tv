@@ -99,6 +99,7 @@ public class MessageServer extends Service {
             if (first.startsWith("GET /reciters")) reply(s.getOutputStream(), "application/json", reciters());
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
+            else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only

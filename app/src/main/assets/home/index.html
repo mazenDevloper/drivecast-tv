@@ -453,7 +453,7 @@ body.ambient .phrase.on{display:block}
     <div id="epgwrap"><h2>📅 دليل البرامج <small id="epgn" style="font-size:18px;font-weight:400;opacity:.6">· الآن وبعده لقنواتك · OK على البرنامج الحالي يشغّل القناة · على برنامج قادم ⏰ يذكّرك</small></h2>
       <div class="epgg" id="s-epg"></div></div>
     <div id="m3uwrap"><h2>📂 قوائمي الخاصة (M3U) <small id="m3un" style="font-size:18px;font-weight:400;opacity:.6"></small></h2>
-      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uIn" type="url" placeholder="الصق رابط القائمة هنا: https://…/list.m3u" style="flex:1;min-width:520px;margin:8px 0"><button class="chip f" data-act="m3u-add">➕ أضف القائمة</button></div>
+      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uIn" type="url" placeholder="الصق رابط القائمة هنا: https://…/list.m3u" style="flex:1;min-width:520px;margin:8px 0"><button class="chip f" data-act="m3u-add">➕ أضف القائمة</button><button class="chip f" data-act="m3u-file" id="m3uFileB" hidden>☁️ ارفع ملف من هذا الجهاز</button><input type="file" id="m3uFileIn" accept=".m3u,.m3u8,.txt" hidden></div>
       <div class="empty" style="margin:2px 6px 10px">الأسهل من الجوال: افتح صفحة الريموت (عنوان التلفزيون :8080) ← الأذكار ← «قائمة قنوات خاصة» والصق الرابط</div>
       <div class="shelf" id="s-m3u" style="flex-wrap:wrap"></div></div>
     <div id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
@@ -1449,10 +1449,24 @@ function mostUi() {
 }
 // 📂 the owner's own channel lists (M3U addresses; setting «m3u», one per line — typed here or sent from the phone page)
 const m3uList = () => String(S('m3u', '') || '').split(/\s+/).filter(u => /^https?:\/\//.test(u));
-let M3UN = {};   // address → how many channels it gave
+let M3UN = {}, M3UNAME = {};
+// ☁️ the web version: a file from this computer / phone, kept in the cloud with the TV's key, then added to the lists
+setTimeout(() => { const b = $('#m3uFileB'); if (b && window.DCTV && DCTV.key) b.hidden = false; }, 1500);
+async function m3uUpload(f) {
+  const n = $('#m3un'), say = t => { if (n) n.textContent = '· ' + t; };
+  if (!f) return; if (f.size > 8e6) return say('الملف أكبر من ٨ ميجا');
+  say('☁️ أرفع «' + f.name + '»…');
+  try {
+    const name = f.name.replace(/\.(m3u8?|txt)$/i, ''), q = `tv=${DCTV.tvId()}&key=${await DCTV.key()}&name=${encodeURIComponent(name)}`;
+    const r = await (await fetch('https://studio.c-p.workers.dev/hub/m3u?' + q, { method: 'POST', body: await f.text() })).json();
+    if (!r.ok) return say(r.error === 'not m3u' ? 'الملف مو قائمة M3U' : r.error === 'full' ? 'عندك ٨ قوائم — احذف وحدة' : r.error === 'key' ? 'رمز التلفزيون غلط أو التلفزيون ما اتصل بعد' : 'ما انرفع: ' + r.error);
+    M3UNAME[r.url] = name; m3uAdd(r.url); say(`☁️ «${name}» انحفظت في السحابة (${AR(r.channels)} قناة)`);
+  } catch (e) { say('ما انرفع — تأكد من الإنترنت'); }
+}
+document.addEventListener('change', e => { if (e.target && e.target.id === 'm3uFileIn') { m3uUpload(e.target.files[0]); e.target.value = ''; } });   // address → how many channels it gave
 function m3uUi() {
   const l = m3uList(), box = $('#s-m3u'); if (!box) return;
-  box.innerHTML = l.map((u, i) => `<button class="chip f" data-act="m3u-del" data-u="${esc(u)}" title="احذف">📂 ${esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;✕</button>`).join('');
+  box.innerHTML = l.map((u, i) => `<button class="chip f" data-act="m3u-del" data-u="${esc(u)}" title="احذف">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : '📂 ' + esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;✕</button>`).join('');
   const n = $('#m3un'); if (n) n.textContent = l.length ? `· ${AR(l.length)} قائمة — قنواتها تحت «كل القنوات» في مجموعة «📂 قائمتي»` : '· أضف رابط قائمتك وتنضاف قنواتها مع الفحص والمصادر الاحتياطية';
 }
 function m3uAdd(u) {
@@ -1461,7 +1475,8 @@ function m3uAdd(u) {
   const q = $('#m3uIn'); if (q) q.value = '';
   m3uUi(); listsAt = 0; loadLists();
 }
-function m3uDel(u) { setPref('m3u', m3uList().filter(x => x !== u).join('\n')); delete M3UN[u]; m3uUi(); listsAt = 0; loadLists(); }
+function m3uDel(u) {
+  if (/\/hub\/m3u\?.*&id=/.test(u)) fetch(u.replace(/&id=([^&]+)/, '&del=$1'), { method: 'POST' }).catch(() => {});   // a cloud list: gone from the cloud too setPref('m3u', m3uList().filter(x => x !== u).join('\n')); delete M3UN[u]; m3uUi(); listsAt = 0; loadLists(); }
 window.onM3u = () => { loadSet(); m3uUi(); listsAt = 0; loadLists(); };
 // 📅 the guide, to browse: the channels you use (pinned, most watched, favourites, the ones that work) that have a guide,
 // the next six hours of each in a row, each programme as wide as it lasts. ⏰ reminders: a minute before, an alert
@@ -1813,7 +1828,9 @@ async function loadLists() {
     const yt = /youtube\.com|youtu\.be/.test(c.url), m = yt && !/watch\?v=|youtu\.be\//.test(c.url) && /youtube\.com\/(.+?)(?:\/live)?\/?$/.exec(c.url);
     return { ...c, name: c.name.replace(/\s*[ⓈⒼⓎ]+/g, '').trim(), group: FTV_AR[c.group] || c.group, ar: FTV_AR[c.group] ? Object.keys(FTV_AR).indexOf(c.group) : 99, url: m ? 'yt-live:' + m[1] : c.url };
   }).sort((a, b) => a.ar - b.ar);
-  mineT.forEach((t, k) => { const l = parseM3u(t); M3UN[mineU[k]] = l.length; l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
+  const cl = mineU.find(u => /\/hub\/m3u\?.*&id=/.test(u));
+  if (cl) getJ(cl.replace(/&id=[^&]+/, '&list=1')).then(d => { for (const it of (d && d.lists) || []) for (const u of mineU) if (u.endsWith('&id=' + it.id)) M3UNAME[u] = it.name; m3uUi(); }).catch(() => {});
+  mineT.forEach((t, k) => { const l = parseM3u(t); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
   m3uUi();
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
@@ -2989,6 +3006,7 @@ document.addEventListener('click', e => {
   if (b.dataset.mt) { MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
   if (b.dataset.mi != null) return playMatch(+b.dataset.mi);
   if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
+  if (b.dataset.act === 'm3u-file') return $('#m3uFileIn').click();
   if (b.dataset.act === 'm3u-del') return m3uDel(b.dataset.u);
   if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
