@@ -1474,14 +1474,14 @@ function epgUi() {
   if (!Object.keys(EPG || {}).length) { box.innerHTML = '<div class="empty">أجيب الدليل…</div>'; return; }
   const seen = new Set(), pools = [...PINS, ...MOST, ...MYFAV, ...IFAV, ...DYNCH, ...ILIST.filter(c => isOk(c)), ...ILIST];
   EPGL = [];
-  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 30) break; }
+  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 30) break; }
   const now = Date.now() / 1000, span = 6 * 3600, W = 1300;
   const heads = [0, 1, 2, 3, 4, 5].map(k => `<span style="width:${W / 6 - 6}px">${hm(Math.floor(now / 1800) * 1800 + k * 3600)}</span>`).join('');
   box.innerHTML = `<div class="epgh">${heads}</div>` + EPGL.map((c, ci) => {
     const rows = epgRows(c).filter(r => r[0] < now + span);
-    const cells = rows.map((r, ri) => { const a = Math.max(r[0], now), w = Math.max(120, (Math.min(r[1], now + span) - a) / span * W); const isNow = r[0] <= now;
+    const cells = rows.map((r, ri) => { const a = Math.max(r[0], now), isNow = r[0] <= now, w = Math.max(isNow ? 230 : 130, (Math.min(r[1], now + span) - a) / span * W);
       const rem = REMS.some(x => x.ch === c.name && x.at === r[0]);
-      return `<button class="epgp f ${isNow ? 'now' : ''} ${rem ? 'rem' : ''}" style="width:${w.toFixed(0)}px" data-epg="${ci}:${ri}"><b>${esc(r[2])}</b><small>${isNow ? '▶ الآن · باقي ' + minutesAr(Math.max(1, Math.round((r[1] - now) / 60))) : (rem ? '⏰ ' : '') + hm(r[0]) + ' – ' + hm(r[1])}</small></button>`; }).join('');
+      return `<button class="epgp f ${isNow ? 'now' : ''} ${rem ? 'rem' : ''}" style="width:${w.toFixed(0)}px" data-epg="${ci}:${ri}"><b dir="auto">${esc(r[2])}</b><small>${isNow ? '▶ الآن · باقي ' + minutesAr(Math.max(1, Math.round((r[1] - now) / 60))) : (rem ? '⏰ ' : '') + hm(r[0]) + ' – ' + hm(r[1])}</small></button>`; }).join('');
     return `<div class="epgr"><div class="ch">${c.logo ? `<img src="${esc(c.logo)}" alt="" onerror="this.remove()">` : ''}${flagOf(c)} ${esc(c.name)}</div><div class="tl">${cells}</div></div>`;
   }).join('');
   const n = $('#epgn'); if (n) n.textContent = `· ${AR(EPGL.length)} قناة · OK على البرنامج الحالي يشغّل القناة · على برنامج قادم ⏰ يذكّرك`;
