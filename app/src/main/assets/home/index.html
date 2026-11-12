@@ -1545,7 +1545,7 @@ function epgUi() {
   if (!Object.keys(EPG || {}).length) { box.innerHTML = '<div class="empty">أجيب الدليل…</div>'; return; }
   const seen = new Set(), pools = [...PINS, ...MOST, ...MYFAV, ...IFAV, ...DYNCH, ...ILIST.filter(c => isOk(c)), ...ILIST];
   EPGL = [];
-  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 30) break; }
+  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 120) break; }
   const now = Date.now() / 1000, span = 6 * 3600, W = 1300;
   const heads = [0, 1, 2, 3, 4, 5].map(k => `<span style="width:${W / 6 - 6}px">${hm(Math.floor(now / 1800) * 1800 + k * 3600)}</span>`).join('');
   box.innerHTML = `<div class="epgh">${heads}</div>` + EPGL.map((c, ci) => {
@@ -1889,10 +1889,10 @@ const ccOf = c => (c && (c.cc || LISTCC[c.group] || (/الكأس|بي إن|al ?k
 const flagOf = c => { const cc = ccOf(c); return /^[a-z]{2}$/i.test(cc) ? String.fromCodePoint(...[...cc.toUpperCase()].map(x => 0x1F1A5 + x.charCodeAt(0))) : ''; };
 // 📅 the programme guide: Free-TV's own guide sources, made small on GitHub every 4 hours (tools/epg.py → branch «epg»)
 const EPGURL = 'https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/epg.json';
-let EPG = {}, epgAt = 0;
+let EPG = {}, EPGN = null, epgAt = 0;
 async function loadEpg() {
   if (Date.now() - epgAt < 2 * 3600e3) return; epgAt = Date.now();
-  const d = await getJ(EPGURL); if (d && d.c) { EPG = d.c; if ($('#p-iptv').classList.contains('on')) { iptvUi(); epgUi(); } } else epgAt = 0;
+  const d = await getJ(EPGURL); if (d && d.c) { EPG = d.c; EPGN = d.n || null; NIDX = null; NID.clear(); if ($('#p-iptv').classList.contains('on')) { iptvUi(); epgUi(); } } else epgAt = 0;
 }
 // 🏟️ the sports guide: which channel carries which match, read from the guides of ~50 countries' sports channels (beIN MENA —
 // TOD's channels and Al Kass —, Abu Dhabi / Dubai, Sky / TNT UK, Sport TV PT…; tools/sports_epg.py → branch «epg» every 4 hours)
@@ -1912,7 +1912,20 @@ function spgFor(m) {
     .sort((a, b) => ARABCC.has(b.cc) - ARABCC.has(a.cc));
 }
 const EPGID = { 'الكأس 1': 'AlkassOne.qa', 'الكأس 2': 'AlkassTwo.qa', 'الكأس 3': 'AlkassThree.qa', 'الكأس 4': 'AlkassFour.qa', 'دبي الرياضية 1': 'DubaiSports1.ae', 'دبي الرياضية 2': 'DubaiSports2.ae', 'إم بي سي أكشن': 'MBCAction.ae' };
-const epgRows = c => { const now = Date.now() / 1000; return ((c && EPG[c.id || EPGID[c.name]]) || []).filter(r => r[1] > now); };
+// a channel's guide: its own id (Free-TV's tvg-id), else the guides' channel of the same name — by its words, so «الكأس 1»,
+// «Al Kass One HD» and «Alkass 1» are one channel (epg.json «n»: the Arab region's guides + the big countries' sports channels)
+let NIDX = null; const NID = new Map();
+function epgId(c) {
+  if (!c) return '';
+  if (c.id && EPG[c.id]) return c.id;
+  if (EPGID[c.name] && EPG[EPGID[c.name]]) return EPGID[c.name];
+  if (!EPGN) return '';
+  if (NID.has(c.name)) return NID.get(c.name);
+  if (!NIDX) { NIDX = new Map(); for (const [n, id] of Object.entries(EPGN)) { const k = channelKey(n); if (k && !NIDX.has(k)) NIDX.set(k, id); } }
+  const k = channelKey(String(c.name || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '')), ok = k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t));
+  const id = (ok && NIDX.get(k)) || ''; NID.set(c.name, id); return id;
+}
+const epgRows = c => { const now = Date.now() / 1000; return ((c && EPG[epgId(c)]) || []).filter(r => r[1] > now); };
 const hm = t => { const d = new Date(t * 1000); let h = d.getHours() % 12 || 12; return h + ':' + String(d.getMinutes()).padStart(2, '0'); };
 function epgNow(c) { const r = epgRows(c), now = Date.now() / 1000; return r[0] && r[0][0] <= now ? r[0][2] : r[0] ? hm(r[0][0]) + ' ' + r[0][2] : ''; }
 const FREETV = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8';
@@ -2497,7 +2510,7 @@ const BRANDS = [
   [/oman\s*(tv\s*)?sports?(\s*tv)?|عُ?م[اآ]ن\s*(ال)?رياضي[ةه]/gi, " oman sport "],
   [/abu\s*dhabi\s*sports?|ad\s*sports?|[اأ]بو\s*ظبي\s*(ال)?رياضي[ةه]/gi, " adsport "],
   [/dubai\s*sports?|دبي\s*(ال)?رياضي[ةه]/gi, " dubaisport "],
-  [/al\s*-?\s*kass|alkass|الكاس/gi, " alkass "],
+  [/al\s*-?\s*kass|alkass|الك[اأ]س/gi, " alkass "],
   [/\bssc(\s*sports?)?\b|[اإأ]س\s*[اإأ]س\s*سي/gi, " ssc "],
   [/shahid|شاهد/gi, " shahid "],
   [/sharjah\s*sports?|الشارقة\s*(ال)?رياضي[ةه]/gi, " sharjahsport "],
@@ -2624,7 +2637,7 @@ function epgCarrier(m) {
   const t = m.timestamp || 0, sides = [m.home?.name, m.away?.name].flatMap(n => [n, enName(n)]).filter(x => x && String(x).length > 2).map(x => String(x).toLowerCase());
   const pools = [...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
   for (const c of pools) {
-    const rows = c && EPG[c.id || EPGID[c.name]]; if (!rows) continue;
+    const rows = c && EPG[epgId(c)]; if (!rows) continue;
     const r = rows.find(r => r[0] <= t + 900 && r[1] > t + 600); if (!r) continue;
     const ti = String(r[2]).toLowerCase();
     if (sides.filter(n => ti.includes(n)).length >= 1 && /v |vs|x |×|ضد|-|–/.test(ti)) return { label: c.name, c, epg: r[2] };
@@ -3449,7 +3462,8 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-12e', NEWS_ROWS = [
+const NEWS = '2026-11-12f', NEWS_ROWS = [
+  ['📅', 'دليل البرامج صار أكبر بكثير: كل قنوات الخليج ومصر وبي إن والكأس، والقنوات الرياضية العالمية — يلقى القناة باسمها حتى لو اسمها بالعربي'],
   ['🏟️', 'تاب المباريات يعرف القناة الناقلة من أدلة البرامج: بي إن (تود) والكأس (شوف) وأبوظبي ودبي وسكاي وTNT وسبورت تي في — وأكثر من ٥٠ دولة'],
   ['📺', 'تاب القنوات من جديد: القوائم في عمود على اليمين — ▲▼ تبدّل القائمة فوراً، ◀ تدخلها، Back يرجّعك للعمود'],
   ['🗂️', 'المجموعات في عمود جنب القنوات: وقّف على مجموعة وتطلع قنواتها بدون OK'],

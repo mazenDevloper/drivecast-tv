@@ -117,7 +117,7 @@ def main(out):
             for h in range(-5, 6):
                 if -0.34 <= d - h <= 1.5: votes[h] = votes.get(h, 0) + 1   # corrected, the programme starts ≤ 90 min before the kick-off, or ≤ 20 after
         best = max(votes, key=lambda h: (votes[h], -abs(h))) if votes else 0
-        if best and votes[best] >= 2 and votes[best] > 1.5 * votes.get(0, 0): shift[f] = best * 3600; print(f'  {f}: clock {best:+d} h off, corrected', flush=True)
+        if best and votes[best] >= 4 and votes[best] > 1.5 * votes.get(0, 0): shift[f] = best * 3600; print(f'  {f}: clock {best:+d} h off, corrected', flush=True)
     progs = [(k, s0 + shift.get(f, 0), e0 + shift.get(f, 0), ti) for k, s0, e0, ti, f in progs]
     used, out_g = {}, []
     by_time = sorted(progs, key=lambda p: p[1])
@@ -133,7 +133,7 @@ def main(out):
         out_g.append([g['ar'][0], g['ar'][1], h, a, t, idx])
     ch = [None] * len(used)
     for k, i in used.items(): ch[i] = chans[k]
-    json.dump({'t': int(now), 'ch': ch, 'g': out_g}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    json.dump({'t': int(now), 'ch': ch, 'g': out_g, 'sh': shift}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os
     print(f'{len(out_g)} matches with their channels, {len(ch)} channels → {os.path.getsize(out) // 1024} KB')
     for g in out_g[:25]: print('  ', g[2], '×', g[3], '→', ', '.join(ch[i][0] + ' (' + ch[i][2] + ')' for i in g[5][:6]))

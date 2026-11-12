@@ -37,6 +37,44 @@ def arabic(t):
     return t
 norm = lambda s: re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
+# 📺 more channels, found by their name: every channel of the Arab region's guides (beIN MENA — TOD's channels and Al Kass —,
+# the Emirates, Saudi Arabia, Egypt, Al Jazeera) and the sports channels of the big countries' guides. The TV finds its own
+# channels in «n» (a guide's channel name → its id) by the channel's words. Clocks a guide writes wrong (beIN MENA marks Doha's
+# time +0100) are corrected by the shift the sports guide measured against the day's kick-offs (sports.json «sh»).
+EXTRA_ALL = ['BEIN1', 'AE1', 'SA1', 'SA2', 'EG1', 'ALJAZEERA1']
+EXTRA_SPORT = ['UK1', 'PT1', 'ES1', 'FR1', 'IT1', 'DE1', 'TR1', 'US_SPORTS1', 'US2', 'AU1', 'IN4', 'BR1', 'MX1']
+def extra(guide, lo, hi, out):
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from sports_epg import SPORTY, nice
+    try: shift = json.load(open(os.path.join(os.path.dirname(out), 'sports.json'))).get('sh', {})
+    except Exception: shift = {}
+    names, low = {}, {}
+    for f in EXTRA_ALL + EXTRA_SPORT:
+        try: raw = get(f'https://epgshare01.online/epgshare01/epg_ripper_{f}.xml.gz', 150).read()
+        except Exception as e: print(f'  FAILED  {f}: {e}', flush=True); continue
+        ids, n, sh = {}, 0, shift.get(f, 0)
+        for ev, el in ET.iterparse(gzip.open(io.BytesIO(raw)), events=('end',)):
+            if el.tag == 'channel':
+                cid, nm = el.get('id', ''), el.findtext('display-name') or ''
+                if f in EXTRA_ALL or SPORTY.search(nm + ' ' + cid):
+                    nn = nice(nm, cid); k = nn.lower()
+                    if k and k not in low: low[k] = 'x.' + f + '.' + cid; names[nn] = low[k]
+                    if k: ids[cid] = low[k]
+                el.clear()
+            elif el.tag == 'programme':
+                i = ids.get(el.get('channel'))
+                if i:
+                    a, b = when(el.get('start')) + sh, when(el.get('stop')) + sh
+                    if b > lo and a < hi:
+                        ts = el.findall('title')
+                        ar = next((x.text for x in ts if (x.get('lang') or '').lower().startswith('ar') and x.text), None)
+                        t = arabic((ar or (ts[0].text if ts else '') or '').strip())
+                        if t: guide.setdefault(i, {})[a] = [a, b, t[:70]]; n += 1
+                el.clear()
+        print(f'  {n:6d}  {f} (by name: {len(ids)} channels{", clock %+d h" % (sh // 3600) if sh else ""})', flush=True)
+    return names
+
 def main(out):
     pl = get(PLAYLIST).read().decode('utf-8', 'replace')
     head = pl.split('\n', 1)[0]
@@ -76,12 +114,13 @@ def main(out):
             print(f'  {n:6d}  {u.rsplit("/", 1)[-1]}', flush=True)
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
+    names = extra(guide, lo, hi, out)
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
         rows = [r for r in rows if r[1] > now - 600][:MAX_PER]
         if rows: c[i] = rows
-    json.dump({'t': int(now), 'c': c}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    json.dump({'t': int(now), 'c': c, 'n': {k: v for k, v in names.items() if v in c}}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os
     print(f'{len(c)} channels have a guide ({seen_files}/{len(sources)} files read) → {os.path.getsize(out) // 1024} KB')
     by = {}

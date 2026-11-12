@@ -18,8 +18,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          mkdir out && python3 tools/epg.py out/epg.json
-          python3 tools/sports_epg.py out/sports.json || echo '::warning::sports guide failed'
+          mkdir out && { python3 tools/sports_epg.py out/sports.json || echo '::warning::sports guide failed'; }
+          python3 tools/epg.py out/epg.json
       - name: Publish
         run: |
           cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json)
