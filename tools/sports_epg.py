@@ -102,7 +102,7 @@ def main(out):
         hit = []
         for k, s, e, ti in by_time:
             if s > t + 1200: break
-            if s < t - 2700 or e < t + 1800: continue
+            if s < t - 5400 or e < t + 1800: continue   # a channel's live coverage starts up to 90 minutes before (the studio)
             sc = names_in(ti, h) + names_in(ti, a)
             if sc >= 2 and k not in hit: hit.append(k)
         if not hit: continue
