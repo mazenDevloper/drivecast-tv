@@ -65,9 +65,7 @@ def arn(s):   # an Arabic name, plain: no diacritics, one alef, ه for ة, ي fo
     return ' '.join(w[2:] if w.startswith('ال') and len(w) > 4 else w for w in re.findall(r'[\u0621-\u064A0-9]+', s))
 def ar_in(title, n):
     t, f = ' ' + arn(title) + ' ', arn(n)
-    if f and ' ' + f + ' ' in t: return 2
-    w = sorted(f.split(), key=len, reverse=True)
-    return 1 if w and len(w[0]) >= 4 and ' ' + w[0] + ' ' in t else 0
+    return 2 if f and ' ' + f + ' ' in t else 0   # Arabic: the whole name only (one word alone matched other teams)
 
 def main(out):
     now = time.time(); lo, hi = now - 3 * 3600, now + 36 * 3600
@@ -90,7 +88,7 @@ def main(out):
                     a, b = when(el.get('start')), when(el.get('stop'))
                     if b > lo and a < hi:
                         ti = ' | '.join((x.text or '').strip() for x in el.findall('title'))   # every language's title (beIN's is Arabic first)
-                        if MATCH.search(ti): progs.append((k, a, b, ti.strip()[:240]))
+                        if MATCH.search(ti): progs.append((k, a, b, ti.strip()[:240], f))
                 el.clear()
         print(f'  {len(ids):4d} sports channels  {len(progs) - n0:5d} matches  {f}', flush=True)
     # the matches of today and tomorrow, in English and Arabic
@@ -104,17 +102,32 @@ def main(out):
                 r = games.setdefault(g['id'], {'t': when(re.sub(r'[-:T]', '', g.get('startTime', ''))[:14] + ' ' + (g.get('startTime', '')[19:].replace(':', '') or '+0000')) or 0})
                 r['en' if lang == 1 else 'ar'] = (g['homeCompetitor']['name'], g['awayCompetitor']['name'])
     print(f'{len(chans)} sports channels, {len(progs)} match programmes, {len(games)} matches', flush=True)
+    gl = [g for g in games.values() if 'en' in g and 'ar' in g and g['t']]
+    def score(ti, g): return max(names_in(ti, g['en'][0]), ar_in(ti, g['ar'][0])) + max(names_in(ti, g['en'][1]), ar_in(ti, g['ar'][1]))
+    # Some guides write their local time with a wrong zone (beIN MENA: Doha's time marked +0100). Each file's clock is set by its
+    # own programmes: the shift (whole hours) that puts the most of its match programmes at a kick-off of the same two sides.
+    pairs = {}
+    for k, s0, e0, ti, f in progs:
+        for g in gl:
+            if abs(g['t'] - s0) < 6 * 3600 and score(ti, g) >= 3: pairs.setdefault(f, []).append((g['t'] - s0) / 3600)
+    shift = {}
+    for f, ds in pairs.items():
+        votes = {}
+        for d in ds:
+            for h in range(-5, 6):
+                if -1.5 <= d - h <= 0.34: votes[h] = votes.get(h, 0) + 1   # the programme starts ≤ 90 min before the kick-off, or ≤ 20 after
+        best = max(votes, key=lambda h: (votes[h], -abs(h))) if votes else 0
+        if best: shift[f] = best * 3600; print(f'  {f}: clock {best:+d} h off, corrected', flush=True)
+    progs = [(k, s0 + shift.get(f, 0), e0 + shift.get(f, 0), ti) for k, s0, e0, ti, f in progs]
     used, out_g = {}, []
     by_time = sorted(progs, key=lambda p: p[1])
-    for gid, g in games.items():
-        if 'en' not in g or 'ar' not in g or not g['t']: continue
-        (h, a), (ah, aa), t = g['en'], g['ar'], g['t']
+    for g in gl:
+        (h, a), t = g['en'], g['t']
         hit = []
         for k, s, e, ti in by_time:
             if s > t + 1200: break
             if s < t - 5400 or e < t + 1800: continue   # a channel's live coverage starts up to 90 minutes before (the studio)
-            sc = max(names_in(ti, h), ar_in(ti, ah)) + max(names_in(ti, a), ar_in(ti, aa))
-            if sc >= 2 and k not in hit: hit.append(k)
+            if score(ti, g) >= 3 and k not in hit: hit.append(k)
         if not hit: continue
         idx = [used.setdefault(k, len(used)) for k in hit[:12]]
         out_g.append([g['ar'][0], g['ar'][1], h, a, t, idx])
