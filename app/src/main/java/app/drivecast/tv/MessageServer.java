@@ -153,6 +153,9 @@ public class MessageServer extends Service {
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();
             main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadPhrase && loadPhrase()"); });
             Remote.event("phrase");
+        } else if (first.startsWith("POST /ibada")) {   // the phone ticks one of the day's worship items
+            String k = body.trim();
+            if (k.matches("p[0-4]|am|pm|wird")) main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.onIbada && onIbada('" + k + "')"); });
         } else if (first.startsWith("POST /m3u")) {   // the phone adds a channel list of the owner's (an M3U address) to the Channels tab
             String u = body.trim();
             if (u.matches("https?://\\S{6,600}")) {

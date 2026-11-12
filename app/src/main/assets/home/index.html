@@ -336,6 +336,23 @@ body.ambient .veil{background:linear-gradient(180deg,rgba(10,14,19,.45) 0%,rgba(
 body.ambient .clock b{font-size:104px;font-weight:600;line-height:1;text-shadow:0 4px 30px rgba(0,0,0,.5)}
 .day span.greg{font-size:28px;opacity:.8;margin-top:-2px}
 /* the photo view's widgets under the clock: the weather now, tonight's moon */
+.spirit{position:absolute;inset-inline-start:56px;bottom:170px;width:620px;display:none;flex-direction:column;gap:10px;padding:22px 28px;border-radius:30px;z-index:3;pointer-events:none;transition:opacity 1.2s}
+body.ambient .spirit.on{display:flex}.spirit.fade{opacity:0}
+.spirit small{font-size:17px;color:#e8d7a6;font-weight:600;letter-spacing:.3px}
+.spirit .ay{font-family:"Amiri Quran","KFGQPC Uthmanic Script HAFS","Noto Naskh Arabic",serif;font-size:34px;line-height:1.85;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.4)}
+.spirit .tf{font-size:19px;line-height:1.6;color:#d5dbe2}
+.spirit .nm{font-family:"Noto Naskh Arabic",serif;font-size:60px;font-weight:700;color:#f3e2b0;line-height:1.3}
+.ambIq{position:absolute;top:50%;left:50%;transform:translate(-50%,-62%);z-index:6;text-align:center;pointer-events:none;display:none}
+body.ambient .ambIq:not([hidden]){display:block}
+.ambIq b{display:block;font-size:210px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 10px 60px rgba(0,0,0,.55)}
+.ambIq span{display:block;font-size:44px;font-weight:700;color:#f3e2b0;margin-top:10px;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+body.ambient.iqbig .day,body.ambient.iqbig .awid,body.ambient.iqbig .spirit{opacity:.25;transition:opacity 1s}
+.ambNote{position:absolute;top:118px;left:50%;transform:translateX(-50%);z-index:5;padding:12px 30px;border-radius:999px;background:rgba(10,14,20,.55);backdrop-filter:blur(14px);color:#f3e2b0;font-size:25px;font-weight:600;white-space:nowrap;display:none}
+body.ambient .ambNote:not([hidden]){display:block}
+.ibadaA{position:absolute;inset-inline-end:56px;bottom:150px;z-index:3;display:none;gap:8px;flex-wrap:wrap;max-width:520px;justify-content:flex-end;pointer-events:none}
+body.ambient .ibadaA.on{display:flex}.ibadaA i{font-style:normal;padding:7px 14px;border-radius:999px;background:rgba(10,14,20,.5);color:#cfd5dc;font-size:18px}.ibadaA i.ok{background:rgba(52,199,89,.75);color:#fff}
+.ibada{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:4px 0 14px}.ibada h3{margin:0 0 0 10px;font-size:24px;color:var(--dim);font-weight:600}
+.ibada .chip.ok{background:rgba(52,199,89,.85);color:#fff}.ibada small{font-size:18px;color:var(--dim);margin-inline-start:auto}
 .awid{position:absolute;top:176px;inset-inline-start:56px;display:none;flex-direction:column;gap:14px;pointer-events:none;z-index:3}
 body.ambient .awid{display:flex}
 .wd{display:flex;align-items:center;gap:16px;padding:14px 22px;border-radius:26px;min-width:300px}
@@ -398,6 +415,7 @@ body.ambient .phrase.on{display:block}
       </div>
       <button class="nextm glass f" id="nextm" data-act="nextm"><small>أقرب مباراة</small><div class="empty">جارٍ التحميل…</div></button>
     </div>
+    <div class="ibada" id="ibada"></div>
     <div id="shQuran"><div class="qhead"><h2>القرآن والأذكار</h2><form class="ytbar" id="ytBar" autocomplete="off"><input class="f" id="ytQ" type="search" enterkeyhint="search" placeholder="ابحث في يوتيوب…" aria-label="ابحث في يوتيوب"><button class="f" id="ytGo" type="submit" aria-label="ابحث">🔎</button></form></div><div class="shelf" id="s-quran"></div></div>
     <div id="shLive"><h2>قنوات مباشرة</h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -445,6 +463,10 @@ body.ambient .phrase.on{display:block}
   <div class="day" id="day"><b id="dayName"></b><span id="dayHijri"></span><span class="greg" id="dayGreg"></span><em id="skyNote"></em></div>
   <div class="awid" id="awid"><div class="glass wd" id="wdWx"></div><div class="glass wd" id="wdMoon"></div></div>
   <i id="birds"></i>
+  <div class="spirit glass" id="spirit"></div>
+  <div class="ambIq" id="ambIq" hidden></div>
+  <div class="ambNote" id="ambNote" hidden></div>
+  <div class="ibadaA" id="ibadaA"></div>
   <div class="phrase" id="phrase"></div>
   <div class="mini" id="mini"><div class="glass" id="miniA"></div><div class="pill glass" id="miniP"></div><div class="pill glass" id="miniM" hidden></div></div>
   <div class="player glass" id="player" hidden><div><b id="plTitle"></b><span id="plSub"></span></div><button class="btn f" data-act="pl-prev">السابقة</button><button class="btn f" data-act="pl-toggle" id="plToggle">إيقاف</button><button class="btn f" data-act="pl-next">التالية</button><button class="btn f" data-act="pl-close">إغلاق</button></div>
@@ -2537,6 +2559,11 @@ function sections() {
       { k: 'h-quran', l: 'رف القرآن والأذكار', o: SHOW, d: 'on' }, { k: 'h-live', l: 'رف القنوات المباشرة', o: SHOW, d: 'on' },
       { k: 'h-apps', l: 'التطبيقات', o: SHOW, d: 'on' },
       { k: 'clock', l: 'الساعة', o: [['12', '١٢ ساعة'], ['24', '٢٤ ساعة']], d: '12' },
+      { k: 'spirit', l: '📖 وضع الأعلى: آية مع تفسيرها واسم من أسماء الله الحسنى', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'iqbig', l: '⏳ وضع الأعلى: عدّ تنازلي كبير للإقامة', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'friday', l: '🕌 تذكيرات الجمعة (ليلتها، الخطبة، ساعة الإجابة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'night3', l: '🌙 الثلث الأخير من الليل', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'ibada', l: '✅ عبادات اليوم (في الرئيسية ووضع الأعلى)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'nightdim', l: '🌙 تخفيف الإضاءة في الليل (١١ م ← الفجر)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'zoom', l: 'تقريب صورة المسجد مع النزول', o: ON, d: 'on' },
       { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
@@ -2813,6 +2840,7 @@ document.addEventListener('click', e => {
   }
   if (b.dataset.ilist) return playChannel(listOf(b.dataset.ilist), +b.dataset.i);
   if (b.dataset.act === 'upd') return updGo();
+  if (b.dataset.ib) return ibToggle(b.dataset.ib);
   if (b.dataset.mt) { MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
   if (b.dataset.mi != null) return playMatch(+b.dataset.mi);
   if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
@@ -2869,11 +2897,102 @@ function skyNote() {
   const ww = wxWords(wxNow()), cl = wxNow().cloud >= 70;
   $('#skyNote').textContent = [out.length ? (cl ? 'خلف الغيوم الليلة: ' : 'في السماء الليلة: ') + out.join(' · ') : ''].filter(Boolean).join(' — ');
 }
+// ===== 🌙 the spiritual side of the photo view =====
+// an ayah with a short tafsir (al-Muyassar), and one of the Most Beautiful Names of Allah a day — taking turns every minute
+const ASMA = [['الرحمن', 'رحمته وسعت كل شيء'], ['الرحيم', 'يرحم عباده المؤمنين'], ['الملك', 'المالك لكل شيء المتصرّف فيه'], ['القدوس', 'المنزّه عن كل نقص'], ['السلام', 'السالم من كل عيب، ومنه السلامة'], ['المؤمن', 'المصدّق لرسله، والمؤمِّن لعباده من الظلم'], ['المهيمن', 'الرقيب الحافظ لكل شيء'], ['العزيز', 'الغالب الذي لا يُغلب'], ['الجبار', 'الذي يجبر الكسير ويقهر كل شيء'], ['المتكبر', 'المتعالي عن صفات الخلق'],
+  ['الخالق', 'الموجِد للأشياء من العدم'], ['البارئ', 'الذي خلق الخلق متمايزين'], ['المصور', 'الذي صوّر كل مخلوق على صورته'], ['الغفار', 'كثير المغفرة لعباده'], ['القهار', 'الذي قهر كل شيء بقدرته'], ['الوهاب', 'كثير العطاء بلا مقابل'], ['الرزاق', 'المتكفّل بأرزاق الخلق'], ['الفتاح', 'الذي يفتح أبواب الرحمة والرزق'], ['العليم', 'المحيط علمه بكل شيء'], ['القابض', 'يقبض الرزق والأرواح بحكمته'],
+  ['الباسط', 'يبسط الرزق لمن يشاء'], ['الخافض', 'يخفض من يشاء بعدله'], ['الرافع', 'يرفع من يشاء بفضله'], ['المعز', 'يعز من يشاء'], ['المذل', 'يذل من يشاء بحكمته'], ['السميع', 'يسمع كل صوت'], ['البصير', 'يرى كل شيء'], ['الحكم', 'الحاكم بين عباده بالحق'], ['العدل', 'الذي لا يظلم أحدًا'], ['اللطيف', 'الرفيق بعباده، العالم بدقائق الأمور'],
+  ['الخبير', 'العالم ببواطن الأشياء'], ['الحليم', 'لا يعجل بالعقوبة'], ['العظيم', 'الذي له العظمة في ذاته وصفاته'], ['الغفور', 'الساتر للذنوب المتجاوز عنها'], ['الشكور', 'يثيب على القليل بالكثير'], ['العلي', 'العالي فوق خلقه'], ['الكبير', 'الأكبر من كل شيء'], ['الحفيظ', 'الحافظ لعباده ولأعمالهم'], ['المقيت', 'المتكفّل بأقوات الخلق'], ['الحسيب', 'الكافي، والمحاسب لعباده'],
+  ['الجليل', 'العظيم في قدره'], ['الكريم', 'كثير الخير والعطاء'], ['الرقيب', 'المطّلع على كل شيء'], ['المجيب', 'يجيب دعاء من دعاه'], ['الواسع', 'وسع كل شيء رحمة وعلمًا'], ['الحكيم', 'يضع الأشياء في مواضعها'], ['الودود', 'يحب عباده الصالحين ويحبونه'], ['المجيد', 'الواسع الكرم والشرف'], ['الباعث', 'يبعث الخلق يوم القيامة'], ['الشهيد', 'الحاضر الذي لا يغيب عنه شيء'],
+  ['الحق', 'الثابت الذي لا شك فيه'], ['الوكيل', 'المتولّي أمور عباده'], ['القوي', 'التام القوة'], ['المتين', 'الشديد القوة'], ['الولي', 'الناصر لعباده المؤمنين'], ['الحميد', 'المحمود على كل حال'], ['المحصي', 'أحصى كل شيء عددًا'], ['المبدئ', 'بدأ الخلق'], ['المعيد', 'يعيد الخلق بعد الموت'], ['المحيي', 'يحيي الأموات'],
+  ['المميت', 'يقضي بالموت على من يشاء'], ['الحي', 'الدائم الحياة'], ['القيوم', 'القائم بنفسه المقيم لغيره'], ['الواجد', 'الغني الذي لا يعوزه شيء'], ['الماجد', 'الكامل في مجده'], ['الواحد', 'المتفرّد في ذاته وصفاته'], ['الصمد', 'الذي تقصده الخلائق في حوائجها'], ['القادر', 'لا يعجزه شيء'], ['المقتدر', 'التام القدرة'], ['المقدم', 'يقدّم من يشاء بحكمته'],
+  ['المؤخر', 'يؤخّر من يشاء بحكمته'], ['الأول', 'الذي ليس قبله شيء'], ['الآخر', 'الذي ليس بعده شيء'], ['الظاهر', 'العالي فوق كل شيء'], ['الباطن', 'العالم بالخفايا'], ['الوالي', 'المالك المتصرّف'], ['المتعالي', 'المنزّه عن مشابهة خلقه'], ['البر', 'المحسن إلى عباده'], ['التواب', 'يقبل توبة التائبين'], ['المنتقم', 'يعاقب الظالمين بعدله'],
+  ['العفو', 'يمحو الذنوب ويتجاوز عنها'], ['الرؤوف', 'الشديد الرحمة'], ['مالك الملك', 'يؤتي الملك من يشاء'], ['ذو الجلال والإكرام', 'المستحق للتعظيم والإكرام'], ['المقسط', 'العادل في حكمه'], ['الجامع', 'يجمع الخلق ليوم لا ريب فيه'], ['الغني', 'المستغني عن كل شيء'], ['المغني', 'يغني من يشاء من عباده'], ['المانع', 'يمنع ما يشاء بحكمته'], ['الضار', 'يقدّر الضر بحكمته'],
+  ['النافع', 'يقدّر النفع لمن يشاء'], ['النور', 'نور السماوات والأرض'], ['الهادي', 'يهدي من يشاء إلى الحق'], ['البديع', 'خلق الخلق على غير مثال سابق'], ['الباقي', 'الدائم الذي لا يفنى'], ['الوارث', 'الباقي بعد فناء الخلق'], ['الرشيد', 'الذي أفعاله كلها رشد'], ['الصبور', 'لا يعاجل العصاة بالعقوبة']];
+const dayIdx = () => Math.floor((NOW().getTime() + 4 * 3600e3) / 864e5);
+let AYAH = null, ayahKey = '', spTurn = 0;
+async function loadAyah() {
+  const slot = dayIdx() * 12 + Math.floor(NOW().getHours() / 2);   // a new ayah every two hours, the same on every screen
+  if (String(slot) === ayahKey && AYAH) return;
+  const n = 1 + ((slot * 2654435761) >>> 0) % 6236;
+  try {
+    const d = await getJ(`https://api.alquran.cloud/v1/ayah/${n}/editions/quran-uthmani,ar.muyassar`);
+    const [q, t] = (d && d.data) || []; if (!q || !q.text) return;
+    if (q.text.length > 260) return loadAyahNext(slot);   // a long ayah does not fit the card: the next one
+    AYAH = { text: q.text.replace(/^﻿/, ''), sura: q.surah?.name || '', num: q.numberInSurah, tf: String(t?.text || '').trim() }; ayahKey = String(slot);
+  } catch (e) {}
+}
+async function loadAyahNext(slot) { ayahKey = ''; const o = slot; for (let k = 1; k < 6; k++) { const n = 1 + (((o + k * 7919) * 2654435761) >>> 0) % 6236; const d = await getJ(`https://api.alquran.cloud/v1/ayah/${n}/editions/quran-uthmani,ar.muyassar`); const [q, t] = (d && d.data) || []; if (q && q.text && q.text.length <= 260) { AYAH = { text: q.text.replace(/^﻿/, ''), sura: q.surah?.name || '', num: q.numberInSurah, tf: String(t?.text || '').trim() }; ayahKey = String(o); return; } } }
+function spiritUi() {
+  const el = $('#spirit'); if (!el) return;
+  const on = S('spirit', 'on') !== 'off'; el.classList.toggle('on', on); if (!on) return;
+  spTurn++;
+  const showName = spTurn % 2 === 0 || !AYAH;
+  const html = showName ? (() => { const [n, m] = ASMA[dayIdx() % ASMA.length]; return `<small>✨ من أسماء الله الحسنى · اسم اليوم</small><div class="nm">${n}</div><div class="tf">${esc(m)}</div>`; })()
+    : `<small>📖 ${esc(AYAH.sura)} · آية ${AR(AYAH.num)}</small><div class="ay">${esc(AYAH.text)}</div>${AYAH.tf ? `<div class="tf">التفسير الميسّر: ${esc(AYAH.tf.length > 210 ? AYAH.tf.slice(0, 205).replace(/\s+\S*$/, '') + '…' : AYAH.tf)}</div>` : ''}`;
+  el.classList.add('fade'); setTimeout(() => { el.innerHTML = html; el.classList.remove('fade'); }, 900);
+}
+setInterval(() => { if (document.body.classList.contains('ambient')) { loadAyah().then(spiritUi); } }, 60e3);
+// the prayer list of today, as times
+function prayList() {
+  const t = P.today; if (!t) return null;
+  return t.map((x, i) => { const d = at(x); d.setMinutes(d.getMinutes() + (+pset(i).offsetMinutes || 0)); const iq = S('iqsrc', 'dc') === 'custom' ? +S('iq' + i, IQ[i]) : (pset(i).iqamahDuration ?? IQ[i]); return { i, d, q: new Date(d.getTime() + iq * 60000) }; });
+}
+// ⏳ from the adhan to the iqamah: one big countdown, seen from across the room
+function ambIqTick() {
+  const el = $('#ambIq'), L = prayList(); if (!el) return;
+  const now = NOW(), x = L && L.find(p => p.d <= now && p.q > now);
+  const on = !!x && S('iqbig', 'on') !== 'off';
+  el.hidden = !on; document.body.classList.toggle('iqbig', on);
+  if (!on) return;
+  const s = Math.max(0, Math.round((x.q - now) / 1000));
+  el.innerHTML = `<b>${AR(Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'))}</b><span>إقامة صلاة ${NAMES[x.i]}</span>`;
+}
+setInterval(() => { if (document.body.classList.contains('ambient')) ambIqTick(); }, 1000);
+// 🕌 Friday, and the last third of the night: one quiet line at the top
+function ambNoteUi() {
+  const el = $('#ambNote'), L = prayList(); if (!el || !L) return;
+  const now = NOW(), wd = now.getDay(), mg = L[3].d, fj = L[0].d, dh = L[1].d;
+  let t = '';
+  // the last third: the night from maghrib to the next fajr
+  const fajrNext = now < fj ? fj : at((P.tomorrow || P.today)[0], true), mgPrev = now < fj ? new Date(mg.getTime() - 864e5) : mg;
+  const third = new Date(fajrNext.getTime() - (fajrNext - mgPrev) / 3);
+  if (S('night3', 'on') !== 'off' && now >= third && now < fajrNext) t = `🌙 الثلث الأخير من الليل — وقت القيام والوتر والدعاء · حتى الفجر ${AR(fmtD(fajrNext))}`;
+  else if (S('night3', 'on') !== 'off' && now >= L[4].d && now < third && (third - now) < 6 * 3600e3) t = `🌙 يبدأ الثلث الأخير من الليل ${AR(fmtD(third))}`;
+  if (S('friday', 'on') !== 'off') {
+    if (wd === 4 && now >= mg) t = '🤍 ليلة الجمعة · أكثروا من الصلاة على النبي ﷺ · وسورة الكهف' + (t ? '   ·   ' + t : '');
+    else if (wd === 5) {
+      if (now >= fj && now < dh) t = `🕌 يوم الجمعة · الخطبة بعد ${minutesLeft(dh - now)} · سورة الكهف والصلاة على النبي ﷺ`;
+      else if (now >= new Date(mg.getTime() - 3600e3) && now < mg) t = '🤲 آخر ساعة من يوم الجمعة — ساعة إجابة، أكثروا من الدعاء';
+      else if (now >= fj && now < mg) t = '🤍 يوم الجمعة · أكثروا من الصلاة على النبي ﷺ';
+    }
+  }
+  el.hidden = !t; el.textContent = t;
+}
+const minutesLeft = ms => { const m = Math.max(1, Math.ceil(ms / 60000)); return m < 60 ? minutesAr(m) : AR(Math.floor(m / 60)) + ' س ' + AR(m % 60) + ' د'; };
+setInterval(() => { if (document.body.classList.contains('ambient')) ambNoteUi(); }, 30e3);
+// ✅ the day's worship: the five prayers, the morning and evening adhkar, the daily wird — ticked with the remote (Home) or the phone
+const IBADA = [['p0', 'الفجر'], ['p1', 'الظهر'], ['p2', 'العصر'], ['p3', 'المغرب'], ['p4', 'العشاء'], ['am', 'أذكار الصباح'], ['pm', 'أذكار المساء'], ['wird', 'الورد']];
+const ibKey = () => 'ibada:' + new Date(NOW().getTime()).toDateString();
+function ibGet() { try { return JSON.parse(localStorage.getItem(ibKey()) || '[]'); } catch (e) { return []; } }
+function ibToggle(k) {
+  const d = ibGet(), on = !d.includes(k); const n = on ? [...d, k] : d.filter(x => x !== k);
+  try { localStorage.setItem(ibKey(), JSON.stringify(n)); } catch (e) {} ibUi();
+  try { TV.setPref && TV.setPref('ibada', JSON.stringify({ day: ibKey(), done: n })); } catch (e) {}
+}
+window.onIbada = k => { if (IBADA.some(x => x[0] === k)) ibToggle(k); };
+function ibUi() {
+  const d = ibGet(), L = prayList(), now = NOW(), on = S('ibada', 'on') !== 'off';
+  const due = k => { if (/^p\d$/.test(k) && L) return L[+k[1]].d <= now; if (k === 'am') return L && now >= L[0].d; if (k === 'pm') return L && now >= L[2].d; return true; };
+  const box = $('#ibada'); if (box) { box.hidden = !on; box.innerHTML = on ? `<h3>✅ عبادات اليوم</h3>` + IBADA.map(([k, t]) => `<button class="chip f ${d.includes(k) ? 'ok' : ''}" data-ib="${k}" ${due(k) ? '' : 'style="opacity:.55"'}>${d.includes(k) ? '✓ ' : ''}${t}</button>`).join('') + `<small>${AR(d.length)} من ${AR(IBADA.length)}</small>` : ''; }
+  const a = $('#ibadaA'); if (a) { a.classList.toggle('on', on); a.innerHTML = on ? IBADA.filter(([k]) => due(k)).map(([k, t]) => `<i class="${d.includes(k) ? 'ok' : ''}">${d.includes(k) ? '✓ ' : ''}${t}</i>`).join('') : ''; }
+}
+setInterval(ibUi, 60e3); setTimeout(ibUi, 2500);
 function ambient(on) {
   if (on) skyNote();
   document.body.classList.toggle('ambient', on);
   document.body.classList.toggle('livepic', on && S('livepic', 'on') !== 'off');
-  if (on) { ambWidgets(); loadPhrase(); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
+  if (on) { ambWidgets(); loadPhrase(); ambIqTick(); ambNoteUi(); ibUi(); loadAyah().then(spiritUi); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
 }
 function move(dir) {
