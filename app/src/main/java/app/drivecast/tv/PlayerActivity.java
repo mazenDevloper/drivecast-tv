@@ -275,13 +275,13 @@ public class PlayerActivity extends Activity {
         // Setting «pq» = max: the top quality always (never lower).
         boolean pqMax = "max".equals(Access.set(this).getString("pq", "smart"));
         meter = new DefaultBandwidthMeter.Builder(this).setInitialBitrateEstimate(25_000_000L).build();
-        androidx.media3.exoplayer.trackselection.DefaultTrackSelector sel = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this,
+        androidx.media3.exoplayer.trackselection.DefaultTrackSelector trackSel = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this,
                 new androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(3_000, 25_000, 25_000, 0.8f));
-        sel.setParameters(sel.buildUponParameters().setForceHighestSupportedBitrate(pqMax).setExceedVideoConstraintsIfNecessary(true).setExceedRendererCapabilitiesIfNecessary(false));
-        androidx.media3.exoplayer.DefaultLoadControl load = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+        trackSel.setParameters(trackSel.buildUponParameters().setForceHighestSupportedBitrate(pqMax).setExceedVideoConstraintsIfNecessary(true).setExceedRendererCapabilitiesIfNecessary(false));
+        androidx.media3.exoplayer.DefaultLoadControl loadCtl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
                 .setBufferDurationsMs(30_000, 60_000, 3_000, 6_000).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(10_000, true).build();
         http = new androidx.media3.datasource.DefaultHttpDataSource.Factory().setUserAgent(HomeActivity.BROWSER).setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
-        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).setTrackSelector(sel).setLoadControl(load)
+        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).setTrackSelector(trackSel).setLoadControl(loadCtl)
                 .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
