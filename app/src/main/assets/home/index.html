@@ -130,6 +130,7 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .mcard .mid{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:150px}.mcard .mid .big{font-size:54px;font-weight:800;color:#6fe3a0;font-variant-numeric:tabular-nums;letter-spacing:1px}
 .mcard.live .mid .big{color:#fff}.mcard .mid small{font-size:19px;color:#9aa3ad}.mcard.fin .mid .big{color:#d8dde3}
 .mcard .chs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.mcard .chs span{padding:8px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.14);font-size:19px;font-weight:700;color:#e9edf2}
+.mcard .chs span{display:inline-flex;align-items:center;gap:8px}.mcard .chs img{height:26px;max-width:92px;object-fit:contain;border-radius:5px;background:#fff;padding:2px 4px}
 .mcard .chs span.go{background:rgba(52,140,255,.18);border-color:rgba(90,160,255,.5);color:#cfe3ff}
 .mcard:focus{outline:none;background:rgba(255,255,255,.96);color:#111;transform:scale(1.03)}.mcard:focus .lg,.mcard:focus .mid small{color:#444}.mcard:focus .mid .big{color:#0a7a3a}.mcard:focus .chs span{color:#111;border-color:#bbb}
 .mcard.mine{box-shadow:inset 0 0 0 2px rgba(255,214,10,.55)}
@@ -2014,11 +2015,40 @@ function loadApps() {
 const DCAPI = 'https://drivecast.c-p.workers.dev/api/matches';
 let MTAB = 'all', MLIST = [], MINE = new Set(), mAt = {};
 const mCache = {};
+const WINWIN = 'https://www.winwin.com/api/component_data/match_landing_section/82053?path=%2Fmatches&v=01&date=';
+async function winwinDay(plus) {
+  const t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3);   // Oman's football day (until 05:00 it is still yesterday's)
+  const ymd = t.toISOString().slice(0, 10).replace(/-/g, '');
+  const d = await getJ(WINWIN + ymd); if (!Array.isArray(d)) return null;
+  const out = [];
+  for (const g of d) for (const m of g.matches || []) {
+    if (!m || m.status === 'postponed' || !m.team1 || !m.team2) continue;
+    if (/تحت \d\d|سيدات|للشباب|الدرجة الثانية/.test((m.league?.name || '') + ' ' + m.team1.name)) continue;
+    const ts = Date.parse(`${m.date || t.toISOString().slice(0, 10)}T${m.kickoffTime || '00:00'}:00Z`) / 1000;   // its times are UTC
+    const chl = {}; for (const c of m.matchChannels || []) if (c && c.name) chl[c.name] = c.logo || '';
+    const st = m.status === 'ended' ? 'finished' : m.status === 'live' ? 'live' : 'upcoming';
+    out.push({ id: 'ww' + m.id, ww: 1, league: { id: '', name: (m.league?.name || '') + (m.leagueStage && !/الجولة|المنتظم/.test(m.leagueStage) ? ' · ' + m.leagueStage : ''), logo: m.league?.logo || '' },
+      home: { name: m.team1.name, logo: (m.team1.logo || '').replace('fps_60x60', 'fps_200x200') }, away: { name: m.team2.name, logo: (m.team2.logo || '').replace('fps_60x60', 'fps_200x200') },
+      timestamp: ts, omanTime: new Date(ts * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }),
+      status: st, elapsed: st === 'live' ? (m.minuteTotal ?? m.progress ?? null) : null, score: { home: st === 'upcoming' ? null : m.team1Score, away: st === 'upcoming' ? null : m.team2Score },
+      channels: Object.keys(chl), chl });
+  }
+  return { matches: out };
+}
+// a team's name, to tell the same team across sources («جمهورية التشيك» = «التشيك»)
+const tKey = n => String(n || '').toLowerCase().replace(/[ً-ْ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/جمهوريه|نادي|\bfc\b|\bcf\b/g, '').replace(/(^|\s)ال/g, '$1').replace(/[^a-z0-9؀-ۿ]+/g, '');
+const tSame = (a, b) => { a = tKey(a); b = tKey(b); return !!a && !!b && (a === b || (a.length > 3 && b.length > 3 && (a.includes(b) || b.includes(a)))); };
+const mSame = (x, y) => Math.abs((x.timestamp || 0) - (y.timestamp || 0)) < 20 * 60 && (tSame(x.home?.name, y.home?.name) || tSame(x.away?.name, y.away?.name) || tSame(x.home?.name, y.away?.name));
 async function mFetch(k) {
   if (mCache[k] && Date.now() - mCache[k].at < (k === 'live' ? 30e3 : 3 * 60e3)) return mCache[k].d;
   let d = null;
   if (k === 'mine') { try { d = await (await fetch('https://studio.c-p.workers.dev/now?lang=27')).json(); } catch (e) {} d = d && { matches: (d.matches || []).map(m => ({ ...m, channels: m.channels || [], mine: 1 })) }; }
-  else d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
+  else {
+    // winwin.com first: every match of the day in Arabic, with the channels that carry it worldwide (names + logos);
+    // DriveCast's own list when it does not answer
+    d = await winwinDay(k === 'tom' ? 1 : 0);
+    if (!d || !d.matches.length) d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
+  }
   if (d && d.matches) mCache[k] = { at: Date.now(), d };
   return d || (mCache[k] && mCache[k].d);
 }
@@ -2028,10 +2058,13 @@ async function loadMatches() {
     const [all, mine] = await Promise.all([mFetch(MTAB === 'tom' ? 'tom' : 'all'), mFetch('mine')]);
     MINE = new Set(((mine && mine.matches) || []).flatMap(m => [m.home?.name, m.away?.name].map(x => String(x || '').toLowerCase())));
     TODAYM = (mine && mine.matches) || []; if ($('#p-iptv').classList.contains('on')) big5Ui();
-    let ms = MTAB === 'mine' ? ((mine && mine.matches) || []) : ((all && all.matches) || []);
-    if (MTAB === 'all' && mine && mine.matches) for (const m of mine.matches) if (!ms.some(x => x.home?.name === m.home?.name && x.away?.name === m.away?.name)) ms = ms.concat(m);
+    const mm = (mine && mine.matches) || [];
+    let ms = ((all && all.matches) || []).slice();
+    for (const m of ms) { const y = mm.find(y => mSame(m, y)); if (y) { m.mine = 1; if (String(y.id).startsWith('365')) m.id365 = y; } }   // the user's teams, marked on the day's list
+    if (MTAB !== 'tom') for (const m of mm) if (!ms.some(x => mSame(x, m))) ms.push(m);
     if (MTAB === 'live') ms = ms.filter(m => m.status === 'live');
-    const isMine = m => m.mine || MINE.has(String(m.home?.name || '').toLowerCase()) || MINE.has(String(m.away?.name || '').toLowerCase());
+    if (MTAB === 'mine') ms = ms.filter(m => m.mine);
+    const isMine = m => !!m.mine;
     MLIST = ms.slice().sort((a, b) => ((b.status === 'live') - (a.status === 'live')) || (isMine(b) - isMine(a)) || ((a.status === 'finished') - (b.status === 'finished')) || (a.timestamp - b.timestamp)).slice(0, 60);
     for (const m of MLIST) m.det = MDET.get(m.id) || m.det;
     const was = document.activeElement && document.activeElement.dataset.mi;
@@ -2044,7 +2077,7 @@ async function loadMatches() {
       return `<button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
         <div class="lg">${m.league?.logo ? `<img src="${esc(m.league.logo)}" alt="" onerror="this.remove()">` : '🏆'}<span>${esc(m.league?.name || '')}</span><b>${live ? '● مباشر' : fin ? 'انتهت' : isMine(m) ? '⭐ فريقك' : 'قريباً'}</b></div>
         <div class="row">${tm(m.home)}<div class="mid"><span class="big">${big}</span><small>${sub}</small></div>${tm(m.away)}</div>
-        <div class="chs">${go ? `<span class="go">▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>📺 ${esc(c)}</span>`).join('')}${!go && !chs.length ? '<span>📺 القناة الناقلة غير معروفة</span>' : ''}</div></button>`;
+        <div class="chs">${go ? `<span class="go">${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(c)}</span>`).join('')}${!go && !chs.length ? '<span>📺 القناة الناقلة غير معروفة</span>' : ''}</div></button>`;
     }).join('') || `<div class="empty">${MTAB === 'live' ? 'ما فيه مباراة مباشرة الحين' : MTAB === 'mine' ? 'ما فيه مباريات لفرقك اليوم' : 'ما لقيت مباريات'}</div>`;
     const n = $('#mnote'); if (n) n.textContent = MLIST.length ? `${AR(MLIST.length)} مباراة · OK يشغّل القناة الناقلة` : '';
     if (was != null) box.querySelector(`[data-mi="${was}"]`)?.focus();
@@ -2241,7 +2274,7 @@ function isArabChannel(name) {
 const TOKC = new Map();
 const chToks = n => { let t = TOKC.get(n); if (!t) { t = channelTokens(String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/[أإآ]/g, 'ا')); TOKC.set(n, t); } return t; };
 /** the channels of a match: the league's rights + the sources (365Scores' Middle-East list for it, the feed's own) */
-const mChannels = m => { try { return matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); } catch (e) { return m.channels || []; } };
+const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); return m.ww && !l.length ? m.channels || [] : l; } catch (e) { return m.channels || []; } };
 /** where a match can be watched here: the closest channel of the lists (a working one first), else the broadcaster's app */
 function matchRoute(m) {
   const names = mChannels(m), pools = [...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
@@ -2265,7 +2298,7 @@ function matchRoute(m) {
 // 365Scores' channels for each match on screen (DriveCast's details endpoint; a few at a time, kept for the session)
 const MDET = new Map();
 async function mDetails(list) {
-  const todo = list.filter(m => m && m.id && !MDET.has(m.id)).slice(0, 40);
+  const todo = list.filter(m => m && m.id && !MDET.has(m.id) && (String(m.id).startsWith('365') || !(MDET.set(m.id, []), 0)) && String(m.id).startsWith('365')).slice(0, 40);
   let k = 0;
   const one = async () => { while (k < todo.length) { const m = todo[k++]; MDET.set(m.id, null);
     const q = new URLSearchParams({ id: String(m.id), league: String(m.league?.id || ''), homeId: String(m.home?.id || ''), home: m.home?.name || '', away: m.away?.name || '' });
