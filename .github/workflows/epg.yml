@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['tools/epg.py', '.github/workflows/epg.yml']
+    paths: ['tools/epg.py', 'tools/sports_epg.py', '.github/workflows/epg.yml']
 permissions:
   contents: write
 concurrency: epg
@@ -17,9 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: mkdir out && python3 tools/epg.py out/epg.json
+        run: |
+          mkdir out && python3 tools/epg.py out/epg.json
+          python3 tools/sports_epg.py out/sports.json || echo '::warning::sports guide failed'
       - name: Publish
         run: |
-          cd out && git init -q -b epg && git add epg.json
+          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json)
           git -c user.name=guide -c user.email=guide@users.noreply.github.com commit -qm "guide $(date -u +%FT%RZ)"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" epg
