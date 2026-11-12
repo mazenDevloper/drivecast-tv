@@ -17,7 +17,7 @@ jobs:
         with: { path: ~/.gradle/wrapper, key: "gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties', '**/*.gradle') }}" }
       # one signing key for every build: the TV's «⬆️ update» installs a new build over the old one only when the key is the same.
       # The key is the repository's secret (Settings → Secrets → Actions): DCTV_KEYSTORE_B64 (the keystore, base64) and
-      # DCTV_KEY_PASS. No secret → no release (an APK with another key would not install over the TV's).
+      # DCTV_KEY_PASS (added 12 Nov 2026). No secret → no release (an APK with another key would not install over the TV's).
       - name: Signing key
         env: { B64: '${{ secrets.DCTV_KEYSTORE_B64 }}' }
         run: |
