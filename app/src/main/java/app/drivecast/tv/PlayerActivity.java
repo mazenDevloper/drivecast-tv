@@ -284,13 +284,22 @@ public class PlayerActivity extends Activity {
         player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).setTrackSelector(trackSel).setLoadControl(loadCtl)
                 .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
+        up4k = "on".equals(Access.set(this).getString("up4k", "off"));
+        if (up4k) try { player.setVideoEffects(Up4K.effects()); } catch (Throwable t) { up4k = false; }   // 🔷 GPU scaling to 2160 lines + sharpening
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
                 if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); fill(); }
                 if (s == Player.STATE_BUFFERING) { net.removeCallbacks(stall); net.postDelayed(stall, 12000); }
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
             }
-            @Override public void onPlayerError(PlaybackException e) { retry(); }
+            @Override public void onPlayerError(PlaybackException e) {
+                // the 4K picture asks the GPU more than some boxes give: an error in the picture's processing → plain picture
+                if (up4k && (e.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED || e.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSOR_INIT_FAILED)) {
+                    up4k = false; try { player.setVideoEffects(new java.util.ArrayList<>()); } catch (Throwable t) {}
+                    android.widget.Toast.makeText(PlayerActivity.this, "تحسين 4K ما يشتغل على هالجهاز — رجعت الصورة العادية", android.widget.Toast.LENGTH_LONG).show();
+                }
+                retry();
+            }
             @Override public void onVideoSizeChanged(androidx.media3.common.VideoSize vs) { vw = vs.width * (vs.pixelWidthHeightRatio > 0 ? vs.pixelWidthHeightRatio : 1f); vh = vs.height; fit(); }
         });
         root.addOnLayoutChangeListener((v, l, t, r, bt, ol, ot, or, ob) -> fit());
@@ -306,6 +315,7 @@ public class PlayerActivity extends Activity {
 
     // ---- the picture's width: 0 smart, 1 as it is (black sides stay), 2 fill the screen (crops)
     private PlayerView view;
+    private boolean up4k;
     private float vw, vh;
     private int fitMode = 0;
     private static final String[] FIT_NAMES = {"عرض ذكي", "الأصلي", "ملء الشاشة"};

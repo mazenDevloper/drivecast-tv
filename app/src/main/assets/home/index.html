@@ -270,7 +270,7 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,12,18,.15) 0%,rgba(8,12,18,.55) 45%,rgba(8,12,18,.94) 100%)}
 .ichan.big.ok::before,.ichan.big.bad::before{position:absolute;top:16px;left:16px;margin:0}
 .ichan.big .top{position:absolute;top:16px;right:18px;left:44px;display:flex;align-items:center;gap:12px}
-.ichan.big .top img{width:72px;height:72px;object-fit:contain;background:rgba(255,255,255,.92);border-radius:16px;padding:6px;flex:none}
+.ichan.big .top img{width:84px;height:84px;object-fit:contain;background:#fff;border-radius:18px;padding:7px;flex:none;box-shadow:0 4px 14px rgba(0,0,0,.45);image-rendering:-webkit-optimize-contrast}
 .ichan.big .cn{font-size:21px;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big .pnow{display:flex;flex-direction:column;gap:6px}
 .ichan.big .pnow small{font-size:15px;color:#9fe3b4}
@@ -279,7 +279,18 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pbar{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
 .ichan.big .pnx{font-size:16px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ichan.big:focus{transform:scale(1.035)}   /* in a row (the home's live shelf) the cards keep their size */
+.ichan.big:focus{transform:scale(1.035)}
+.ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);height:110px;max-width:62%;object-fit:contain;z-index:-1;filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+.ichan.big:has(.logo-big) .top img{display:none}
+body.hc-mid .ichan.big{width:400px;height:236px}
+body.hc-mid .ichan.big .pnow b{font-size:22px}
+body.hc-small .ichan.big{width:330px;height:196px;padding:14px 16px}
+body.hc-small .ichan.big .pnow b{font-size:19px;-webkit-line-clamp:1}
+body.hc-small .ichan.big .top img{width:56px;height:56px}
+body.hc-small .ichan.big .logo-big{height:72px}
+body.no-art .ichan.big .art{display:none}
+body.logo-clear .ichan.big .top img{background:none;padding:0}
+body.still .ichan.big:focus,body.still .f:focus{transform:none!important;transition:none!important}   /* in a row (the home's live shelf) the cards keep their size */
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
 .player .btn{height:64px;padding:0 26px}
@@ -434,7 +445,7 @@ body.ambient .phrase.on{display:block}
 #p-iptv .ipanes{flex:1;min-width:0;height:930px}
 #p-iptv .ipane{display:none}#p-iptv .ipane.on{display:block}
 #p-iptv .ipane>h2{margin-top:6px}
-#s-pin,#s-most,#s-dyn,#s-gsp,#s-myfav,#s-ytl,#s-b5{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px}
+#s-pin,#s-most,#s-dyn,#s-gsp,#s-k4,#s-myfav,#s-ytl,#s-b5{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px}
 #p-iptv input[type=url]{direction:ltr;text-align:left}
 #p-iptv .ipane .shelf .ichan{width:auto}
 #p-iptv .ifilt{display:flex;flex-wrap:wrap;gap:12px;padding:4px 18px 12px}
@@ -501,6 +512,7 @@ body.ambient .phrase.on{display:block}
       <button class="f ri" data-ipane="favwrap"><i>⭐</i><b>المفضّلة</b><small></small></button>
       <button class="f ri" data-ipane="dynwrap"><i>⚡</i><b>رياضية متجددة</b><small></small></button>
       <button class="f ri" data-ipane="gspwrap"><i>🏟️</i><b>كل الرياضية</b><small></small></button>
+      <button class="f ri" data-ipane="k4wrap" data-need="k4"><i>🔷</i><b>4K</b><small></small></button>
       <button class="f ri" data-ipane="allwrap"><i>📺</i><b>كل القنوات</b><small></small></button>
       <button class="f ri" data-ipane="epgwrap"><i>📅</i><b>دليل البرامج</b><small></small></button>
       <button class="f ri" data-ipane="ytlwrap"><i>🔴</i><b>يوتيوب مباشر</b><small></small></button>
@@ -519,6 +531,7 @@ body.ambient .phrase.on{display:block}
       <div class="empty" style="margin:2px 6px 10px">الأسهل من الجوال: افتح صفحة الريموت (عنوان التلفزيون :8080) ← الأذكار ← «قائمة قنوات خاصة» والصق الرابط</div>
       <div class="shelf" id="s-m3u" style="flex-wrap:wrap"></div></div>
     <div class="ipane" id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
+    <div class="ipane" id="k4wrap"><h2>🔷 قنوات 4K المفتوحة <small style="font-size:18px;font-weight:400;opacity:.6">· صورتها ٢١٦٠ خط فعلاً — تتفحص كل ٤ ساعات</small></h2><div class="shelf" id="s-k4" style="flex-wrap:wrap"></div></div>
     <div class="ipane" id="gspwrap"><h2>🏟️ كل القنوات الرياضية <small id="gspn" style="font-size:18px;font-weight:400;opacity:.6">· أفحصها…</small></h2><div class="shelf" id="s-gsp" style="flex-wrap:wrap"><div class="empty">أفحص القنوات الرياضية… تظهر هنا اللي تشتغل فقط</div></div></div>
     <div class="ipane" id="favwrap"><h2>⭐ قنواتي المفضّلة · مع DriveCast</h2><div class="shelf" id="s-myfav" style="flex-wrap:wrap"></div></div>
     <div class="ipane" id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
@@ -1562,7 +1575,11 @@ function epgUi() {
   if (!Object.keys(EPG || {}).length) { box.innerHTML = '<div class="empty">أجيب الدليل…</div>'; return; }
   const seen = new Set(), pools = [...PINS, ...MOST, ...MYFAV, ...IFAV, ...DYNCH, ...ILIST.filter(c => isOk(c)), ...ILIST];
   EPGL = [];
-  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 120) break; }
+  for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 400) break; }
+  // yours first (pinned, most watched, favourites), then the channels written in Arabic, then the rest
+  const mine = new Set([...PINS, ...MOST, ...MYFAV, ...IFAV].map(favKey)), arT = c => /[\u0600-\u06FF]/.test((epgRows(c)[0] || [])[2] || '');
+  const rk = c => mine.has(favKey(c)) ? 0 : isArabChannel(c.name) && arT(c) ? 1 : isArabChannel(c.name) || arT(c) ? 2 : 3;
+  EPGL = EPGL.map((c, i) => [rk(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]).slice(0, 150);
   const now = Date.now() / 1000, span = 6 * 3600, W = 1300;
   const heads = [0, 1, 2, 3, 4, 5].map(k => `<span style="width:${W / 6 - 6}px">${hm(Math.floor(now / 1800) * 1800 + k * 3600)}</span>`).join('');
   box.innerHTML = `<div class="epgh">${heads}</div>` + EPGL.map((c, ci) => {
@@ -1725,7 +1742,7 @@ function liveHtml(c, i) {
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
   const art = (r && r[3]) || '', pct = r ? Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)) : 0;
   return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}" data-ilist="live" data-i="${i}">`
-    + (art ? `<img class="art" src="${esc(art)}" alt="" loading="lazy" onerror="this.remove()">` : c.logo ? `<img class="art blur" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '')
+    + (art && S('hart', 'on') !== 'off' ? `<img class="art" src="${esc(art)}" alt="" loading="lazy" onerror="this.remove()">` : c.logo ? `<img class="logo-big" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '')
     + `<span class="top">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
     + (r ? `<span class="pnow"><small>▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</small><b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i></span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
     + (nx ? `<span class="pnx" dir="auto">التالي ${hm(nx[0])} · ${esc(nx[2])}</span>` : '') + `</button>`;
@@ -1879,6 +1896,15 @@ async function dynResolve(c) {
 // only the ones that answer are shown — so every card here has a green dot. What answered is remembered for 3 hours.
 const GARDEN = 'https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/categories/sports.json';
 const GAR_AR = { 'Oman Sports TV': 'عُمان الرياضية', 'Bahrain Sports 1': 'البحرين الرياضية 1', 'Bahrain Sports 2': 'البحرين الرياضية 2', 'KTV Sport': 'الكويت الرياضية', 'KTV Sport Plus': 'الكويت الرياضية بلس', 'Al Iraqia Sport': 'العراقية الرياضية', 'Jordan Sport': 'الأردن الرياضية', 'KSA Sports': 'السعودية الرياضية' };
+// 🔷 the open 4K channels, checked on GitHub every 4 hours (tools/k4.py → branch «epg» k4.json)
+let K4 = [], k4At = 0;
+async function loadK4() {
+  if (Date.now() - k4At < 3 * 3600e3 && K4.length) return; k4At = Date.now();
+  const d = await getJ('https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/k4.json');
+  if (Array.isArray(d)) K4 = d.map(x => ({ name: x.n + (x.geo ? ' 🌍' : ''), url: x.u, logo: x.logo || '', k4: x.h, group: '4K' }));
+  const box = $('#s-k4'); if (box) box.innerHTML = K4.map((c, i) => ichHtml(c, i, 'k4')).join('') || '<div class="empty">ما فيه قناة 4K مفتوحة ترد الحين</div>';
+  box?.querySelectorAll('[data-ilist="k4"] .at').forEach((a, i) => { a.textContent = `🔷 ${K4[i].k4 >= 4000 ? '8K' : '4K'} · ${K4[i].name.includes('🌍') ? 'قد تكون محصورة في بلدها' : 'تعمل من خارج بلدها'}`; });
+}
 let GSP = [], gspAt = 0, gspBusy = false;
 function gspUi(done) {
   const box = $('#s-gsp'); if (!box) return;
@@ -1988,7 +2014,7 @@ async function loadLists() {
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg();
+  lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4();
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
@@ -2055,7 +2081,7 @@ const BIG5 = [
   ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'm3uv' ? M3UV.shown : n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'pin' ? PINS : n === 'most' ? MOST : window.__shown;
+const listOf = n => n === 'm3uv' ? M3UV.shown : n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'k4' ? K4 : n === 'pin' ? PINS : n === 'most' ? MOST : window.__shown;
 // 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
 const YTLEAGUES = [
   ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
@@ -2898,9 +2924,17 @@ function sections() {
       { k: 'zoom', l: 'تقريب صورة المسجد مع النزول', o: ON, d: 'on' },
       { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
     ]],
+    ['🎛️', 'الواجهة لهذا الجهاز', [
+      { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
+      { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
+      { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
+      { k: 'hlogo', l: 'شعار القناة', o: [['tile', 'على مربع أبيض (أوضح)'], ['clear', 'بدون خلفية']], d: 'tile' },
+      { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
+    ]],
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
     ['📺', 'القنوات والمشغّل', [
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
+      { k: 'up4k', l: '🔷 تحسين الصورة إلى 4K (تكبير بالمعالج مع توضيح الحواف — يحتاج جهاز قوي)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
       { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
@@ -2980,6 +3014,7 @@ function applySet(k, v) {
   if (k === 'wall') { try { localStorage.wall = v; } catch (e) {} applyWall(); }
   if (k === 'clock') { tick(); nextUi(); }
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
+  if (/^(uiscale|hcard|hart|hlogo|motion)$/.test(k)) { uiApply(); liveRefresh(); }
   if (/^iq/.test(k)) prayersUi();
 }
 // ---- ⬆️ updates from GitHub: checked on start and every 6 hours; a newer build → the badge by the clock (OK = update)
@@ -3011,6 +3046,13 @@ function setAct(a) {
   if (a === 'system') return TV.settings();
   if (a === 'newpin') { TV.webNewPin && TV.webNewPin(); return setsBody(); }
   if (a === 'reload-all') return location.reload();
+}
+// 🎛️ this device's look: the whole interface's size, the home cards' size, their pictures and logos, the motion
+function uiApply() {
+  const z = +S('uiscale', '100') || 100; document.documentElement.style.zoom = z === 100 ? '' : String(z / 100);
+  const b = document.body.classList;
+  b.toggle('hc-mid', S('hcard', 'big') === 'mid'); b.toggle('hc-small', S('hcard', 'big') === 'small');
+  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off');
 }
 function homeLayout() {
   const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
@@ -3354,7 +3396,7 @@ function iEnter(item) {
 }
 function iRailFocus() { const r = $(`#iRail .ri[data-ipane="${IPANE}"]`) || $('#iRail .ri'); if (r) { r.focus({ preventScroll: true }); r.scrollIntoView({ block: 'nearest' }); } }
 function iRailUi() {
-  const n = { pinwrap: PINS.length, mostwrap: MOST.length, favwrap: (MYFAV || []).length, dynwrap: DYNCH.filter(c => c.st === 'ok' || c.st === 'app').length, gspwrap: GSP.length, allwrap: ILIST.length, m3uwrap: m3uList().length, m3uvwrap: M3UV.all.length };
+  const n = { pinwrap: PINS.length, mostwrap: MOST.length, favwrap: (MYFAV || []).length, dynwrap: DYNCH.filter(c => c.st === 'ok' || c.st === 'app').length, gspwrap: GSP.length, k4wrap: K4.length, allwrap: ILIST.length, m3uwrap: m3uList().length, m3uvwrap: M3UV.all.length };
   document.querySelectorAll('#iRail .ri[data-ipane]').forEach(r => { const k = r.dataset.ipane; if (r.dataset.need) r.hidden = !n[k] && document.activeElement !== r; const s = r.querySelector('small'); if (s) s.textContent = n[k] ? AR(n[k]) : ''; });
 }
 setInterval(iRailUi, 4000); setTimeout(() => { iPane(IPANE); iRailUi(); }, 0);
@@ -3506,7 +3548,11 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-12g', NEWS_ROWS = [
+const NEWS = '2026-11-12h', NEWS_ROWS = [
+  ['🌐', 'دليل البرامج بالعربي: العناوين الأجنبية تنترجم تلقائياً، والقنوات العربية أول الدليل'],
+  ['🔷', 'قنوات 4K المفتوحة في صفحة القنوات، وخيار «تحسين الصورة إلى 4K» في الإعدادات ← القنوات والمشغّل'],
+  ['🎛️', 'إعدادات «الواجهة لهذا الجهاز»: حجم الواجهة وحجم كروت القنوات وصورة البرنامج والشعار'],
+  ['🔗', 'القناة الناقلة تنربط صح: ESPN Colombia = ESPN Latin America Colombia، و beIN 1 = beIN SPORTS 1 Qatar'],
   ['🖼️', 'قنوات الرئيسية صارت كروت كبيرة: البرنامج اللي شغّال الحين بصورته واسمه وكم باقي، والبرنامج اللي بعده'],
   ['📅', 'دليل البرامج صار أكبر بكثير: كل قنوات الخليج ومصر وبي إن والكأس، والقنوات الرياضية العالمية — يلقى القناة باسمها حتى لو اسمها بالعربي'],
   ['🏟️', 'تاب المباريات يعرف القناة الناقلة من أدلة البرامج: بي إن (تود) والكأس (شوف) وأبوظبي ودبي وسكاي وTNT وسبورت تي في — وأكثر من ٥٠ دولة'],
@@ -3565,7 +3611,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml();
-homeLayout(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
+homeLayout(); uiApply(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
 setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);

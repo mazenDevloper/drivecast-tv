@@ -26,7 +26,7 @@ def cands():
             n = l.split(',')[-1].strip(); u = next((x.strip() for x in L[i + 1:i + 4] if x.startswith('http')), '')
             if not u or u in seen or not NAME.search(n) or PAY.search(n) or PANEL.search(u): continue
             seen.add(u); logo = (re.search(r'tvg-logo="([^"]*)"', l) or [None, ''])[1]
-            out.append({'n': re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', n).strip(), 'u': u, 'logo': logo, 'geo': bool(re.search(r'geo-?blocked', n, re.I)), 'say': n})
+            out.append({'n': re.sub(r'\s*[\(\[][^\)\]]*[\)\]]', '', n).strip(), 'u': u, 'logo': logo, 'geo': bool(re.search(r'geo-?blocked|Ⓖ', n, re.I)), 'say': n})
     return out
 
 def height(c):
