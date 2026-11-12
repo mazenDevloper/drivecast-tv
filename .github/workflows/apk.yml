@@ -15,17 +15,9 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/cache@v4
         with: { path: ~/.gradle/wrapper, key: "gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties', '**/*.gradle') }}" }
-      # one signing key for every build: the TV's «⬆️ update» installs a new build over the old one only when the key is the same.
-      # The key is the repository's secret (Settings → Secrets → Actions): DCTV_KEYSTORE_B64 (the keystore, base64) and
-      # DCTV_KEY_PASS (added 12 Nov 2026). No secret → no release (an APK with another key would not install over the TV's).
-      - name: Signing key
-        env: { B64: '${{ secrets.DCTV_KEYSTORE_B64 }}' }
-        run: |
-          [ -n "$B64" ] || { echo "::error::The signing key is missing: add the DCTV_KEYSTORE_B64 and DCTV_KEY_PASS secrets"; exit 1; }
-          printf %s "$B64" | base64 -d > "$RUNNER_TEMP/dctv.jks"
-          echo "DCTV_KEYSTORE=$RUNNER_TEMP/dctv.jks" >> "$GITHUB_ENV"
+      # one signing key for every build (app/signing/drivecast-tv.jks, in the repository): the TV's «⬆️ update» installs a new
+      # build over the old one only when the key is the same — checked below before anything is published
       - name: Build
-        env: { DCTV_KEY_PASS: '${{ secrets.DCTV_KEY_PASS }}' }
         run: |
           chmod +x gradlew
           for i in 1 2 3; do ./gradlew -q assembleRelease && break; echo "retry $i"; sleep 30; done
