@@ -31,21 +31,37 @@ def when(s):
     if tz: t -= (1 if tz[0] == '+' else -1) * (int(tz[1:3]) * 3600 + int(tz[3:5]) * 60)
     return t
 def nice(n, cid):   # some guides name channels by an internal id («4k_DIGITAL_Mono_AR»): the id's readable part then
+    if cid.endswith('.bein'):   # beIN MENA's guide (the channels of TOD, Al Kass among them)
+        b = cid[:-5]; m = re.search(r'beIN[_-]SPORTS[_-]?(MAX[_-]?)?0?(\d+)', b, re.I)
+        if m: return 'beIN SPORTS ' + ('MAX ' if m.group(1) else '') + m.group(2) + (' English' if 'ENGLISH' in b else ' French' if 'FRENCH' in b else '')
+        m = re.search(r'Alkass[_-]?(\d+)', b, re.I)
+        if m: return 'Alkass ' + m.group(1)
+        if re.search(r'^4k', b, re.I): return 'beIN SPORTS 4K'
+        if re.search(r'^NEWS', b, re.I): return 'beIN SPORTS News'
     n = (n or '').strip()
     if not n or re.search(r'_|^\d|digital|mono', n, re.I): n = re.sub(r'\.[a-z]{2,3}$', '', cid or n).replace('_', ' ').replace('.', ' ')
     return re.sub(r'\s+', ' ', n).strip()[:48]
 STOP = {'fc', 'cf', 'sc', 'ac', 'afc', 'cd', 'club', 'de', 'the', 'united', 'city', 'real', 'sporting', 'athletic', 'w', 'women', 'u21', 'u23', 'u20', 'u19', 'res', 'ii'}
-def words(n): return [w for w in re.findall(r'[a-z0-9؀-ۿ]+', (n or '').lower().replace('&', ' ')) if w not in STOP and len(w) > 2]
+import unicodedata
+SYN = [(r'\bturkey\b', 'turkiye'), (r'\bczech republic\b', 'czechia'), (r'\bcote d ?ivoire\b', 'ivory coast'), (r'\bkorea republic\b|\brepublic of korea\b', 'south korea'),
+       (r'\bunited states\b|\busmnt\b', 'usa'), (r'\bcongo dr\b|\bdemocratic republic of (the )?congo\b', 'dr congo'), (r'\bbosnia( and)? herzegovina\b', 'bosnia'),
+       (r'\bman(chester)? utd\b|\bman united\b', 'manchester united'), (r'\bman city\b', 'manchester city'), (r'\bpsg\b', 'paris saint germain'),
+       (r'\bspurs\b', 'tottenham'), (r'\binter milan\b', 'inter'), (r'\bbayern munich\b|\bbayern munchen\b|\bfc bayern\b', 'bayern'), (r'\batletico madrid\b', 'atletico')]
+def fold(s):
+    s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower().replace('-', ' ').replace("'", ' ')
+    for p, r in SYN: s = re.sub(p, r, s)
+    return s
+def words(n): return [w for w in re.findall(r'[a-z0-9]+', fold(n).replace('&', ' ')) if w not in STOP and len(w) > 2]
 def names_in(title, n):   # the side's name in a programme title: its whole name, or its longest proper word
-    t = ' ' + re.sub(r'[^a-z0-9؀-ۿ]+', ' ', title.lower()) + ' '
-    full = ' ' + ' '.join(re.findall(r'[a-z0-9؀-ۿ]+', n.lower())) + ' '
+    t = ' ' + re.sub(r'[^a-z0-9]+', ' ', fold(title)) + ' '
+    full = ' ' + ' '.join(re.findall(r'[a-z0-9]+', fold(n))) + ' '
     if full.strip() and full in t: return 2
     w = sorted(words(n), key=len, reverse=True)
     return 1 if w and len(w[0]) >= 5 and (' ' + w[0] + ' ') in t else 0
 
 def main(out):
     now = time.time(); lo, hi = now - 3 * 3600, now + 36 * 3600
-    chans, progs = [], []              # channels [name, logo, cc] · programmes (channel index, start, stop, title)
+    chans, progs, seen = [], [], {}              # channels [name, logo, cc] · programmes (channel index, start, stop, title)
     for f, cc in FILES.items():
         try: raw = get(BASE % f)
         except Exception as e: print(f'  FAILED {f}: {e}', flush=True); continue
@@ -54,7 +70,9 @@ def main(out):
             if el.tag == 'channel':
                 cid, nm = el.get('id', ''), el.findtext('display-name') or ''
                 if SPORTY.search(nm + ' ' + cid):
-                    ic = el.find('icon'); ids[cid] = len(chans); chans.append([nice(nm, cid), ic.get('src') if ic is not None else '', cc])
+                    ic = el.find('icon'); nn = nice(nm, cid); key = (nn.lower(), cc)
+                    if key not in seen: seen[key] = len(chans); chans.append([nn, ic.get('src') if ic is not None else '', cc])
+                    ids[cid] = seen[key]
                 el.clear()
             elif el.tag == 'programme':
                 k = ids.get(el.get('channel'))
