@@ -2033,43 +2033,251 @@ async function loadMatches() {
     if (MTAB === 'live') ms = ms.filter(m => m.status === 'live');
     const isMine = m => m.mine || MINE.has(String(m.home?.name || '').toLowerCase()) || MINE.has(String(m.away?.name || '').toLowerCase());
     MLIST = ms.slice().sort((a, b) => ((b.status === 'live') - (a.status === 'live')) || (isMine(b) - isMine(a)) || ((a.status === 'finished') - (b.status === 'finished')) || (a.timestamp - b.timestamp)).slice(0, 60);
+    for (const m of MLIST) m.det = MDET.get(m.id) || m.det;
     const was = document.activeElement && document.activeElement.dataset.mi;
     box.innerHTML = MLIST.map((m, i) => {
       const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
       const big = live || fin ? `${AR(sc.home ?? 0)} - ${AR(sc.away ?? 0)}` : (m.omanTime || '');
       const sub = live ? `● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : 'عُمان') + ' ' + (m.omanTime || '');
-      const chs = (m.channels || []).slice(0, 2), go = matchRoute(m);
+      const go = matchRoute(m), chs = mChannels(m).slice(0, 3);
       const tm = t => `<div class="tm"><img src="${esc(t?.logo || '')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(t?.name || '')}</span></div>`;
       return `<button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
         <div class="lg">${m.league?.logo ? `<img src="${esc(m.league.logo)}" alt="" onerror="this.remove()">` : '🏆'}<span>${esc(m.league?.name || '')}</span><b>${live ? '● مباشر' : fin ? 'انتهت' : isMine(m) ? '⭐ فريقك' : 'قريباً'}</b></div>
         <div class="row">${tm(m.home)}<div class="mid"><span class="big">${big}</span><small>${sub}</small></div>${tm(m.away)}</div>
-        <div class="chs">${go ? `<span class="go">▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || c !== go.label).map(c => `<span>📺 ${esc(c)}</span>`).join('')}</div></button>`;
+        <div class="chs">${go ? `<span class="go">▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>📺 ${esc(c)}</span>`).join('')}${!go && !chs.length ? '<span>📺 القناة الناقلة غير معروفة</span>' : ''}</div></button>`;
     }).join('') || `<div class="empty">${MTAB === 'live' ? 'ما فيه مباراة مباشرة الحين' : MTAB === 'mine' ? 'ما فيه مباريات لفرقك اليوم' : 'ما لقيت مباريات'}</div>`;
     const n = $('#mnote'); if (n) n.textContent = MLIST.length ? `${AR(MLIST.length)} مباراة · OK يشغّل القناة الناقلة` : '';
     if (was != null) box.querySelector(`[data-mi="${was}"]`)?.focus();
+    if (!loadMatches.busy && MLIST.some(m => !MDET.has(m.id))) { loadMatches.busy = 1; try { if (!ILIST.length) { listsAt = 0; await loadLists(); } if (await mDetails(MLIST)) await loadMatches(); } finally { loadMatches.busy = 0; } }
   } catch (e) { box.innerHTML = '<div class="empty">لا اتصال بالإنترنت</div>'; }
 }
 setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'tom') loadMatches(); }, 60e3);
-/** where a match can be watched here: a channel of the lists (by the league's rights, or the channel's name), else an app */
+// ---- 📺 the carrying channel of a match — the same rules as DriveCast's match-channels.ts (the league's rights holder in the
+// Arab region, the Middle-East channels 365Scores lists for the match, Arab channels first), then the closest channel of the
+// lists here by its name's words (beIN SPORTS HD 1 = beIN Sports 1; «Oman Sport» never matches plain «Oman TV»).
+const isCountry = (l, re) => !l.country || re.test(l.country);
+const named = (l, re) => re.test(String(l.name ?? "").trim());
+const slug = (l, ...ids) => {
+  const id = String(l.id ?? "");
+  return ids.includes(id) || ids.some(x => x.endsWith(".") && id.startsWith(x));
+};
+
+const LEAGUE_RULES = [
+  // ---------- Arab rights holders (one channel / platform) ----------
+  {
+    label: "الدوري السعودي وكأس خادم الحرمين والسوبر والدرجة الأولى", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ksa.1", "ksa.2", "ksa.kings_cup") || /saudi (pro|professional) league|roshn|yelo|دوري روشن|الدوري السعودي/i.test(l.name)
+      || (/saudi/i.test(l.country ?? "") && named(l, /^(pro|professional) league$|king'?s cup|super cup|first division/i)),
+  },
+  {
+    label: "السوبر الإسباني والسوبر الإيطالي", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "esp.super_cup", "ita.super_cup") || named(l, /supercopa de espa|spanish super ?cup|supercoppa|italian super ?cup|السوبر الإسباني|السوبر الايطالي|السوبر الإيطالي/i)
+      || (named(l, /^super ?cup$|^supercopa$|^supercoppa$/i) && /spain|españa|ital/i.test(l.country ?? "")),
+  },
+  {
+    label: "الدوري الألماني", channels: ["MBC Action", "Shahid"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ger.1") || (named(l, /^(german |1\. ?)?bundesliga$/i) && isCountry(l, /german|deutschland/i)),
+  },
+  {
+    label: "الدوري الإيطالي", channels: ["STARZPLAY Sport 1"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ita.1") || (named(l, /^(italian )?serie a( tim| enilive)?$/i) && isCountry(l, /ital/i)),
+  },
+  {
+    label: "الدوري الإماراتي وكؤوسه", channels: ["Abu Dhabi Sports 1", "Dubai Sports 1", "Sharjah Sports"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "uae.1") || /\buae\b|adnoc|arabian gulf league|الدوري الإماراتي/i.test(l.name) || /united arab emirates|^uae$/i.test(l.country ?? ""),
+  },
+  {
+    label: "الدوري العماني وكأس السلطان", channels: ["Oman Sport"], kind: "rights", alwaysList: true,
+    test: l => /\boman|omantel|sultan qaboos|عمان|عُمان/i.test(l.name) || /^oman$/i.test(l.country ?? ""),
+  },
+  {
+    // Sharjah Sports' 2026/27 schedule: Scottish league, League Cup and Super Cup (+ a weekly Scottish league magazine)
+    label: "الدوري الاسكتلندي وكأس الرابطة والسوبر", channels: ["Sharjah Sports"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "sco.1", "sco.cis") || named(l, /scottish (premiership|league cup)|^spfl/i)
+      || (/scotland/i.test(l.country ?? "") && named(l, /^premiership$|league cup|super cup/i)),
+  },
+  {
+    // Dubai Sports carries the Argentine league in the region (the foreign channels below stay as a fallback)
+    label: "الدوري الأرجنتيني", channels: ["Dubai Sports"], kind: "rights",
+    test: l => slug(l, "arg.1") || (named(l, /liga profesional|primera divisi[oó]n|torneo (apertura|clausura)|copa de la liga/i) && /argentin/i.test(l.country ?? "")),
+  },
+  // ---------- Arab networks (exact channel number comes from the match sources) ----------
+  { label: "الدوري الهولندي", channels: ["Dubai Sports"], kind: "network",
+    test: l => slug(l, "ned.1") || named(l, /eredivisie/i) },
+  { label: "الدوري القطري", channels: ["Alkass"], kind: "network",
+    test: l => /stars league|qsl|الدوري القطري/i.test(l.name) || (/^qatar$/i.test(l.country ?? "") && named(l, /league|cup/i)) },
+  { label: "الدوري المصري", channels: ["ON Time Sports"], kind: "network",
+    test: l => slug(l, "egy.1") || /egyptian premier|الدوري المصري/i.test(l.name) || (/^egypt$/i.test(l.country ?? "") && named(l, /premier league/i)) },
+  { label: "كأس ألمانيا وكأس إيطاليا", channels: ["Abu Dhabi Sports"], kind: "network",
+    test: l => slug(l, "ger.dfb_pokal", "ita.coppa_italia") || named(l, /dfb.?pokal|german cup|coppa italia/i) },
+  {
+    label: "beIN: الإنجليزي والإسباني والفرنسي والتركي وأوروبا وآسيا وأفريقيا والكؤوس الإنجليزية", channels: ["beIN SPORTS"], kind: "network",
+    test: l => slug(l, "eng.1", "esp.1", "fra.1", "fra.2", "tur.1", "eng.2", "eng.3", "eng.4", "eng.fa", "eng.league_cup", "uefa.", "afc.", "caf.")
+      || (named(l, /^(english )?premier league$/i) && isCountry(l, /england/i))
+      || (named(l, /^(spanish )?la ?liga( ea sports)?$|^primera divisi[oó]n$/i) && isCountry(l, /spain|españa/i))
+      || (named(l, /^(french )?ligue [12]/i) && isCountry(l, /france/i))
+      || (named(l, /s[uü]per ?lig/i) && isCountry(l, /turk|türk/i))
+      || (named(l, /^(efl )?championship$|league one|league two|carabao|efl cup|^fa cup$/i) && isCountry(l, /england/i))
+      || (named(l, /uefa|^champions league$|^europa league$|conference league/i) && !named(l, /afc|caf|concacaf|asian|african/i))
+      || named(l, /^afc |\bafc champions|acl elite|asian champions|^caf |\bcaf champions|\bcaf confederation cup$/i),
+  },
+  // ---------- not shown in the Arab region: the main foreign channel ----------
+  { label: "الدوري البرتغالي", channels: ["Sport TV1"], kind: "foreign",
+    test: l => slug(l, "por.1") || (named(l, /primeira liga|liga portugal|betclic/i) && isCountry(l, /portugal/i)) },
+  { label: "الدوري الأرجنتيني", channels: ["TyC Sports Internacional", "ESPN Premium", "TNT Sports"], kind: "foreign",
+    test: l => slug(l, "arg.1") || (named(l, /liga profesional|primera divisi[oó]n|torneo (apertura|clausura)|copa de la liga/i) && /argentin/i.test(l.country ?? "")) },
+  { label: "الدوري الأمريكي", channels: ["Apple TV"], kind: "foreign",
+    test: l => slug(l, "usa.1") || named(l, /^mls$|major league soccer/i) },
+  { label: "الدوري البلجيكي", channels: ["DAZN"], kind: "foreign",
+    test: l => slug(l, "bel.1") || named(l, /jupiler|belgian pro league|first division a/i) || (named(l, /^pro league$/i) && /belgi/i.test(l.country ?? "")) },
+  { label: "الدوري البرازيلي", channels: ["Premiere", "Globo"], kind: "foreign",
+    test: l => slug(l, "bra.1") || named(l, /brasileir[aã]o/i) || (named(l, /^s[eé]rie a$/i) && /brazil|brasil/i.test(l.country ?? "")) },
+  { label: "الدوري المكسيكي", channels: ["TUDN"], kind: "foreign",
+    test: l => slug(l, "mex.1") || named(l, /liga mx/i) },
+];
+
+const usableLeague = l => !/women|female|u\d\d|youth|reserve|سيدات/i.test(l.name || '');
+const leagueRules = l => usableLeague(l) ? LEAGUE_RULES.filter(r => { try { return r.test(l); } catch (e) { return false; } }) : [];
+function matchChannels(league, sources) {
+  const rules = leagueRules(league);
+  const of = k => rules.filter(r => r.kind === k).flatMap(r => r.channels);
+  // a source naming the exact numbered channel ("Thmanyah 2") replaces the rights holder's other numbers
+  const src = sources.filter(Boolean);
+  const brand = c => channelTokens(c).filter(t => !isNum(t)).sort().join(" ");
+  const numbered = new Set(src.filter(c => channelTokens(c).some(isNum)).map(brand));
+  const rights = of("rights").filter(r => !numbered.has(brand(r)));
+  const all = uniqueChannels([...rights, ...src]);
+  const arab = all.filter(isArabChannel);
+  if (arab.length) return arab;
+  const network = of("network");
+  if (network.length) return uniqueChannels(network);
+  return uniqueChannels([...of("foreign"), ...all]);
+}
+
+// ---- name normalisation ----
+const BRANDS = [
+  [/b[ea]in\s*-?\s*sports?|بي\s*[اإأآ]?ن\s*(سبورت[س]?|الرياضي[ةه])|بين\s*سبورت[س]?|\bbein\b|بي\s*[اإأ]ن/gi, " bein "],
+  [/starz\s*-?\s*play(\s*sports?)?|ستارز\s*بلاي(\s*سبورت[س]?)?/gi, " starzplay "],
+  [/thmanyah|thamanyah?|thmanya|thamaniya|ثمانية|ثمانيه/gi, " thmanyah "],
+  [/mbc\s*-?\s*action|[اإأ]م\s*بي\s*سي\s*[اأإ]كشن/gi, " mbc action "],
+  [/[اإأ]م\s*بي\s*سي/gi, " mbc "],
+  [/oman\s*(tv\s*)?sports?(\s*tv)?|عُ?م[اآ]ن\s*(ال)?رياضي[ةه]/gi, " oman sport "],
+  [/abu\s*dhabi\s*sports?|ad\s*sports?|[اأ]بو\s*ظبي\s*(ال)?رياضي[ةه]/gi, " adsport "],
+  [/dubai\s*sports?|دبي\s*(ال)?رياضي[ةه]/gi, " dubaisport "],
+  [/al\s*-?\s*kass|alkass|الكاس/gi, " alkass "],
+  [/\bssc(\s*sports?)?\b|[اإأ]س\s*[اإأ]س\s*سي/gi, " ssc "],
+  [/shahid|شاهد/gi, " shahid "],
+  [/sharjah\s*sports?|الشارقة\s*(ال)?رياضي[ةه]/gi, " sharjahsport "],
+  [/ksa\s*sports?|السعودية\s*(ال)?رياضي[ةه]/gi, " ksasport "],
+  [/sports?|(ال)?رياضي[ةه]/gi, " sport "],
+];
+const NOISE = new Set(["hd", "fhd", "uhd", "sd", "hq", "4k", "8k", "hevc", "h265", "h264", "1080", "1080p", "720", "720p", "480p", "tv", "channel", "ch", "live", "ar", "arab", "arabic", "mena", "me", "backup", "raw", "vip", "plus", "fps", "50fps", "60fps", "قناة", "مباشر"]);
+const VARIANTS = new Set(["premium", "max", "xtra", "extra", "english", "en", "french", "fr", "news", "kids", "movies", "4k"]);
+
+function channelTokens(name) {
+  let s = ` ${name.toLowerCase()} `
+    .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x6f0))
+    // region/quality prefixes of IPTV lists: "AR:", "|AR|", "[AR]", "OM -"
+    .replace(/^\s*[\[(|]?\s*(ar|arb|arab|me|mena|om|oman|ksa|sa|uae|ae|qa|eg|kw|bh|uk|en|fr|tr|vip|4k|hd|fhd|sd)\s*[\])|:\-]\s*/i, " ");
+  for (const [re, to] of BRANDS) s = s.replace(re, to);
+  return s
+    .replace(/([a-z])(\d)/g, "$1 $2").replace(/(\d)([a-z])/g, "$1 $2")
+    .split(/[^a-z0-9؀-ۿ]+/)
+    .filter(t => t && !NOISE.has(t))
+    // "bein sport 1" and "bein 1" are the same channel: the generic word only counts when it is the whole name
+    .filter((t, _i, all) => t !== "sport" || !all.some(x => ["bein", "starzplay", "ssc", "adsport", "dubaisport", "ksasport", "sharjahsport"].includes(x)));
+}
+
+function channelKey(name) {
+  return Array.from(new Set(channelTokens(name))).sort().join(" ");
+}
+
+const isNum = t => /^\d+$/.test(t);
+
+function channelScore(broadcast, candidate) {
+  return tokenScore(channelTokens(broadcast), channelTokens(candidate));
+}
+
+function tokenScore(broadcastTokens, candidateTokens) {
+  const a = new Set(broadcastTokens), b = new Set(candidateTokens);
+  if (!a.size || !b.size) return 0;
+  const words = s => [...s].filter(t => !isNum(t));
+  const nums = s => [...s].filter(isNum).sort().join(",");
+  // every word of the broadcast name must be there ("oman sport" must not match plain "Oman TV")
+  if (words(a).some(t => !b.has(t))) return 0;
+  const extra = words(b).filter(t => !a.has(t));
+  if (extra.some(t => VARIANTS.has(t))) return 0;
+  const na = nums(a), nb = nums(b);
+  let score = 100 - extra.length * 10;
+  if (na) { if (na !== nb) return 0; }
+  else if (nb) score -= 15 + Math.min(Number(nb.split(",")[0]) || 0, 20); // "Thmanyah" -> prefer "Thmanyah 1"
+  return score >= 60 ? score : 0;
+}
+
+function uniqueChannels(names) {
+  const seen = new Set();
+  return names.filter(n => {
+    const k = channelKey(n) || n.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// ---- Arab vs foreign channels ----
+const ARAB_BRANDS = new Set(["bein", "thmanyah", "ssc", "adsport", "dubaisport", "sharjahsport", "ksasport", "alkass", "mbc", "starzplay", "shahid"]);
+const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|saudi|emirates|abu dhabi|dubai|sharjah|ajman|nile|on time|ontime|al ?jazeera|arryadia|arriyadia|alwan|aloula|al ?oula|tunisia|algeri|maroc|morocc|egypt|cbc|dmc|nahar|rotana|alhadath|alarabiya|ad sports|ad sport|ktv)\b/i;
+
+function isArabChannel(name) {
+  if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
+  // beIN also runs foreign feeds (USA, France, Turkey, Asia...): those are not the Arab channels
+  if (/\b(usa|us|france|french|fr|turkey|türkiye|turkiye|asia|australia|espa[nñ]ol|canada|uk|english|xtra|connect)\b/i.test(name) && /b[ea]in/i.test(name)) return false;
+  if (channelTokens(name).some(t => ARAB_BRANDS.has(t))) return true;
+  return ARAB_NAMES.test(name);
+}
+
+
+const TOKC = new Map();
+const chToks = n => { let t = TOKC.get(n); if (!t) { t = channelTokens(String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/[أإآ]/g, 'ا')); TOKC.set(n, t); } return t; };
+/** the channels of a match: the league's rights + the sources (365Scores' Middle-East list for it, the feed's own) */
+const mChannels = m => { try { return matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); } catch (e) { return m.channels || []; } };
+/** where a match can be watched here: the closest channel of the lists (a working one first), else the broadcaster's app */
 function matchRoute(m) {
-  const rule = TVRULES.find(r => r[0].test(m.league?.name || ''));
-  const pools = [...DYNCH, ...GSP, ...IFAV, ...ILIST];
-  if (rule) { const c = pools.find(c => rule[2].test(c.name) && !/geo-blocked/i.test(c.name)); if (c) return { label: c.name, c }; }
-  for (const name of m.channels || []) {
-    const k = chKey(name).replace(/\b(hd|sd|fhd|4k)\b/g, '').trim(); if (k.length < 3) continue;
-    const c = pools.find(c => { const n = chKey(c.name); return n === k || (n.length > 4 && (n.startsWith(k) || k.startsWith(n))); });
-    if (c) return { label: c.name, c };
+  const names = mChannels(m), pools = [...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
+  let best = null, bs = 0;
+  for (const want of names) {
+    const wt = chToks(want); if (!wt.length) continue;
+    for (const c of pools) {
+      if (!c || !c.name || /geo-blocked/i.test(c.name)) continue;
+      let sc = tokenScore(wt, chToks(c.name)); if (!sc) continue;
+      if (c.st === 'ok' || (typeof isOk === 'function' && isOk(c))) sc += 30; else if (c.st === 'bad') sc -= 40;
+      if (sc > bs) { bs = sc; best = { label: c.name, c, want }; }
+    }
+    if (bs >= 100) break;
   }
-  const all = [rule && rule[1], ...(m.channels || [])].filter(Boolean).join(' ');
-  const app = APPS.find(a => (rule && (rule[2].test(a.label) || rule[2].test(a.pkg))) || (/bein/i.test(all) && /bein|tod/i.test(a.label + a.pkg)) || (/shahid|mbc/i.test(all) && /shahid/i.test(a.label + a.pkg)) || (/starz/i.test(all) && /starz/i.test(a.label + a.pkg)) || (/kass/i.test(all) && /kass|shoof/i.test(a.label + a.pkg)) || (/thmanyah|ثمانية/i.test(all) && /thmanyah|ثمانية/i.test(a.label + a.pkg)));
+  if (best && bs > 0) return best;
+  const all = names.join(' ');
+  const app = APPS.find(a => { const x = a.label + ' ' + a.pkg; return (/bein/i.test(all) && /bein|tod/i.test(x)) || (/shahid|mbc/i.test(all) && /shahid/i.test(x)) || (/starz/i.test(all) && /starz/i.test(x)) || (/kass/i.test(all) && /kass|shoof/i.test(x)) || (/thmanyah/i.test(all) && /thmanyah|ثمانية/i.test(x)) || (/dazn/i.test(all) && /dazn/i.test(x)) || (/apple tv/i.test(all) && /apple/i.test(x)); });
   if (app) return { label: app.label, app };
   return null;
+}
+// 365Scores' channels for each match on screen (DriveCast's details endpoint; a few at a time, kept for the session)
+const MDET = new Map();
+async function mDetails(list) {
+  const todo = list.filter(m => m && m.id && !MDET.has(m.id)).slice(0, 40);
+  let k = 0;
+  const one = async () => { while (k < todo.length) { const m = todo[k++]; MDET.set(m.id, null);
+    const q = new URLSearchParams({ id: String(m.id), league: String(m.league?.id || ''), homeId: String(m.home?.id || ''), home: m.home?.name || '', away: m.away?.name || '' });
+    const d = await getJ(DCAPI + '/details?' + q); MDET.set(m.id, (d && Array.isArray(d.channels) && d.channels) || []); } };
+  await Promise.all([one(), one(), one(), one()]);
+  return todo.length;
 }
 function playMatch(i, other) {
   const m = MLIST[i]; if (!m) return; const r = matchRoute(m);
   if (r && r.c) { const pool = [r.c]; return other && TV.external ? resolveChannel(r.c).then(c => TV.external(c.url)) : playChannel(pool, 0); }
   if (r && r.app) return TV.open(r.app.pkg);
-  const n = $('#mnote'); if (n) n.textContent = `ما لقيت «${(m.channels || [])[0] || 'القناة الناقلة'}» في قنواتك ولا تطبيقها على التلفزيون`;
+  const n = $('#mnote'); if (n) n.textContent = `ما لقيت «${mChannels(m)[0] || 'القناة الناقلة'}» في قنواتك ولا تطبيقها على التلفزيون`;
 }
 
 // ---- pages and settings
