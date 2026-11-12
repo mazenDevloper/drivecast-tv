@@ -19,11 +19,25 @@ android {
 
     buildFeatures { buildConfig true }
 
+    // one key for every build, so a new build installs over the old one (the TV's «⬆️ تحديث»): GitHub's build gets it from the
+    // repository's secrets (DCTV_KEYSTORE_B64 + DCTV_KEY_PASS, written to a file by apk.yml); a build on a laptop without it
+    // falls back to that laptop's debug key
+    def ks = System.getenv('DCTV_KEYSTORE')
+    signingConfigs {
+        dctv {
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('DCTV_KEY_PASS')
+                keyAlias 'drivecast'
+                keyPassword System.getenv('DCTV_KEY_PASS')
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            // sideloaded over adb: signed with the debug key, like noor-tv
-            signingConfig signingConfigs.debug
+            signingConfig ks ? signingConfigs.dctv : signingConfigs.debug
         }
     }
 

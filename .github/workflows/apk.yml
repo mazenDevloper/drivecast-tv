@@ -15,10 +15,17 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/cache@v4
         with: { path: ~/.gradle/wrapper, key: "gradle-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties', '**/*.gradle') }}" }
-      # one signing key for every build: the TV's «⬆️ update» installs a new build over the old one only when the key is the same
-      - uses: actions/cache@v4
-        with: { path: ~/.android/debug.keystore, key: drivecast-tv-signing-key }
+      # one signing key for every build: the TV's «⬆️ update» installs a new build over the old one only when the key is the same.
+      # The key is the repository's secret (Settings → Secrets → Actions): DCTV_KEYSTORE_B64 (the keystore, base64) and
+      # DCTV_KEY_PASS. No secret → no release (an APK with another key would not install over the TV's).
+      - name: Signing key
+        env: { B64: '${{ secrets.DCTV_KEYSTORE_B64 }}' }
+        run: |
+          [ -n "$B64" ] || { echo "::error::The signing key is missing: add the DCTV_KEYSTORE_B64 and DCTV_KEY_PASS secrets"; exit 1; }
+          printf %s "$B64" | base64 -d > "$RUNNER_TEMP/dctv.jks"
+          echo "DCTV_KEYSTORE=$RUNNER_TEMP/dctv.jks" >> "$GITHUB_ENV"
       - name: Build
+        env: { DCTV_KEY_PASS: '${{ secrets.DCTV_KEY_PASS }}' }
         run: |
           chmod +x gradlew
           for i in 1 2 3; do ./gradlew -q assembleRelease && break; echo "retry $i"; sleep 30; done
@@ -26,6 +33,10 @@ jobs:
           [ -f app/build/outputs/apk/release/app-release.apk ] || { gradle --version | head -3; gradle -q assembleRelease; }
           test -f app/build/outputs/apk/release/app-release.apk
           cp app/build/outputs/apk/release/app-release.apk DriveCastTV.apk
+          # the APK must carry DriveCast TV's own key (its certificate's SHA-256), or the TV refuses it as an update
+          AS=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | tail -1)
+          "$AS" verify --print-certs DriveCastTV.apk | grep -qi 'SHA-256 digest: f4d6ca901e1e97a8d918196941890d0f9cb0ef7e29d615395c43656509aae0d2' \
+            || { "$AS" verify --print-certs DriveCastTV.apk; echo "::error::The APK is not signed with DriveCast TV's key"; exit 1; }
       - name: Release «latest»
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
