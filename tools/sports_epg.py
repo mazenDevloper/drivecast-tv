@@ -115,9 +115,9 @@ def main(out):
         votes = {}
         for d in ds:
             for h in range(-5, 6):
-                if -1.5 <= d - h <= 0.34: votes[h] = votes.get(h, 0) + 1   # the programme starts ≤ 90 min before the kick-off, or ≤ 20 after
+                if -0.34 <= d - h <= 1.5: votes[h] = votes.get(h, 0) + 1   # corrected, the programme starts ≤ 90 min before the kick-off, or ≤ 20 after
         best = max(votes, key=lambda h: (votes[h], -abs(h))) if votes else 0
-        if best: shift[f] = best * 3600; print(f'  {f}: clock {best:+d} h off, corrected', flush=True)
+        if best and votes[best] >= 2 and votes[best] > 1.5 * votes.get(0, 0): shift[f] = best * 3600; print(f'  {f}: clock {best:+d} h off, corrected', flush=True)
     progs = [(k, s0 + shift.get(f, 0), e0 + shift.get(f, 0), ti) for k, s0, e0, ti, f in progs]
     used, out_g = {}, []
     by_time = sorted(progs, key=lambda p: p[1])
