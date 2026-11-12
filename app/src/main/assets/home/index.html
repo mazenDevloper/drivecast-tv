@@ -257,8 +257,8 @@ body.nightdim #nightVeil{opacity:.42}
 .ctxh{display:flex;align-items:center;gap:16px;padding:6px 10px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
 .ctxh img{width:58px;height:58px;object-fit:contain;border-radius:14px;background:rgba(255,255,255,.08)}.ctxh img[src=""]{display:none}
 .ctxh b{font-size:28px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#ctxBody{display:flex;flex-direction:column;gap:6px}
-#ctxBody button{height:76px;border:0;border-radius:22px;background:transparent;color:#f4f1ea;font:inherit;font-size:26px;font-weight:600;text-align:right;padding:0 24px;display:flex;align-items:center;gap:16px;transition:transform .18s,background .18s}
+#ctxBody{display:flex;flex-direction:column;gap:6px;max-height:800px;overflow:auto;scrollbar-width:none}#ctxBody::-webkit-scrollbar{display:none}
+#ctxBody button{flex:none;min-height:76px;line-height:1.4;padding-top:10px!important;padding-bottom:10px!important;border:0;border-radius:22px;background:transparent;color:#f4f1ea;font:inherit;font-size:26px;font-weight:600;text-align:right;padding:0 24px;display:flex;align-items:center;gap:16px;transition:transform .18s,background .18s}
 #ctxBody button i{font-style:normal;width:34px;text-align:center}
 #ctxBody button:focus{outline:none;background:rgba(255,255,255,.92);color:#0b1014;transform:scale(1.04);box-shadow:0 14px 34px rgba(0,0,0,.35)}
 .ytl{width:420px}.ytl em{color:#ff6b6b;font-style:normal;font-weight:700}
