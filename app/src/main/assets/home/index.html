@@ -148,7 +148,10 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .nextm .tm{display:flex;flex-direction:column;align-items:center;gap:8px;width:42%;font-size:24px;font-weight:700;text-align:center;line-height:1.2}
 .nextm .tm img{width:72px;height:72px;object-fit:contain}
 .nextm .mid{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}.nextm .mid i{display:block;font-style:normal;font-size:18px;color:var(--dim);font-weight:500}
-.nextm .tv{font-size:22px;font-weight:600;color:var(--gold)}
+.nextm .tv{font-size:21px;font-weight:600;color:var(--gold);display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+.nextm .tv span{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:#e9edf2}.nextm .tv span.go{background:rgba(52,140,255,.2);border-color:rgba(90,160,255,.5);color:#cfe3ff}
+.nextm .tv img{height:24px;max-width:84px;object-fit:contain;border-radius:5px;background:#fff;padding:2px 4px}
+.nextm:focus .tv span{color:#111;border-color:#bbb}
 #homeScroll{display:flex;flex-direction:column;gap:20px}
 .appgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px;padding:12px 4px 20px}
 .appgrid .app{width:auto;height:160px}
@@ -1882,12 +1885,26 @@ async function loadNext(tries = 0) {
     }
     if (!m) m = arr(now?.matches).find(x => x.favorite && x.status === 'upcoming');
   } catch (e) { m = null; }
-  if (m) { NEXTM = m; try { localStorage.nextm = JSON.stringify(m); } catch (e) {} }
+  if (m) { NEXTM = m; try { localStorage.nextm = JSON.stringify(m); } catch (e) {} nextCarriers(m); }
   else if (!ok) {
     if (!NEXTM) try { const c = JSON.parse(localStorage.nextm || 'null'); if (c && c.timestamp * 1000 > Date.now() - 3 * 3600e3) NEXTM = c; } catch (e) {}
     if (tries < 4) setTimeout(() => loadNext(tries + 1), 20000 * (tries + 1));
   } else NEXTM = null;
   nextUi();
+}
+async function nextCarriers(m) {
+  try {
+    const days = Math.round((m.timestamp * 1000 - Date.now()) / 86400e3); if (days > 1) return;
+    const lists = await Promise.all([mFetch('all'), mFetch('tom')]);
+    const w = lists.flatMap(d => (d && d.matches) || []).find(x => x.ww && mSame(x, m));
+    if (w && NEXTM === m) { m.channels = w.channels; m.chl = w.chl; m.ww = 1; if (w.league?.logo) m.league = { ...m.league, logo: w.league.logo }; nextUi(); }
+  } catch (e) {}
+}
+function nextTv(m) {
+  const go = matchRoute(m), chs = mChannels(m).filter(c => !go || c !== go.want).slice(0, go ? 1 : 2);
+  const img = n => m.chl && m.chl[n] ? `<img src="${esc(m.chl[n])}" alt="" onerror="this.remove()">` : '';
+  if (!go && !chs.length) return '📺 القناة الناقلة غير معروفة';
+  return (go ? `<span class="go">${img(go.want)}${go.local ? '🌍 ' : ''}▶ ${esc(go.label)}</span>` : '') + chs.map(c => `<span>${img(c) || '📺 '}${esc(c)}</span>`).join('');
 }
 function nextUi() {
   const el = $('#nextm'), m = NEXTM;
@@ -1903,7 +1920,7 @@ function nextUi() {
   $('#miniM').innerHTML = `<img src="${esc(m.home?.logo)}" alt=""><b>${live ? AR(m.score?.home ?? 0) + ' - ' + AR(m.score?.away ?? 0) : AR(fmtD(d))}</b><img src="${esc(m.away?.logo)}" alt=""><div class="tx"><span>${esc(m.home?.name)} × ${esc(m.away?.name)} · ${live ? '● مباشر' : day}</span><span class="gold">📺 ${rule ? rule[1] : ''}</span></div>`;
   el.innerHTML = `<small>${live ? 'مباراة فرقك الآن' : 'أقرب مباراة'}</small><div class="lg">${esc(m.league?.name || '')}</div>
     <div class="vs">${tm(m.home || {})}<div class="mid">${mid}</div>${tm(m.away || {})}</div>
-    <div class="tv">📺 ${rule ? rule[1] : 'القناة الناقلة غير معروفة'}</div>`;
+    <div class="tv">${nextTv(m)}</div>`;
 }
 // a channel: a YouTube link opens in YouTube; a stream plays full screen (up / down = the next streams of the same list)
 const ytId = u => (String(u).match(/(?:youtu\.be\/|[?&]v=|\/live\/|\/embed\/)([\w-]{11})/) || [])[1];
@@ -1947,6 +1964,9 @@ async function playChannel(list, i) {
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
 async function playMatchChannel(other) {
+  if (NEXTM) { if (!ILIST.length && !IFAV.length) { listsAt = 0; await loadLists(); } const r = matchRoute(NEXTM);
+    if (r && r.c) return other && TV.external ? TV.external((await resolveChannel(r.c)).url) : playChannel(r.pool || [r.c], 0);
+    if (r && r.app) return TV.open(r.app.pkg); }
   const rule = NEXTM && TVRULES.find(r => r[0].test(NEXTM.league?.name || ''));
   if (!rule) return show('matches');
   if (!ILIST.length && !IFAV.length) { listsAt = 0; await loadLists(); }
@@ -2273,7 +2293,28 @@ function isArabChannel(name) {
 
 
 const TOKC = new Map();
-const chToks = n => { let t = TOKC.get(n); if (!t) { t = channelTokens(String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/[أإآ]/g, 'ا')); TOKC.set(n, t); } return t; };
+// a country tag in a broadcaster's name — «Sport TV2 (Por)», «FUBO TV (USA)», «DAZN 1 (Ger)» — as a country code
+const TAGCC = { por: 'pt', portugal: 'pt', usa: 'us', us: 'us', esp: 'es', spain: 'es', bra: 'br', brazil: 'br', ger: 'de', germany: 'de', fr: 'fr', fra: 'fr', france: 'fr', tur: 'tr', den: 'dk', rus: 'ru', mex: 'mx', ita: 'it', ned: 'nl', uk: 'gb', arg: 'ar', japan: 'jp', norway: 'no', colombia: 'co', romania: 'ro', poland: 'pl', greece: 'gr', afr: 'za' };
+const GENERIC = new Set(['sport', 'tv', 'one', 'max', 'plus', 'live', 'play', 'go', 'now', 'channel', 'hd']);
+function chToks(n) {
+  let t = TOKC.get(n); if (t) return t;
+  const raw = String(n || ''), tag = (raw.match(/[\(\[]\s*([A-Za-zÀ-ÿ-]{2,12})\s*[\)\]]/) || raw.match(/\b(Japan|Norway|Colombia|Romania|Poland|Spain|Portugal|Brazil|Germany|France)\b/i) || [])[1];
+  t = { w: channelTokens(raw.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/\b(Japan|Norway|Colombia|Romania|Poland|Afrique|Africa)\b/gi, ' ').replace(/[أإآ]/g, 'ا')), cc: (tag && TAGCC[tag.toLowerCase()]) || '', app: /\+|\bapp\b|تطبيق|connect|\bgo\b|\bnow\b|play\b|plus/i.test(raw) };
+  TOKC.set(n, t); return t;
+}
+/** is this channel of the lists the broadcaster named? The same words exactly (nothing more, nothing less), the same number,
+ *  and — when the broadcaster names a country, or its name is only generic words («Sport TV 2») — the same country. */
+function sameChannel(want, c) {
+  const a = chToks(want), b = chToks(c.name); if (!a.w.length || !b.w.length || a.app) return 0;
+  const wa = a.w.filter(t => !isNum(t)), wb = b.w.filter(t => !isNum(t));
+  if (wa.length !== wb.length || wa.some(t => !wb.includes(t))) return 0;
+  const na = a.w.filter(isNum).join(','), nb = b.w.filter(isNum).join(',');
+  if (na !== nb && !(na === '' && nb === '1')) return 0;
+  const cc = ccOf(c) || c.cc || '', generic = wa.every(t => GENERIC.has(t));
+  if (a.cc && cc && a.cc !== cc) return 0;
+  if (generic && !(a.cc && cc === a.cc)) return 0;
+  return 100 - (na === nb ? 0 : 15);
+}
 /** the channels of a match: the league's rights + the sources (365Scores' Middle-East list for it, the feed's own) */
 const chRank = n => isArabChannel(n) ? 0 : /\b(usa|us)\b|fubo|espn|fox|cbs|nbc|paramount|peacock/i.test(n) ? 1 : /\b(esp|spain)\b|movistar|dazn \(spain\)|la ?liga tv/i.test(n) ? 2 : /\b(por|bra)\b|sport tv|globo|premiere|sportv|eleven/i.test(n) ? 3 : 4;
 const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); const all = l.concat((m.channels || []).filter(c => !l.includes(c))); return all.map((c, i) => [chRank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); } catch (e) { return m.channels || []; } };
@@ -2310,10 +2351,9 @@ function matchRoute(m) {
   const names = mChannels(m), pools = [...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
   let best = null, bs = 0;
   for (const want of names) {
-    const wt = chToks(want); if (!wt.length) continue;
     for (const c of pools) {
       if (!c || !c.name || /geo-blocked/i.test(c.name)) continue;
-      let sc = tokenScore(wt, chToks(c.name)); if (!sc) continue;
+      let sc = sameChannel(want, c); if (!sc) continue;
       if (c.st === 'ok' || (typeof isOk === 'function' && isOk(c))) sc += 30; else if (c.st === 'bad') sc -= 40;
       if (sc > bs) { bs = sc; best = { label: c.name, c, want }; }
     }
