@@ -2018,7 +2018,7 @@ function liveUi() {
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
 // [name, the league's Arabic name, its Arabic broadcaster, who, the broadcasters abroad (a channel → true)]
-const FOREIGN = (re, cc) => c => re.test(c.name) && (!cc || cc.includes(c.cc));
+const FOREIGN = (re, cc) => c => re.test(c.name) && (!cc || !c.cc || cc.includes(c.cc));   // a channel whose country the list doesn't say still counts
 const SKY_IT = FOREIGN(/sky sport(?!s)(?! ?(f1|golf|tennis|news|arena|motogp|nba|max))/i, ['it']), SKY_DE = FOREIGN(/sky sport(?!s)(?! ?(f1|golf|tennis|news|austria))/i, ['de', 'at', '']);
 const BIG5 = [
   ['الإنجليزي', /الإنجليزي/, /\bbein\b(?! ?(movies|drama|series|gourmet|jeem|baraem))/i, 'beIN SPORTS',
@@ -2095,10 +2095,11 @@ function big5Ui() {
   B5LIST = []; B5F = [];
   const keep = filtOn() ? passFilt : () => true;   // the channel filters (quality, HDR, bit depth, codec, works) cover these lists too
   for (const c of [...IFAV, ...ILIST]) if (rules.some(r => r[2].test(c.name)) && !/geo-blocked/i.test(c.name) && !seen.has(c.url)) { seen.add(c.url); if (keep(c)) B5LIST.push(c); }
-  for (const c of [...(SPORTS?.list || []), ...ILIST.filter(x => x.cc)]) if (!seen.has(c.url) && rules.some(r => r[4].some(f => f(c)))) { seen.add(c.url); if (keep(c)) B5F.push(c); }
+  for (const c of [...ILIST.filter(x => !isArabChannel(x.name)), ...(typeof GSP !== 'undefined' ? GSP : []), ...(SPORTS?.list || [])]) if (c && c.url && !seen.has(c.url) && !isArabChannel(c.name) && rules.some(r => r[4].some(f => f(c)))) { seen.add(c.url); if (keep(c)) B5F.push(c); }   // Free-TV / own lists, tv.garden's checked ones, then the world's sports list
+  B5F.sort((a, b) => (SCAN[b.url] ? 1 : 0) - (SCAN[a.url] ? 1 : 0));   // those the scan found working first
   const apps = APPS.filter(a => rules.some(r => r[2].test(a.label) || r[2].test(a.pkg) || a.label.includes(r[3].split(' ')[0])));
   const who = [...new Set(rules.map(r => r[3]))].join(' · ');
-  B5LIST = B5LIST.concat(B5F.map(c => ({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }))).slice(0, 160); B5F = [];
+  B5LIST = B5LIST.slice(0, 60).concat(B5F.map(c => ({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }))).slice(0, 260); B5F = [];   // the region's carriers, then room for the foreign ones
   $('#s-b5').innerHTML = B5LIST.map((c, i) => ichHtml(c, i, 'b5')).join('')
     + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
     || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم ولا تطبيقها على التلفزيون</div>`;
@@ -2623,10 +2624,18 @@ const TOKC = new Map();
 // a country tag in a broadcaster's name — «Sport TV2 (Por)», «FUBO TV (USA)», «DAZN 1 (Ger)» — as a country code
 const TAGCC = { por: 'pt', portugal: 'pt', usa: 'us', us: 'us', esp: 'es', spain: 'es', bra: 'br', brazil: 'br', ger: 'de', germany: 'de', fr: 'fr', fra: 'fr', france: 'fr', tur: 'tr', den: 'dk', rus: 'ru', mex: 'mx', ita: 'it', ned: 'nl', uk: 'gb', arg: 'ar', japan: 'jp', norway: 'no', colombia: 'co', romania: 'ro', poland: 'pl', greece: 'gr', afr: 'za' };
 const GENERIC = new Set(['sport', 'tv', 'one', 'max', 'plus', 'live', 'play', 'go', 'now', 'channel', 'hd']);
+// a country named in a channel's name (any place in it): «ESPN Latin America Colombia», «beIN SPORTS 1 Qatar», «Fox Sports Argentina»
+const CCW = { japan: 'jp', norway: 'no', colombia: 'co', romania: 'ro', poland: 'pl', polska: 'pl', spain: 'es', espana: 'es', portugal: 'pt', brazil: 'br', brasil: 'br', germany: 'de', deutschland: 'de', france: 'fr', italy: 'it', italia: 'it',
+  qatar: 'qa', mena: 'qa', saudi: 'sa', ksa: 'sa', uae: 'ae', emirates: 'ae', oman: 'om', kuwait: 'kw', bahrain: 'bh', egypt: 'eg', mexico: 'mx', argentina: 'ar', chile: 'cl', peru: 'pe', ecuador: 'ec', uruguay: 'uy', usa: 'us', canada: 'ca',
+  turkey: 'tr', turkiye: 'tr', netherlands: 'nl', belgium: 'be', greece: 'gr', bulgaria: 'bg', czechia: 'cz', hungary: 'hu', serbia: 'rs', croatia: 'hr', russia: 'ru', australia: 'au', india: 'in', africa: 'za', afrique: 'za', 'united kingdom': 'gb', 'united states': 'us', 'south africa': 'za' };
+const CCWRE = new RegExp('\\b(' + Object.keys(CCW).sort((a, b) => b.length - a.length).join('|') + ')\\b', 'gi');
+// words that name a feed, not the channel: «Latin America», «HD», «International», «Arabia»…
+const FILLW = /\b(latin(o|oamerica)?|america|latam|south|norte|north|international|intl|arabia|arabic|en espanol|fhd|uhd|hd|sd|4k|hevc|feed|live)\b/gi;
 function chToks(n) {
   let t = TOKC.get(n); if (t) return t;
-  const raw = String(n || ''), tag = (raw.match(/[\(\[]\s*([A-Za-zÀ-ÿ-]{2,12})\s*[\)\]]/) || raw.match(/\b(Japan|Norway|Colombia|Romania|Poland|Spain|Portugal|Brazil|Germany|France)\b/i) || [])[1];
-  t = { w: channelTokens(raw.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/\b(Japan|Norway|Colombia|Romania|Poland|Afrique|Africa)\b/gi, ' ').replace(/[أإآ]/g, 'ا')), cc: (tag && (TAGCC[tag.toLowerCase()] || (/^[a-z]{2}$/i.test(tag) && !/^(hd|sd|tv|uk|4k)$/i.test(tag) ? tag.toLowerCase() : ''))) || '', app: /\+|\bapp\b|تطبيق|connect|\bgo\b|\bnow\b|play\b|plus/i.test(raw) };
+  const raw = String(n || ''), plain = raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
+    tag = (raw.match(/[\(\[]\s*([A-Za-zÀ-ÿ-]{2,12})\s*[\)\]]/) || [])[1] || (plain.match(CCWRE) || [])[0];
+  t = { w: channelTokens(plain.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(CCWRE, ' ').replace(FILLW, ' ').replace(/[أإآ]/g, 'ا')), cc: (tag && (TAGCC[tag.toLowerCase()] || CCW[tag.toLowerCase()] || (/^[a-z]{2}$/i.test(tag) && !/^(hd|sd|tv|uk|4k)$/i.test(tag) ? tag.toLowerCase() : ''))) || '', app: /\+|\bapp\b|تطبيق|connect|\bgo\b|\bnow\b|play\b|plus/i.test(raw) };
   TOKC.set(n, t); return t;
 }
 /** is this channel of the lists the broadcaster named? The same words exactly (nothing more, nothing less), the same number,
@@ -2637,7 +2646,7 @@ function sameChannel(want, c) {
   if (wa.length !== wb.length || wa.some(t => !wb.includes(t))) return 0;
   const na = a.w.filter(isNum).join(','), nb = b.w.filter(isNum).join(',');
   if (na !== nb && !(na === '' && nb === '1')) return 0;
-  const cc = ccOf(c) || c.cc || '', generic = wa.every(t => GENERIC.has(t));
+  const cc = b.cc || ccOf(c) || c.cc || '', generic = wa.every(t => GENERIC.has(t));   // the country its own name says first
   if (a.cc && cc && a.cc !== cc) return 0;
   if (generic && !(a.cc && cc === a.cc)) return 0;
   return 100 - (na === nb ? 0 : 15);
