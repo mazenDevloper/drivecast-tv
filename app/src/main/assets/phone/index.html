@@ -93,7 +93,7 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
   <div class="row" style="flex-wrap:wrap"><button data-ib="p0">الفجر</button><button data-ib="p1">الظهر</button><button data-ib="p2">العصر</button><button data-ib="p3">المغرب</button><button data-ib="p4">العشاء</button><button data-ib="am">أذكار الصباح</button><button data-ib="pm">أذكار المساء</button><button data-ib="wird">الورد</button></div>
   <label>📂 قائمة قنوات خاصة — ارفع ملف M3U من جوالك (ينحفظ في السحابة) أو الصق رابطها</label>
   <input type="file" id="m3uFile" accept=".m3u,.m3u8,.txt,audio/x-mpegurl,application/vnd.apple.mpegurl" style="margin:6px 0;color:var(--dim)">
-  <div class="row"><input id="m3u" type="url" inputmode="url" placeholder="https://…/list.m3u" style="flex:1;min-width:0"><button id="m3uGo">أضف</button></div>
+  <div class="row"><input id="m3u" type="url" inputmode="url" placeholder="https://…/list.m3u" style="flex:1;min-width:0"><button id="m3uOpen">📺 افتح</button><button id="m3uGo">أضف</button></div>
 </section>
 
 <section id="b" class="hide">
@@ -211,6 +211,7 @@ $('m3uFile').onchange = async e => {
     $('s').textContent = `☁️ انحفظت في السحابة (${r.channels} قناة) وانضافت للتلفزيون`;
   } catch (x) { $('s').textContent = 'ما انرفع — تأكد من الإنترنت'; }
 };
+$('m3uOpen').onclick = () => { const u = $('m3u').value.trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { $('s').textContent = 'اكتب رابط يبدأ بـ http'; return; } post('/m3uopen', u); $('s').textContent = '📺 انفتحت على التلفزيون — تصفّحها وفلترها هناك (ما تنحفظ إلا إذا ضغطت «أضف»)'; };
 $('m3uGo').onclick = () => { const u = $('m3u').value.trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { $('s').textContent = 'اكتب رابط يبدأ بـ http'; return; } post('/m3u', u); $('m3u').value = ''; $('s').textContent = '📂 انضافت القائمة — افتح تاب القنوات على التلفزيون'; };
 document.querySelectorAll('[data-adhan]').forEach(b => b.onclick = () => { post('/adhan', b.dataset.adhan); $('s').textContent = b.dataset.adhan === 'stop' ? 'وقف' : 'يشتغل على التلفزيون… أول مرة ياخذ ثواني لين ينزل الصوت'; });
 fetch('/phrase').then(r => r.text()).then(t => { $('ph').value = t; }).catch(() => {});

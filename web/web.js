@@ -200,19 +200,20 @@
     const c = new AbortController(), to = setTimeout(() => c.abort(), 12000);
     try {
       const r = await fetch('https://studio.c-p.workers.dev/tv?u=' + encodeURIComponent(u), { signal: c.signal });
+      if (r.status === 403) return null;   // the relay turned this page away (another address than the web version's): not known, not dead
       if (!r.ok) return 0;
       if (/mpegurl/i.test(r.headers.get('content-type') || '')) { const t = await r.text(); return t.trimStart().startsWith('#EXTM3U') ? Object.assign(hlsInfo(t), { ok: 1 }) : 0; }
       c.abort(); return { ok: 1 };   // a video / audio stream answered: it works (not downloaded)
     } catch (e) { return 0; } finally { clearTimeout(to); }
   }
-  function scanStart(urlsJson) {
+  function scanStart(urlsJson, force) {
     if (SCN.running) return false;
     let urls = []; try { urls = JSON.parse(urlsJson) || []; } catch (e) {}
-    const todo = urls.filter(u => !(u in SCN.r));   // the full scan once; then only the new ones
+    const todo = force ? [...new Set(urls)] : urls.filter(u => !(u in SCN.r));   // the full scan once; then only the new ones (🩺 the manual scan: all again)
     if (!todo.length) return false;
     SCN.running = true; SCN.done = 0; SCN.total = todo.length;
     let k = 0;
-    const worker = async () => { while (k < todo.length) { const u = todo[k++]; SCN.r[u] = await scanOne(u); if (++SCN.done % 20 === 0) scanSave(); } };
+    const worker = async () => { while (k < todo.length) { const u = todo[k++]; const v = await scanOne(u); if (v !== null) SCN.r[u] = v; else delete SCN.r[u]; if (++SCN.done % 20 === 0) scanSave(); } };
     Promise.all(Array.from({ length: 6 }, worker)).then(() => { SCN.running = false; SCN.t = Date.now(); scanSave(); });
     return true;
   }
@@ -248,7 +249,7 @@
     webInfo: () => JSON.stringify({ pin: L.pin, online: !!(L.open && L.tv && L.okd), url: location.href.split('?')[0].split('#')[0] }),
     webNewPin: () => { send('webNewPin', [], 'فكّيت ربط كل المتصفحات — اربط من جديد من البيت'); return ''; },
     lastProblem: () => '',
-    scanStart: (j, force) => scanStart(j),
+    scanStart: (j, force) => scanStart(j, force),
     scanState: () => JSON.stringify({ t: SCN.t, running: SCN.running, done: SCN.done, total: SCN.total, r: SCN.r }),
   };
 

@@ -157,6 +157,12 @@ public class MessageServer extends Service {
         } else if (first.startsWith("POST /ibada")) {   // the phone ticks one of the day's worship items
             String k = body.trim();
             if (k.matches("p[0-4]|am|pm|wird")) main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.onIbada && onIbada('" + k + "')"); });
+        } else if (first.startsWith("POST /m3uopen")) {   // the phone opens a channel list on the TV, to browse and filter (not kept)
+            String u = body.trim();
+            if (u.matches("https?://\\S{6,600}")) {
+                String js = "window.onM3uOpen && onM3uOpen(" + org.json.JSONObject.quote(u) + ")";
+                main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run(js); });
+            }
         } else if (first.startsWith("POST /m3u")) {   // the phone adds a channel list of the owner's (an M3U address) to the Channels tab
             String u = body.trim();
             if (u.matches("https?://\\S{6,600}")) {
