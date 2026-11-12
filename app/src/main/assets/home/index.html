@@ -1476,7 +1476,9 @@ function m3uAdd(u) {
   m3uUi(); listsAt = 0; loadLists();
 }
 function m3uDel(u) {
-  if (/\/hub\/m3u\?.*&id=/.test(u)) fetch(u.replace(/&id=([^&]+)/, '&del=$1'), { method: 'POST' }).catch(() => {});   // a cloud list: gone from the cloud too setPref('m3u', m3uList().filter(x => x !== u).join('\n')); delete M3UN[u]; m3uUi(); listsAt = 0; loadLists(); }
+  if (/\/hub\/m3u\?.*&id=/.test(u)) fetch(u.replace(/&id=([^&]+)/, '&del=$1'), { method: 'POST' }).catch(() => {});   // a cloud list: gone from the cloud too
+  setPref('m3u', m3uList().filter(x => x !== u).join('\n')); delete M3UN[u]; m3uUi(); listsAt = 0; loadLists();
+}
 window.onM3u = () => { loadSet(); m3uUi(); listsAt = 0; loadLists(); };
 // 📅 the guide, to browse: the channels you use (pinned, most watched, favourites, the ones that work) that have a guide,
 // the next six hours of each in a row, each programme as wide as it lasts. ⏰ reminders: a minute before, an alert
