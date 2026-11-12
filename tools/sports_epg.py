@@ -59,6 +59,16 @@ def names_in(title, n):   # the side's name in a programme title: its whole name
     w = sorted(words(n), key=len, reverse=True)
     return 1 if w and len(w[0]) >= 5 and (' ' + w[0] + ' ') in t else 0
 
+def arn(s):   # an Arabic name, plain: no diacritics, one alef, ه for ة, ي for ى, without «ال»
+    s = re.sub(r'[\u064B-\u065F\u0670\u0640]', '', s or '')
+    s = re.sub('[أإآ]', 'ا', s).replace('ة', 'ه').replace('ى', 'ي')
+    return ' '.join(w[2:] if w.startswith('ال') and len(w) > 4 else w for w in re.findall(r'[\u0621-\u064A0-9]+', s))
+def ar_in(title, n):
+    t, f = ' ' + arn(title) + ' ', arn(n)
+    if f and ' ' + f + ' ' in t: return 2
+    w = sorted(f.split(), key=len, reverse=True)
+    return 1 if w and len(w[0]) >= 4 and ' ' + w[0] + ' ' in t else 0
+
 def main(out):
     now = time.time(); lo, hi = now - 3 * 3600, now + 36 * 3600
     chans, progs, seen = [], [], {}              # channels [name, logo, cc] · programmes (channel index, start, stop, title)
@@ -79,8 +89,8 @@ def main(out):
                 if k is not None:
                     a, b = when(el.get('start')), when(el.get('stop'))
                     if b > lo and a < hi:
-                        ti = ' '.join((x.text or '') for x in el.findall('title')[:1])
-                        if MATCH.search(ti): progs.append((k, a, b, ti.strip()[:120]))
+                        ti = ' | '.join((x.text or '').strip() for x in el.findall('title'))   # every language's title (beIN's is Arabic first)
+                        if MATCH.search(ti): progs.append((k, a, b, ti.strip()[:240]))
                 el.clear()
         print(f'  {len(ids):4d} sports channels  {len(progs) - n0:5d} matches  {f}', flush=True)
     # the matches of today and tomorrow, in English and Arabic
@@ -98,12 +108,12 @@ def main(out):
     by_time = sorted(progs, key=lambda p: p[1])
     for gid, g in games.items():
         if 'en' not in g or 'ar' not in g or not g['t']: continue
-        (h, a), t = g['en'], g['t']
+        (h, a), (ah, aa), t = g['en'], g['ar'], g['t']
         hit = []
         for k, s, e, ti in by_time:
             if s > t + 1200: break
             if s < t - 5400 or e < t + 1800: continue   # a channel's live coverage starts up to 90 minutes before (the studio)
-            sc = names_in(ti, h) + names_in(ti, a)
+            sc = max(names_in(ti, h), ar_in(ti, ah)) + max(names_in(ti, a), ar_in(ti, aa))
             if sc >= 2 and k not in hit: hit.append(k)
         if not hit: continue
         idx = [used.setdefault(k, len(used)) for k in hit[:12]]
