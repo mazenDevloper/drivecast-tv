@@ -32,7 +32,7 @@ def when(s):
     return t
 def nice(n, cid):   # some guides name channels by an internal id («4k_DIGITAL_Mono_AR»): the id's readable part then
     if cid.endswith('.bein'):   # beIN MENA's guide (the channels of TOD, Al Kass among them)
-        b = cid[:-5]; m = re.search(r'beIN[_-]SPORTS[_-]?(MAX[_-]?)?0?(\d+)', b, re.I)
+        b = cid[:-5]; m = re.search(r'beIN[_-]?SPORTS[_-]?(MAX[_-]?)?0?(\d+)', b, re.I)
         if m: return 'beIN SPORTS ' + ('MAX ' if m.group(1) else '') + m.group(2) + (' English' if 'ENGLISH' in b else ' French' if 'FRENCH' in b else '')
         m = re.search(r'Alkass[_-]?(\d+)', b, re.I)
         if m: return 'Alkass ' + m.group(1)
