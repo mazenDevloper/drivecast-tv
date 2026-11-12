@@ -70,7 +70,7 @@ def extra(guide, lo, hi, out):
                         ts = el.findall('title')
                         ar = next((x.text for x in ts if (x.get('lang') or '').lower().startswith('ar') and x.text), None)
                         t = arabic((ar or (ts[0].text if ts else '') or '').strip())
-                        if t: guide.setdefault(i, {})[a] = [a, b, t[:70]]; n += 1
+                        if t: ic = el.find('icon'); guide.setdefault(i, {})[a] = [a, b, t[:70], ic.get('src', '') if ic is not None else '']; n += 1
                 el.clear()
         print(f'  {n:6d}  {f} (by name: {len(ids)} channels{", clock %+d h" % (sh // 3600) if sh else ""})', flush=True)
     return names
@@ -101,7 +101,7 @@ def main(out):
                             ts = el.findall('title')
                             ar = next((x.text for x in ts if (x.get('lang') or '').lower().startswith('ar') and x.text), None)
                             t = arabic((ar or (ts[0].text if ts else '') or '').strip())
-                            if t: guide.setdefault(want[k], {})[a] = [a, b, t[:70]]; n += 1
+                            if t: ic = el.find('icon'); guide.setdefault(want[k], {})[a] = [a, b, t[:70], ic.get('src', '') if ic is not None else '']; n += 1
                     el.clear()
                 elif el.tag == 'channel':
                     k = norm(el.get('id'))
@@ -119,6 +119,7 @@ def main(out):
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
         rows = [r for r in rows if r[1] > now - 600][:MAX_PER]
+        rows = [r if k < 3 and len(r) > 3 and r[3] and len(r[3]) < 300 else r[:3] for k, r in enumerate(rows)]   # the programme's picture: the next three only (the file stays small)
         if rows: c[i] = rows
     json.dump({'t': int(now), 'c': c, 'n': {k: v for k, v in names.items() if v in c}}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os
