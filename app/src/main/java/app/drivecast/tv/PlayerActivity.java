@@ -270,9 +270,18 @@ public class PlayerActivity extends Activity {
         root.addView(ticker, tkp); ticker.setVisibility(View.GONE); Scan.paused = true;   // the daily scan waits while a channel plays
         setContentView(root);
 
-        meter = new DefaultBandwidthMeter.Builder(this).build();
+        // 🎞️ smooth and sharp: the first guess of the line is fast (so a channel starts at its top quality), the buffer is deep
+        // (60 s ahead, 3 s to start, 6 s after a stall), the quality goes up after 3 s of room and down only after 25 s of a weak line.
+        // Setting «pq» = max: the top quality always (never lower).
+        boolean pqMax = "max".equals(Access.set(this).getString("pq", "smart"));
+        meter = new DefaultBandwidthMeter.Builder(this).setInitialBitrateEstimate(25_000_000L).build();
+        androidx.media3.exoplayer.trackselection.DefaultTrackSelector sel = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this,
+                new androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(3_000, 25_000, 25_000, 0.8f));
+        sel.setParameters(sel.buildUponParameters().setForceHighestSupportedBitrate(pqMax).setExceedVideoConstraintsIfNecessary(true).setExceedRendererCapabilitiesIfNecessary(false));
+        androidx.media3.exoplayer.DefaultLoadControl load = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(30_000, 60_000, 3_000, 6_000).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(10_000, true).build();
         http = new androidx.media3.datasource.DefaultHttpDataSource.Factory().setUserAgent(HomeActivity.BROWSER).setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
-        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter)
+        player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).setTrackSelector(sel).setLoadControl(load)
                 .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
         player.addListener(new Player.Listener() {
@@ -582,7 +591,8 @@ public class PlayerActivity extends Activity {
         java.util.Map<String, String> hd = new java.util.HashMap<>(); String site = HomeActivity.siteOf(urls[i]);
         if (site != null) { hd.put("Referer", site + "/"); hd.put("Origin", site); }
         http.setDefaultRequestProperties(hd);
-        player.setMediaItem(MediaItem.fromUri(urls[i])); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+        // a live channel plays ~20 s behind its edge (where the CDN allows): room in the buffer for the line's hiccups
+        player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private void fill() { try { progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
         if (player == null) return;

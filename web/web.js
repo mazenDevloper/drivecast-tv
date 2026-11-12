@@ -137,7 +137,12 @@
         if (isHls && !v.canPlayType('application/vnd.apple.mpegurl')) {
           try {
             await hlsReady(); if (my !== p.n) return;
-            const h = p.hls = new Hls({ manifestLoadingTimeOut: 12000, fragLoadingTimeOut: 20000 });
+            // 🎞️ smooth and sharp: a deep buffer, a live point further back, the top quality first; down only on a weak line
+            // (the TV's setting «pq» = max: the top quality always)
+            const pqMax = (prefs().pq || 'smart') === 'max';
+            const h = p.hls = new Hls({ manifestLoadingTimeOut: 12000, fragLoadingTimeOut: 20000, maxBufferLength: 45, maxMaxBufferLength: 90, backBufferLength: 20,
+              liveSyncDurationCount: 5, liveMaxLatencyDurationCount: 12, abrEwmaDefaultEstimate: 25e6, abrBandWidthFactor: 0.85, abrBandWidthUpFactor: 0.75, capLevelToPlayerSize: false, startFragPrefetch: true });
+            h.on(Hls.Events.MANIFEST_PARSED, () => { const top = h.levels.length - 1; if (top < 0) return; h.startLevel = top; if (pqMax) { h.autoLevelCapping = -1; h.currentLevel = top; } });
             h.loadSource(src); h.attachMedia(v);
             h.on(Hls.Events.ERROR, (e, d) => { if (!d.fatal || p.hls !== h) return; if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !h.rec) { h.rec = 1; return h.recoverMediaError(); } h.destroy(); p.hls = null; next(); });
           } catch (e) { v.src = src; }

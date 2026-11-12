@@ -411,6 +411,7 @@ body.ambient .phrase.on{display:block}
 .ri.on{background:rgba(255,255,255,.10);color:var(--ink);border-color:rgba(255,255,255,.18)}
 .ri.f:focus{transform:none;background:var(--ink);color:var(--bg);box-shadow:0 0 0 3px var(--accent)}
 .ri[hidden]{display:none}
+.m3urow{display:inline-flex;gap:8px;align-items:center}.m3ux{padding:0 20px;color:#ff8a8a}
 .scanri{margin-top:10px;border-color:rgba(61,220,151,.35)}
 .scanmsg{flex-basis:100%;font-size:19px;color:#9fe3b4;margin:2px 6px 0}
 #p-iptv .ipanes{flex:1;min-width:0;height:930px}
@@ -511,7 +512,7 @@ body.ambient .phrase.on{display:block}
       <div class="shelf ifilt" id="s-ifilt"></div>
       <div class="ibrowse"><div class="glist" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div></div></div>
     <div class="ipane" id="m3uvwrap"><h2>🔗 افتح رابط M3U <small style="font-size:18px;font-weight:400;opacity:.6">· تصفّح أي قائمة وفلترها بدون ما تنحفظ · الأسهل: الصق الرابط في صفحة الجوال ← «افتح على التلفزيون»</small></h2>
-      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uvIn" type="url" placeholder="https://…/list.m3u" style="flex:1;min-width:480px;margin:8px 0" autocomplete="off"><button class="chip f" data-act="m3uv-open">▶ افتح</button><button class="chip f" data-act="m3uv-save" id="m3uvSave" hidden>➕ أضفها لقوائمي</button></div>
+      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uvIn" type="url" placeholder="https://…/list.m3u" style="flex:1;min-width:480px;margin:8px 0" autocomplete="off"><button class="chip f" data-act="m3uv-open">▶ افتح</button><button class="chip f" data-act="m3uv-save" id="m3uvSave">➕ أضف لقوائمي</button><button class="chip f" data-act="m3uv-scan" id="m3uvScan" hidden>🩺 افحص هذي القائمة</button></div>
       <div class="shelf" id="m3uvRecent" style="flex-wrap:wrap"></div>
       <div class="empty" id="m3uvSay"></div>
       <div id="m3uvBody" hidden><input class="f bin" id="m3uvQ" type="search" placeholder="🔍 فلتر باسم القناة…" autocomplete="off"><div class="shelf ifilt" id="m3uvFilt"></div>
@@ -1519,7 +1520,7 @@ async function m3uUpload(f) {
 document.addEventListener('change', e => { if (e.target && e.target.id === 'm3uFileIn') { m3uUpload(e.target.files[0]); e.target.value = ''; } });   // address → how many channels it gave
 function m3uUi() {
   const l = m3uList(), box = $('#s-m3u'); if (!box) return;
-  box.innerHTML = l.map((u, i) => `<button class="chip f" data-act="m3u-del" data-u="${esc(u)}" title="احذف">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : '📂 ' + esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;✕</button>`).join('');
+  box.innerHTML = l.map((u, i) => `<span class="m3urow"><button class="chip f" data-m3uv="${esc(u)}" title="افتح وتصفّح">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : '📂 ' + esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;▶</button><button class="chip f m3ux" data-act="m3u-del" data-u="${esc(u)}" title="احذف القائمة">✕</button></span>`).join('');
   const n = $('#m3un'); if (n) n.textContent = l.length ? `· ${AR(l.length)} قائمة — قنواتها تحت «كل القنوات» في مجموعة «📂 قائمتي»` : '· أضف رابط قائمتك وتنضاف قنواتها مع الفحص والمصادر الاحتياطية';
 }
 function m3uAdd(u) {
@@ -1636,6 +1637,16 @@ function scanLine() {
   if (SCANMAN === 2) { const n = scanCount(); return `✅ خلص الفحص: 🟢 ${AR(n.ok)} شغّالة · 🔴 ${AR(n.bad)} ما ترد${FILT.ok ? ' (مخفية — شيل «تعمل فقط» تشوفها)' : ''}`; }
   return window.__scanSay || '';
 }
+function scanList(list, what) {
+  if (!window.TV || !TV.scanStart || TV === FAKE) { $('#m3uvSay').textContent = 'الفحص يشتغل على التلفزيون أو في نسخة الويب'; return; }
+  const urls = [...new Set(list.map(c => c && c.url).filter(u => /^https?:/i.test(u || '') && !/youtube\.com|youtu\.be/i.test(u)))].slice(0, 5000);
+  if (!urls.length) return;
+  const went = TV.scanStart(JSON.stringify(urls), true);
+  SCANQ = went ? null : urls; SCANMAN = 1; SCANST = { running: true, done: 0, total: urls.length };
+  window.__scanSay = went ? `⏳ أفحص ${what}: ${AR(urls.length)} قناة` : '⏳ فيه فحص شغّال — فحص القائمة يبدأ أول ما يخلص';
+  $('#m3uvSay').textContent = window.__scanSay + ' — النقاط الخضرا والحمرا تطلع على القنوات أول بأول';
+  filtUi(); setTimeout(scanPoll, 1500);
+}
 function m3uvRedraw() { if (M3UV.all.length) m3uvUi(); }
 function scanAll() {
   if (!window.TV || !TV.scanStart || TV === FAKE) { window.__scanSay = 'الفحص يشتغل على التلفزيون أو في نسخة الويب'; return filtUi(); }
@@ -1653,8 +1664,9 @@ async function scanPoll() {
   if (!window.TV || !TV.scanState || TV === FAKE) return;
   try {
     const s = JSON.parse(TV.scanState()); SCAN = s.r || {}; SCANT = s.t || 0; SCANST = s; markScan(); filtUi();
+    if (SCANMAN === 1 && M3UV.all.length && IPANE === 'm3uvwrap') { const a = document.activeElement, sel = a && a.dataset && a.dataset.ilist === 'm3uv' ? `[data-ilist="m3uv"][data-i="${a.dataset.i}"]` : null; m3uvUi(); if (sel) $(sel)?.focus({ preventScroll: true }); const sy = $('#m3uvSay'); if (sy && s.running) sy.textContent = scanLine(); }
     if (!s.running && SCANQ) { const q = SCANQ; SCANQ = null; if (TV.scanStart(JSON.stringify(q), true)) { window.__scanSay = `⏳ بدأ الفحص الكامل: ${AR(q.length)} قناة`; SCANST = { running: true, done: 0, total: q.length }; filtUi(); return setTimeout(scanPoll, 2000); } }
-    if (!s.running && SCANMAN === 1) { SCANMAN = 2; iptvUi(); m3uvRedraw(); filtUi(); }
+    if (!s.running && SCANMAN === 1) { SCANMAN = 2; iptvUi(); m3uvRedraw(); filtUi(); const sy = $('#m3uvSay'); if (sy && M3UV.all.length) { const ok = M3UV.all.filter(c => { const v = SCAN[c.url]; return v === 1 || (v && typeof v === 'object'); }).length, bad = M3UV.all.filter(c => SCAN[c.url] === 0).length; sy.textContent = `✅ خلص الفحص: 🟢 ${AR(ok)} شغّالة · 🔴 ${AR(bad)} ما ترد في هذي القائمة — «✅ تعمل فقط» يخفي الميتة`; } }
     if (s.running) setTimeout(scanPoll, SCANMAN === 1 ? 2000 : 4000); else { if (scanNext()) return setTimeout(scanPoll, 4000); if (filtOn()) { iptvUi(); big5Ui(); } }
     if (!window.__isearch) { window.__isearch = 1; const q = $('#s-isearch'); if (q) q.addEventListener('input', () => { clearTimeout(window.__qt); window.__qt = setTimeout(() => { FILT.q = q.value; iptvUi(); }, 350); }); }
   } catch (e) { }
@@ -2814,6 +2826,7 @@ function sections() {
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
     ['📺', 'القنوات والمشغّل', [
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
+      { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
       { k: 'pip', l: '📺 صورة داخل صورة (Home والقناة شغّالة → تكمل في الزاوية)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
@@ -3298,6 +3311,7 @@ window.onTvBack = () => {   // Back inside a list → the side menu first
 const M3UV = { url: '', all: [], shown: [], group: 'all', q: '', f: {}, lim: 300 };
 const AR_CC = ['sa', 'ae', 'qa', 'kw', 'om', 'bh', 'eg', 'jo', 'lb', 'iq', 'sy', 'ma', 'dz', 'tn', 'ly', 'sd', 'ye', 'ps'];
 const M3UV_F = [
+  ['ok', '✅ تعمل فقط', c => { const v = SCAN[c.url]; return v !== 0; }],
   ['ar', 'عربي', c => /[؀-ۿ]/.test(c.name + c.group) || /arab|عرب/i.test(c.group) || AR_CC.includes(c.cc) || /^(ar|arabic)[\s:|-]/i.test(c.name + ' ' + c.group)],
   ['sport', 'رياضة', c => /sport|رياض|bein|ssc|kass|كأس|كاس|football|koora|كور/i.test(c.name + ' ' + c.group)],
   ['news', 'أخبار', c => /news|أخبار|اخبار|جزيرة|العربية|jazeera|arabiya|sky ?news/i.test(c.name + ' ' + c.group)],
@@ -3320,11 +3334,12 @@ async function m3uvOpen(u) {
   if (!l.length) { say(t ? 'هذا الرابط مو قائمة M3U، أو ما فيها قنوات' : 'ما قدرت أفتح الرابط — تأكد منه ومن الإنترنت'); return; }
   Object.assign(M3UV, { url: u, all: l, group: 'all', q: '', f: {}, lim: 300 }); $('#m3uvQ').value = ''; window.__mgk = '';
   try { localStorage.setItem('m3uvRecent', JSON.stringify([u, ...m3uvRecent().filter(x => x !== u)].slice(0, 8))); } catch (e) {}
-  $('#m3uvSave').hidden = m3uList().includes(u); $('#m3uvBody').hidden = false;
+  m3uvSaveUi(); $('#m3uvScan').hidden = false; $('#m3uvBody').hidden = false;
   say(`✅ ${AR(l.length)} قناة في ${AR(new Set(l.map(c => c.group)).size)} مجموعة — ◀▶ بين المجموعات والقنوات · OK يشغّل · ▲▼ في المشغّل للقناة اللي بعدها`);
   m3uvRecentUi(); m3uvUi(); iRailUi();
   setTimeout(() => { const n = $('#m3uvList .f') || $('#m3uvQ'); n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'center' }); }, 50);
 }
+function m3uvSaveUi(u) { const b = $('#m3uvSave'); if (!b) return; const on = m3uList().includes(u || M3UV.url); b.textContent = on ? '✓ محفوظة في قوائمي' : '➕ أضف لقوائمي'; b.classList.toggle('on', on); }
 function m3uvUi() {
   const A = M3UV.all, q = arNorm(M3UV.q), fs = M3UV_F.filter(x => M3UV.f[x[0]]);
   const base = A.filter(c => fs.every(x => x[2](c)) && (!q || arNorm(c.name + ' ' + c.group).includes(q)));
@@ -3349,7 +3364,8 @@ document.addEventListener('click', e => {
   if (b.classList.contains('ri') && b.closest('#iRail')) return iEnter(b);
   if (b.dataset.m3uv) return m3uvOpen(b.dataset.m3uv);
   if (b.dataset.act === 'm3uv-open') return m3uvOpen($('#m3uvIn').value);
-  if (b.dataset.act === 'm3uv-save') { m3uAdd(M3UV.url); b.hidden = true; $('#m3uvSay').textContent = '➕ انضافت لقوائمك — قنواتها في «كل القنوات» ← «📂 قائمتي»'; m3uvRecentUi(); return; }
+  if (b.dataset.act === 'm3uv-save') { const u = M3UV.url || $('#m3uvIn').value.trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { $('#m3uvSay').textContent = 'الصق رابط القائمة أول (يبدأ بـ http)'; return; } if (m3uList().includes(u)) return; m3uAdd(u); m3uvSaveUi(u); $('#m3uvSay').textContent = '➕ انضافت لقوائمك — قنواتها في «كل القنوات» ← «📂 قائمتي»، وتنفحص مع الكل'; m3uvRecentUi(); return; }
+  if (b.dataset.act === 'm3uv-scan') return scanList(M3UV.all, 'هذي القائمة');
   if (b.dataset.act === 'm3uv-more') { const k = M3UV.lim; M3UV.lim += 300; m3uvUi(); $(`[data-ilist="m3uv"][data-i="${k}"]`)?.focus(); return; }
   if (b.dataset.mvf) { M3UV.f[b.dataset.mvf] = !M3UV.f[b.dataset.mvf]; M3UV.lim = 300; m3uvUi(); $(`[data-mvf="${b.dataset.mvf}"]`)?.focus(); return; }
   if (b.dataset.mg != null) { M3UV.group = b.dataset.mg; m3uvUi(); const n = $('#m3uvList .f'); if (n) n.focus(); return; }
@@ -3415,11 +3431,12 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-12c', NEWS_ROWS = [
+const NEWS = '2026-11-12d', NEWS_ROWS = [
   ['📺', 'تاب القنوات من جديد: القوائم في عمود على اليمين — ▲▼ تبدّل القائمة فوراً، ◀ تدخلها، Back يرجّعك للعمود'],
   ['🗂️', 'المجموعات في عمود جنب القنوات: وقّف على مجموعة وتطلع قنواتها بدون OK'],
   ['🔍', 'البحث يدوّر في كل القنوات والمجموعات، وما يفرّق بين أ و ا ولا ة و ه'],
   ['🔗', 'افتح أي رابط M3U وتصفّحه: مجموعات، فلتر بالاسم، عربي · رياضة · أخبار · أفلام · أطفال · HD — ومن الجوال: «📺 افتح»'],
+  ['🎞️', 'القنوات تبدأ بأعلى جودة، مع مخزون أكبر ضد التقطيع — والإعدادات: «أعلى جودة دايماً»'],
   ['🩺', 'زر «افحص كل القنوات» آخر العمود: يفحص كل القنوات من جديد الحين ويعطيك العدد — الميتة تختفي بفلتر «تعمل فقط»'],
 ];
 function newsMaybe() {

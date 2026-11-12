@@ -30,7 +30,7 @@ public class Scan {
         SharedPreferences p = sp(app);
         final boolean fresh = !force && System.currentTimeMillis() - p.getLong("t", 0) < 23L * 3600_000;
         final JSONObject res = new JSONObject();
-        if (fresh) { try { JSONObject old = new JSONObject(p.getString("r", "{}")); java.util.Iterator<String> it = old.keys(); while (it.hasNext()) { String k = it.next(); res.put(k, old.get(k)); } } catch (Exception ignored) { } }
+        { try { JSONObject old = new JSONObject(p.getString("r", "{}"));   // the results kept: a forced scan of some channels replaces only theirs java.util.Iterator<String> it = old.keys(); while (it.hasNext()) { String k = it.next(); res.put(k, old.get(k)); } } catch (Exception ignored) { } }
         final List<String> urls = new ArrayList<>();
         try {
             JSONArray a = new JSONArray(urlsJson);
