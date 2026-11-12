@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['tools/epg.py', 'tools/sports_epg.py', '.github/workflows/epg.yml']
+    paths: ['tools/epg.py', 'tools/sports_epg.py', 'tools/k4.py', '.github/workflows/epg.yml']
 permissions:
   contents: write
 concurrency: epg
@@ -20,8 +20,9 @@ jobs:
         run: |
           mkdir out && { python3 tools/sports_epg.py out/sports.json || echo '::warning::sports guide failed'; }
           python3 tools/epg.py out/epg.json
+          { sudo apt-get -qq install -y ffmpeg >/dev/null && python3 tools/k4.py out/k4.json; } || echo '::warning::4K list failed'
       - name: Publish
         run: |
-          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json)
+          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json) $(test -f k4.json && echo k4.json) $(test -f tr.json && echo tr.json)
           git -c user.name=guide -c user.email=guide@users.noreply.github.com commit -qm "guide $(date -u +%FT%RZ)"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" epg

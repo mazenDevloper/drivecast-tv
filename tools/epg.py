@@ -75,6 +75,42 @@ def extra(guide, lo, hi, out):
         print(f'  {n:6d}  {f} (by name: {len(ids)} channels{", clock %+d h" % (sh // 3600) if sh else ""})', flush=True)
     return names
 
+# 🌐 the titles in Arabic: a guide that writes no Arabic title gets one by machine translation (Google's free endpoint), for
+# the programmes the TV shows most (the next six of each channel). Translations are kept in tr.json beside the guide, so each
+# title is translated once; names that don't translate (a match «A vs B» does: «A × B») come back as they were.
+TR_URL = 'https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/tr.json'
+AR = re.compile('[\u0600-\u06FF]')
+def translate(c, out):
+    import os, urllib.parse
+    try: tr = json.loads(get(TR_URL, 60).read().decode('utf-8'))
+    except Exception: tr = {}
+    want = []
+    for rows in c.values():
+        for r in rows[:6]:
+            t = r[2]
+            if t and not AR.search(t) and re.search('[A-Za-z]{3}', t) and t not in tr and t not in want: want.append(t)
+    done, i = 0, 0
+    while i < len(want) and done < 9000:
+        batch, size = [], 0
+        while i < len(want) and size + len(want[i]) < 3500 and len(batch) < 60: batch.append(want[i]); size += len(want[i]) + 1; i += 1
+        try:
+            q = urllib.parse.urlencode({'client': 'gtx', 'sl': 'auto', 'tl': 'ar', 'dt': 't', 'q': '\n'.join(batch)})
+            d = json.loads(get('https://translate.googleapis.com/translate_a/single?' + q, 30).read().decode('utf-8'))
+            got = ''.join(x[0] for x in d[0] if x[0]).split('\n')
+            if len(got) == len(batch):
+                for a, b in zip(batch, got): tr[a] = b.strip()[:70]; done += 1
+        except Exception as e:
+            print('  translate:', e, flush=True); time.sleep(5)
+        time.sleep(0.4)
+    n = 0
+    for rows in c.values():
+        for r in rows:
+            t = tr.get(r[2])
+            if t and AR.search(t): r[2] = t; n += 1
+    if len(tr) > 40000: tr = dict(list(tr.items())[-40000:])
+    json.dump(tr, open(os.path.join(os.path.dirname(out), 'tr.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    print(f'🌐 {done} new titles translated, {n} programmes shown in Arabic ({len(tr)} kept)', flush=True)
+
 def main(out):
     pl = get(PLAYLIST).read().decode('utf-8', 'replace')
     head = pl.split('\n', 1)[0]
@@ -121,6 +157,7 @@ def main(out):
         rows = [r for r in rows if r[1] > now - 600][:MAX_PER]
         rows = [r if k < 3 and len(r) > 3 and r[3] and len(r[3]) < 300 else r[:3] for k, r in enumerate(rows)]   # the programme's picture: the next three only (the file stays small)
         if rows: c[i] = rows
+    translate(c, out)
     json.dump({'t': int(now), 'c': c, 'n': {k: v for k, v in names.items() if v in c}}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os
     print(f'{len(c)} channels have a guide ({seen_files}/{len(sources)} files read) → {os.path.getsize(out) // 1024} KB')
