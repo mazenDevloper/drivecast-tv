@@ -458,6 +458,16 @@ public class HomeActivity extends Activity {
         public String updFail() { String f = getSharedPreferences("upd", MODE_PRIVATE).getString("fail", ""); getSharedPreferences("upd", MODE_PRIVATE).edit().remove("fail").apply(); return f; }
         /** an app's page in the TV's store (Google Play), else on the web */
         @JavascriptInterface
+        public void setTicker(String t) { PlayerActivity.TICKER = t == null ? "" : t.length() > 600 ? t.substring(0, 600) : t; }
+
+        /** the launcher's alert over a playing channel: true when a channel is playing (the alert went there) */
+        @JavascriptInterface
+        public boolean playerAlert(String t) {
+            if (PlayerActivity.live == null) return false;
+            runOnUiThread(() -> PlayerActivity.offer(t)); return true;
+        }
+
+        @JavascriptInterface
         public String watchStats() { return PlayerActivity.stats(HomeActivity.this); }
 
         /** an app's page in the TV's store, by a search */

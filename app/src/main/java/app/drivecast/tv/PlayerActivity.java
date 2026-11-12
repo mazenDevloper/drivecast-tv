@@ -57,6 +57,23 @@ public class PlayerActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
     static PlayerActivity live;
+    // ---- ⚽ the launcher's live scores (sent by its page every minute): MENU / GUIDE shows them along the bottom for a while
+    static volatile String TICKER = "";
+    private TextView ticker;
+    private final Runnable tickerHide = () -> { if (ticker != null) ticker.animate().alpha(0f).setDuration(300).withEndAction(() -> ticker.setVisibility(View.GONE)); };
+    private void tickerShow() {
+        if (ticker == null) return;
+        String t = TICKER == null || TICKER.isEmpty() ? "⚽ ما فيه مباريات مباشرة الحين" : TICKER;
+        ticker.setText(t); ticker.setSelected(true); ticker.setAlpha(0f); ticker.setVisibility(View.VISIBLE); ticker.animate().alpha(1f).setDuration(250);
+        h.removeCallbacks(tickerHide); h.postDelayed(tickerHide, 12000);
+    }
+    // ---- ⏰ «a match of yours starts»: the launcher's alert over the channel; OK within 25 s plays it
+    private static long offerUntil;
+    static void offer(String text) {
+        PlayerActivity p = live; if (p == null) return;
+        offerUntil = System.currentTimeMillis() + 25000;
+        p.setNote(text + "  ·  OK يشغّلها"); p.showBar(25000);
+    }
     // ---- 🔥 what is watched: minutes per channel (and per part of the day), kept on the TV — the launcher's «الأكثر مشاهدة»
     private long since; private String sinceName;
     static int part() { int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); return h >= 5 && h < 12 ? 0 : h < 17 && h >= 12 ? 1 : h >= 17 && h < 22 ? 2 : 3; }
@@ -244,7 +261,13 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root); Scan.paused = true;   // the daily scan waits while a channel plays
+        buildBar(root); buildList(root);
+        ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+        ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
+        GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);
+        ticker.setPadding((int) dp(18), (int) dp(8), (int) dp(18), (int) dp(8));
+        FrameLayout.LayoutParams tkp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP); tkp.setMargins((int) dp(60), (int) dp(22), (int) dp(220), 0);
+        root.addView(ticker, tkp); ticker.setVisibility(View.GONE); Scan.paused = true;   // the daily scan waits while a channel plays
         setContentView(root);
 
         meter = new DefaultBandwidthMeter.Builder(this).build();
@@ -795,6 +818,11 @@ public class PlayerActivity extends Activity {
             h.removeCallbacks(jump); h.postDelayed(jump, 1500); return true;
         }
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
+        if (ok && System.currentTimeMillis() < offerUntil) {
+            offerUntil = 0; setNote(null);
+            HomeActivity hm = HomeActivity.alive; if (hm != null) hm.run("window.playOffer && playOffer()");
+            return true;
+        }
         if (ok && e.getRepeatCount() == 8) { openOtherPlayer(); return true; }   // OK held ≈ ½ s: another player
         if (ok && e.getRepeatCount() > 0) return true;
         if (ok && offered) { openOtherPlayer(); return true; }
@@ -822,7 +850,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_LAST_CHANNEL: recall(); return true;
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: case KeyEvent.KEYCODE_PROG_YELLOW: nextAudio(); return true;
             case KeyEvent.KEYCODE_MEDIA_STOP: finish(); return true;
-            case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); return true;
+            case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: case KeyEvent.KEYCODE_PROG_GREEN: case KeyEvent.KEYCODE_PROG_RED: fill(); showBar(12000); tickerShow(); return true;
             default: break;
         }
         if (ok && urls.length > 1) { h.removeCallbacks(hide); hide.run(); listShow(true); return true; }   // OK: the list alone

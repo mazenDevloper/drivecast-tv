@@ -23,6 +23,18 @@ def when(s):   # 20261111180000 +0300 → epoch seconds
     if tz: t -= (1 if tz[0] == '+' else -1) * (int(tz[1:3]) * 3600 + int(tz[3:5]) * 60)
     return t
 
+# generic English titles of the guides, in Arabic (a programme's own name stays as it is)
+GLOSS = [(r'^(the )?news$|^news (bulletin|update)$|^headlines$', 'نشرة الأخبار'), (r'^live$|^live:? ', 'مباشر: '), (r'^movie$|^film$', 'فيلم'), (r'^documentary$', 'وثائقي'),
+  (r'^(sports? )?news$', 'أخبار الرياضة'), (r'^weather$', 'النشرة الجوية'), (r'^cartoons?$', 'رسوم متحركة'), (r'^series$', 'مسلسل'), (r'^talk show$', 'برنامج حواري'),
+  (r'^quran$|^holy quran$', 'القرآن الكريم'), (r'^(friday )?prayer$', 'الصلاة'), (r'^highlights$', 'ملخصات'), (r'^football$', 'كرة القدم'), (r'^replay$', 'إعادة'), (r'^to be announced$|^tba$|^tbc$', 'يُعلن لاحقاً'),
+  (r'^closedown$|^off air$', 'توقف البث'), (r'^music$', 'موسيقى'), (r'^kids$', 'أطفال'), (r'^cooking$', 'طبخ')]
+def arabic(t):
+    for pat, ar in GLOSS:
+        if re.search(pat, t, re.I):
+            return re.sub(pat, ar, t, flags=re.I).strip() if ar.endswith(': ') else ar
+    t = re.sub(r'\bLive\b:?', 'مباشر:', t)
+    t = re.sub(r'\s+vs?\.?\s+', ' × ', t)
+    return t
 norm = lambda s: re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
 def main(out):
@@ -48,7 +60,9 @@ def main(out):
                     if k in want:
                         a, b = when(el.get('start')), when(el.get('stop'))
                         if b > lo and a < hi:
-                            t = (el.findtext('title') or '').strip()
+                            ts = el.findall('title')
+                            ar = next((x.text for x in ts if (x.get('lang') or '').lower().startswith('ar') and x.text), None)
+                            t = arabic((ar or (ts[0].text if ts else '') or '').strip())
                             if t: guide.setdefault(want[k], {})[a] = [a, b, t[:70]]; n += 1
                     el.clear()
                 elif el.tag == 'channel':
