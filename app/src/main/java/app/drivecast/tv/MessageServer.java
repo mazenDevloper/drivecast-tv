@@ -76,18 +76,29 @@ public class MessageServer extends Service {
         return null;
     }
 
+    static volatile boolean serving;
+    /** each phone request on its own thread (a slow one — the reciters, a big board — no longer holds up the remote's keys),
+     *  and the port bound again if it's lost (the Wi-Fi reconnecting, the server socket closed by the system) */
+    private final java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(6);
     private void serve() {
-        try {
-            server = new ServerSocket(PORT);
-            while (true) {
-                try (Socket s = server.accept()) {
-                    s.setSoTimeout(15000);
-                    handle(s);
-                } catch (Exception ignored) {
+        while (true) {
+            try {
+                server = new ServerSocket();
+                server.setReuseAddress(true);
+                server.bind(new java.net.InetSocketAddress(PORT));
+                serving = true;
+                while (!server.isClosed()) {
+                    final Socket s = server.accept();
+                    pool.execute(() -> {
+                        try (Socket c = s) { c.setSoTimeout(15000); c.setTcpNoDelay(true); handle(c); } catch (Exception ignored) {}
+                    });
                 }
+            } catch (Exception e) {
+                serving = false;
+                Crash.note(this, "phone server: " + e);
+                try { if (server != null) server.close(); } catch (Exception ignored) {}
+                try { Thread.sleep(3000); } catch (InterruptedException ie) { return; }
             }
-        } catch (Exception ignored) {
-            // Port taken (a second start): the first server keeps running.
         }
     }
 
@@ -100,7 +111,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
-            else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + "}");
+            else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
             else if (first.startsWith("GET /adhan-log")) { android.content.SharedPreferences ap = getSharedPreferences("pset", MODE_PRIVATE); reply(s.getOutputStream(), "text/plain", "next " + ap.getString("next", "-") + "\n" + ap.getString("log", "")); }   // the adhan's last events (the test)

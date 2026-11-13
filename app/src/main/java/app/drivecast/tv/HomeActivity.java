@@ -119,9 +119,27 @@ public class HomeActivity extends Activity {
         if (web != null && level >= TRIM_MEMORY_RUNNING_LOW) web.evaluateJavascript("window.onTvLowMemory && onTvLowMemory()", null);
     }
 
+    /** the TV's address on the home network: the Wi-Fi's, or the cable's (Ethernet) when the TV isn't on Wi-Fi */
+    static String lanIp() {
+        try {
+            for (java.net.NetworkInterface n : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!n.isUp() || n.isLoopback() || n.isVirtual()) continue;
+                String nm = n.getName();
+                if (!(nm.startsWith("wlan") || nm.startsWith("eth") || nm.startsWith("en") || nm.startsWith("wl"))) continue;
+                for (java.net.InetAddress ad : java.util.Collections.list(n.getInetAddresses()))
+                    if (ad instanceof java.net.Inet4Address && ad.isSiteLocalAddress()) return ad.getHostAddress();
+            }
+            for (java.net.NetworkInterface n : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces()))
+                if (n.isUp() && !n.isLoopback()) for (java.net.InetAddress ad : java.util.Collections.list(n.getInetAddresses()))
+                    if (ad instanceof java.net.Inet4Address && ad.isSiteLocalAddress()) return ad.getHostAddress();
+        } catch (Exception ignored) {}
+        return "";
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        MessageServer.start(this);   // the phone remote's server: back if the system stopped it while the TV slept
         front = this;
         alive = this;
         if (web == null) makeWeb();
@@ -290,11 +308,8 @@ public class HomeActivity extends Activity {
         /** the phone page's address, http://<tv-ip>:8080 */
         @JavascriptInterface
         public String phoneUrl() {
-            try {
-                int ip = ((WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE)).getConnectionInfo().getIpAddress();
-                if (ip == 0) return "";
-                return String.format(Locale.US, "http://%d.%d.%d.%d:%d", ip & 255, (ip >> 8) & 255, (ip >> 16) & 255, (ip >> 24) & 255, MessageServer.PORT);
-            } catch (Exception e) { return ""; }
+            String a = lanIp();
+            return a.isEmpty() ? "" : "http://" + a + ":" + MessageServer.PORT;
         }
 
         /** a YouTube channel (the subscriptions from DriveCast) */
