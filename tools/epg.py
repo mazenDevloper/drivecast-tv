@@ -125,6 +125,43 @@ SHAHID = [
     (409390, 'SpacetoonArabic.ae', ['Spacetoon', 'سبيستون']), (995495, 'SaudiThaqafiyaTV.sa', ['Al Thaqafiya', 'الثقافية']), (946945, 'ThikrayatTV.sa', ['Thikrayat', 'ذكريات']),
     (975435, 'BabAlHara.sa', ['Bab Al Hara', 'باب الحارة']), (988045, 'Maraya.sa', ['Maraya', 'مرايا']), (862837, 'AsharqNews.sa', ['Asharq News', 'الشرق']),
 ]
+# 🇴🇲 Oman's channels from AYN (ayn.om, Oman TV's own platform): each channel's schedule page — the days from today, each
+# programme's Muscat time — and the pictures of its recent programmes (the catch-up row on the same page) matched by title.
+AYN = [(158, 'OmanTV.om', ['Oman TV', 'Oman TV General', 'عمان', 'عُمان', 'قناة عمان العامة', 'عمان العامة']),
+       (161, 'OmanTVMubashir.om', ['Oman TV Mubashir', 'Oman Mubashir', 'Oman TV Live', 'Oman TV Mubasher', 'عمان مباشر', 'عُمان مباشر']),
+       (159, 'OmanSports.om', ['Oman Sports', 'Oman TV Sports', 'Oman Sport TV', 'عمان الرياضية', 'عُمان الرياضية']),
+       (160, 'OmanCultural.om', ['Oman Cultural', 'Oman TV Cultural', 'Oman TV Culture', 'عمان الثقافية', 'عُمان الثقافية'])]
+def ayn(guide, lo, hi):
+    from datetime import datetime, timedelta, timezone
+    MCT = timezone(timedelta(hours=4))
+    names, n = {}, 0
+    base = lambda s: re.sub(r'\s*[-–/]\s*(ج\s*\d+|الحلقة\s*\d+).*$', '', re.sub(r'^(برنامج|المسلسل العماني|المسلسل الكرتوني)\s*[-–/]?\s*', '', s)).strip()
+    for cid, gid, nm in AYN:
+        try: h = get(f'https://ayn.om/schedule/{cid}', 60).read().decode('utf-8', 'ignore')
+        except Exception as e: print(f'  ayn {gid}: {e}', flush=True); continue
+        pics = {}
+        for img, alt in re.findall(r'data-src="(https://[^"]+\.jpg)"\s+alt="([^"]+)"', h):
+            pics.setdefault(base(alt), img)
+        b0 = h[h.find('epg_bottom_sec'):]
+        day0 = datetime.now(MCT).replace(hour=0, minute=0, second=0, microsecond=0)
+        mine, rows = {}, []
+        for d, part in enumerate(b0.split('class="epg_timeline_box')[1:8]):
+            for title, tm in re.findall(r'title="([^"]*)"[^>]*>\s*<div class="epg_item_box">\s*<div class="title">\s*<h2>[^<]*</h2>\s*<p>([^<]*)</p>', part):
+                m = re.match(r'(\d{1,2}):(\d{2})(?:\s*-\s*(\d{1,2}):(\d{2}))?', tm.strip())
+                if not m: continue
+                a = int((day0 + timedelta(days=d, hours=int(m.group(1)), minutes=int(m.group(2)))).timestamp())
+                rows.append([a, title.strip()])
+        rows.sort()
+        for k, (a, t) in enumerate(rows):
+            b = rows[k + 1][0] if k + 1 < len(rows) else a + 1800
+            if not t or 'لا يوجد جدول' in t or b <= lo or a >= hi or b <= a: continue
+            mine[a] = [a, b, t[:70], pics.get(base(t), '')]
+        if mine:
+            guide[gid] = mine; n += len(mine)
+            for x in nm: names.setdefault(x, gid)
+    print(f'  {n:6d}  AYN (Oman TV, in Arabic)', flush=True)
+    return names
+
 def shahid(guide, lo, hi):
     from datetime import datetime, timezone
     names, n = {}, 0
@@ -192,7 +229,7 @@ def main(out):
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
     names = extra(guide, lo, hi, out)
-    sh = shahid(guide, lo, hi); names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
+    sh = {**shahid(guide, lo, hi), **ayn(guide, lo, hi)}; names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
