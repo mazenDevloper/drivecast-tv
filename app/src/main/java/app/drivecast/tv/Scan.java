@@ -20,6 +20,8 @@ public class Scan {
     private static final AtomicInteger done = new AtomicInteger(), total = new AtomicInteger();
     private static volatile boolean running = false;
     static volatile boolean paused = false;
+    /** the user is moving around the home: the scan waits till the arrows rest (it held the network and the UI's thread) */
+    static volatile long holdUntil = 0;
 
     private static SharedPreferences sp(Context c) { return c.getSharedPreferences("scan", Context.MODE_PRIVATE); }
 
@@ -44,7 +46,7 @@ public class Scan {
         new Thread(() -> {
             ExecutorService pool = Executors.newFixedThreadPool(4);   // gentle on the home network: 4 at a time (10 filled some routers, and the TV felt offline)
             for (final String u : urls) pool.execute(() -> {
-                while (paused) { try { Thread.sleep(1000); } catch (InterruptedException e) { return; } }
+                while (paused || System.currentTimeMillis() < holdUntil) { try { Thread.sleep(500); } catch (InterruptedException e) { return; } }
                 boolean ok = false;
                 try { ok = works(u); } catch (Throwable ignored) { }
                 JSONObject inf = null;

@@ -294,6 +294,8 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
 .ichan.big .pnx{font-size:16px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big:focus{transform:scale(1.035)}
+.ichan.big.moving{outline:4px dashed #ffd60a;outline-offset:6px;transform:scale(1.06) translateY(-6px)!important}
+#liveNote{color:#ffd60a;font-size:20px;margin-inline-start:12px}
 .ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:auto!important;height:150px!important;min-width:150px;max-width:72%;object-fit:contain;z-index:0;background:#fff;border-radius:26px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 body.logo-clear .ichan.big .logo-big{background:none;padding:0;box-shadow:none;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
 .ichan.big .pnow,.ichan.big .pnx{position:relative;z-index:1}
@@ -508,7 +510,7 @@ body.ambient .phrase.on{display:block}
     </div>
     <div class="ibada" id="ibada"></div>
     <div id="shQuran"><div class="qhead"><h2>القرآن والأذكار</h2><form class="ytbar" id="ytBar" autocomplete="off"><input class="f" id="ytQ" type="search" enterkeyhint="search" placeholder="ابحث في يوتيوب…" aria-label="ابحث في يوتيوب"><button class="f" id="ytGo" type="submit" aria-label="ابحث">🔎</button></form></div><div class="shelf" id="s-quran"></div></div>
-    <div id="shLive"><h2>قنوات مباشرة</h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
+    <div id="shLive"><h2>قنوات مباشرة<span id="liveNote"></span></h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
   </div></section>
 
@@ -1686,13 +1688,21 @@ function attrText(c) {
   const v = SCAN[c.url]; if (!v || typeof v !== 'object') return '';
   return [QNAME(v.h), CNAME[v.c], v.b ? v.b + '-bit' : '', v.c || v.r ? (v.r || 'SDR') : '', v.f ? v.f + 'fps' : '', v.m ? v.m + ' Mbps' : ''].filter(Boolean).join(' · ');
 }
+// only the cards of the page on screen, and only those whose state changed (all of them, every few seconds, was the slowness)
 function markScan() {
-  document.querySelectorAll('.ichan[data-ilist]').forEach(b => {
+  const pg = document.querySelector('.page.on'); if (!pg) return;
+  pg.querySelectorAll('.ichan[data-ilist]').forEach(b => {
     const c = (listOf(b.dataset.ilist) || [])[+b.dataset.i]; if (!c) return;
-    b.classList.toggle('ok', isOk(c)); b.classList.toggle('bad', SCAN[c.url] === 0);
+    const v = SCAN[c.url], st = v === 0 ? 0 : isOk(c) ? 1 : 2, at = st === 1 && typeof v === 'object' ? v.h || 1 : st;
+    if (b.__st === at) return; b.__st = at;
+    b.classList.toggle('ok', st === 1); b.classList.toggle('bad', st === 0);
     const a = b.querySelector('.at'); if (a) a.textContent = attrText(c);
   });
 }
+// ⚡ the arrows first: while they're in use (and 6 s after) the scan waits and its results aren't read
+let LASTKEY = 0, HOLDAT = 0;
+document.addEventListener('keydown', () => { const t = Date.now(); LASTKEY = t; if (t - HOLDAT > 1500 && window.TV && TV.scanHold) { HOLDAT = t; try { TV.scanHold(6000); } catch (e) {} } }, true);
+const busyKeys = () => Date.now() - LASTKEY < 4000;
 // ---- filters (checkboxes) on the scan's findings + a name search
 const FILT = { ok: true, k4: false, fhd: false, hd: false, hdr: false, b10: false, avc: false, hevc: false, q: '' };
 const FILT_CHIPS = [['ok', '✅ تعمل فقط'], ['k4', '4K'], ['fhd', 'FHD ↑'], ['hd', 'HD ↑'], ['hdr', 'HDR'], ['b10', '10-bit'], ['avc', 'H.264'], ['hevc', 'HEVC']];
@@ -1751,12 +1761,13 @@ function scanAll() {
 }
 async function scanPoll() {
   if (!window.TV || !TV.scanState || TV === FAKE) return;
+  if (busyKeys() || document.body.classList.contains('playing')) return setTimeout(scanPoll, 5000);   // the arrows first
   try {
     const s = JSON.parse(TV.scanState()); SCAN = s.r || {}; SCANT = s.t || 0; SCANST = s; markScan(); filtUi();
     if (SCANMAN === 1 && M3UV.all.length && IPANE === 'm3uvwrap') { const a = document.activeElement, sel = a && a.dataset && a.dataset.ilist === 'm3uv' ? `[data-ilist="m3uv"][data-i="${a.dataset.i}"]` : null; m3uvUi(); if (sel) $(sel)?.focus({ preventScroll: true }); const sy = $('#m3uvSay'); if (sy && s.running) sy.textContent = scanLine(); }
     if (!s.running && SCANQ) { const q = SCANQ; SCANQ = null; if (TV.scanStart(JSON.stringify(q), true)) { window.__scanSay = `⏳ بدأ الفحص الكامل: ${AR(q.length)} قناة`; SCANST = { running: true, done: 0, total: q.length }; filtUi(); return setTimeout(scanPoll, 2000); } }
     if (!s.running && SCANMAN === 1) { SCANMAN = 2; iptvUi(); m3uvRedraw(); filtUi(); const sy = $('#m3uvSay'); if (sy && M3UV.all.length) { const ok = M3UV.all.filter(c => { const v = SCAN[c.url]; return v === 1 || (v && typeof v === 'object'); }).length, bad = M3UV.all.filter(c => SCAN[c.url] === 0).length; sy.textContent = `✅ خلص الفحص: 🟢 ${AR(ok)} شغّالة · 🔴 ${AR(bad)} ما ترد في هذي القائمة — «✅ تعمل فقط» يخفي الميتة`; } }
-    if (s.running) setTimeout(scanPoll, SCANMAN === 1 ? 2000 : 4000); else { if (scanNext()) return setTimeout(scanPoll, 4000); if (filtOn()) { iptvUi(); big5Ui(); } }
+    if (s.running) setTimeout(scanPoll, SCANMAN === 1 ? 4000 : 15000); else { if (scanNext()) return setTimeout(scanPoll, 4000); if (filtOn()) { iptvUi(); big5Ui(); } }
     if (!window.__isearch) { window.__isearch = 1; const q = $('#s-isearch'); if (q) q.addEventListener('input', () => { clearTimeout(window.__qt); window.__qt = setTimeout(() => { FILT.q = q.value; iptvUi(); }, 350); }); }
   } catch (e) { }
 }
@@ -1830,7 +1841,7 @@ function allChannels() {
     if (c.k4 && !h.k4) h.k4 = c.k4;
   };
   PINS.forEach(c => add(c, 'pin'));
-  DYNCH.forEach(c => c.st === 'ok' && add(c, 'spar'));
+  DYNCH.forEach(c => (c.st === 'ok' || c.st === 'yt') && add(c, 'spar'));   // those playing from YouTube too (beIN SPORTS News)
   ILIST.forEach(c => add(c, c.mine && 'mine'));
   (MYFAV || []).forEach(c => add(c, 'fav')); IFAV.forEach(c => add(c, 'fav'));
   MOST.forEach(c => add(c, 'most'));
@@ -1895,7 +1906,7 @@ const DYN = [
   ...KASSN.map((w, k) => [`الكأس ${k + 1}`, new RegExp(`al ?kass ?(${w}|${k + 1})\\b`, 'i'), () => kass(k + 1)]),
   ['الشارقة الرياضية', /sharjah sports?/i, () => []],
   ['إم بي سي أكشن', /mbc ?action/i, () => ['http://37.122.156.107:4000/play/a07h/index.m3u8']],
-  ['بي إن سبورت الإخبارية', null, null, 'beIN SPORTS News بث مباشر'],
+  ['بي إن سبورت الإخبارية', null, null, 'beIN SPORTS News بث مباشر', 'beIN SPORTS News'],
   ['ثمانية', null, null, 'ثمانية بث مباشر'],
 ];
 // Where these channels went (checked from GitHub's servers, 11 Nov 2026): Dubai Media closed its open streams (the mangomolo
@@ -1924,7 +1935,7 @@ function dynAppOld(c) {
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
 const DYN_YT = { 'أبوظبي': ['أبوظبي الرياضية بث مباشر', /أبوظبي الرياضية|abu ?dhabi sports|ad sports/i], 'دبي': ['دبي الرياضية بث مباشر', /دبي الرياضية|dubai sports/i], 'الكأس': ['قناة الكأس بث مباشر', /الكأس|al ?kass/i] };
 const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/categories/sports.m3u'];
-let DYNCH = DYN.map(([name, , , q]) => ({ name, url: q ? 'yt-search:' + q : 'dyn:' + name, logo: '', group: '⚡ رياضية متجددة', dyn: 1, st: q ? 'yt' : 'wait' }));
+let DYNCH = DYN.map(([name, , , q, en]) => ({ name, en, url: q ? 'yt-search:' + q : 'dyn:' + name, logo: '', group: '⚡ رياضية متجددة', dyn: 1, st: q ? 'yt' : 'wait' }));
 let DYNC = {}, dynAt = 0, dynBusy = false;
 /** does this address answer with a playlist now? (the TV asks with the channel's own site as Referer; a browser through DriveCast's server) */
 async function probe(u) {
@@ -2127,11 +2138,13 @@ const HOME_PICKS = [[/^(Al Quran Al Kareem|Saudi Quran|Quran Kareem)/i, /قرآ�
   [/^Oman Sports?/i, /oman sports?|عمان الرياضية/i], [/^MBC 1\b/i, /\bmbc ?1\b|mbc$/i], [/^MBC (Drama|4|Action)\b/i, /\bmbc ?(drama|4|action)\b/i], [/^Al Jazeera( \(|$)/i, /jazeera|الجزيرة/i]];
 const PICKS = [/^Oman TV\b/i, /^Oman TV Cultural/i, /^Oman TV Mubashir/i, /^Oman Sports?/i, /^MBC 1\b/i, /^MBC Drama/i, /^MBC 4\b/i, /^MBC 5\b/i, /^MBC Action/i, /^MBC Masr\b/i, /^Al Quran Al Kareem/i, /^Al Sunnah/i, /^Iqraa Quran/i, /^Al Jazeera( |$)/i, /^Al Arabiya( |$)/i, /^Dubai Sports/i, /^Abu Dhabi Sports/i, /^Sharjah Sports/i];
 // the home's cards follow the guide: redrawn each minute (the focus stays on the same card)
-function liveRefresh() {
+function liveRefresh(force) {
   if (!$('#p-home').classList.contains('on') || document.body.classList.contains('ambient')) return;
+  if (!force && (REORD || (typeof busyKeys === 'function' && busyKeys()))) return setTimeout(liveRefresh, 5000);   // never redraw under the arrows
   if (SERIES()) nowUi();
   const a = document.activeElement, i = a && a.dataset && a.dataset.ilist === 'live' ? a.dataset.i : null;
   $('#s-live').innerHTML = LIVE.map((c, k) => liveHtml(c, k)).join('') || $('#s-live').innerHTML;
+  if (REORD) { const b = $(`#s-live [data-i="${REORD.i}"]`); if (b) { b.classList.add('moving'); b.focus({ preventScroll: true }); b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } return; }
   if (i != null) $(`#s-live [data-i="${i}"]`)?.focus({ preventScroll: true });
 }
 setInterval(liveRefresh, 60e3);
@@ -2154,6 +2167,29 @@ function picksOf(res) {
 const seriesPicks = () => picksOf(SERIES_PICKS);
 // the home's channels always start with these four, then the pinned ones in the order they were pinned, then the rest
 const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^MBC ?4\b/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|القرآن الكريم)/i];
+// ↔ the home's channels in the user's own order: «رتّب» (long press on a channel) → ◀ ▶ move it, OK (or back) keeps the order
+const HORD = () => { try { return JSON.parse(localStorage.getItem('homeorder') || '[]'); } catch (e) { return []; } };
+let REORD = null;
+function reorderStart(i) {
+  REORD = { i }; document.body.classList.add('reorder');
+  const say = $('#liveNote'); if (say) say.textContent = '↔ ◀ ▶ حرّك القناة · OK للحفظ';
+  liveRefresh(true);
+}
+function reorderEnd() {
+  REORD = null; document.body.classList.remove('reorder');
+  try { localStorage.setItem('homeorder', JSON.stringify(LIVE.map(favKey))); } catch (e) {}
+  const say = $('#liveNote'); if (say) say.textContent = '';
+  liveRefresh(true);
+}
+document.addEventListener('keydown', e => {
+  if (!REORD) return;
+  const k = e.key; e.preventDefault(); e.stopImmediatePropagation();
+  if (k === 'Enter' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || k === 'BrowserBack') return reorderEnd();
+  if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
+  const rtl = getComputedStyle($('#s-live')).direction === 'rtl', d = (k === 'ArrowLeft') === rtl ? 1 : -1, i = REORD.i, j = i + d;
+  if (j < 0 || j >= LIVE.length) return;
+  [LIVE[i], LIVE[j]] = [LIVE[j], LIVE[i]]; REORD.i = j; liveRefresh(true);
+}, true);
 function liveUi() {
   const usable = c => !/geo-blocked|radio|\bFM\b/i.test(c.name);
   const picks = [];
@@ -2167,6 +2203,7 @@ function liveUi() {
   LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   const rest = SERIES() ? [...seriesPicks(), ...LIVE] : LIVE, head = [...picksOf(HOME_TOP), ...PINS], seen = new Set();
   LIVE = [...head, ...rest].filter(c => { const k = favKey(c); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
+  const ord = HORD(); if (ord.length) { const at = k => { const x = ord.indexOf(k); return x < 0 ? 1e4 : x; }; LIVE = LIVE.map((c, i) => [at(favKey(c)), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); }
   if (SERIES()) nowUi();
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
@@ -2547,7 +2584,7 @@ async function loadMatches() {
     if (!loadMatches.busy && MLIST.some(m => !MDET.has(m.id))) { loadMatches.busy = 1; try { if (!ILIST.length) { listsAt = 0; await loadLists(); } if (await mDetails(MLIST)) await loadMatches(); } finally { loadMatches.busy = 0; } }
   } catch (e) { box.innerHTML = '<div class="empty">لا اتصال بالإنترنت</div>'; }
 }
-setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'tom') loadMatches(); }, 60e3);
+setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'tom' && !busyKeys()) loadMatches(); }, 60e3);
 // ⏰ a match of the user's teams starts in 5 minutes: an alert over everything (the photo view, the launcher, a playing channel)
 let OFFER = null;
 async function matchAlerts() {
@@ -2830,7 +2867,7 @@ function bestFor(want, pools) {
   let best = null, bs = 0;
   for (const c of pools) {
     if (!c || !c.name || /geo-blocked/i.test(c.name)) continue;
-    let sc = sameChannel(want, c); if (!sc) continue;
+    let sc = sameChannel(want, c) || (c.en ? sameChannel(want, { ...c, name: c.en }) : 0); if (!sc) continue;
     if (c.star) sc += 60;
     if (c.st === 'ok' || (typeof isOk === 'function' && isOk(c))) sc += 30; else if (c.st === 'bad' || SCAN[c.url] === 0) sc -= 40;
     if (sc > bs) { bs = sc; best = c; }
@@ -2840,6 +2877,8 @@ function bestFor(want, pools) {
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
   const pools = MPOOLS(), v = mChannels(m).map(want => ({ want, c: bestFor(want, pools) }));
+  // 🌍 the two sides' local sports channels join the carriers (after the named ones)
+  for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   m.__lk = { t: Date.now(), v }; return v;
 }
 // 🌍 no named carrier found in the lists: the sports channels of the two sides' own countries, read from the lists as they are
@@ -3295,7 +3334,7 @@ function foldToggle(id, open) {
   OPEN[id] = on; try { localStorage.setItem('folds', JSON.stringify(OPEN)); } catch (e) {}
   foldCounts();
 }
-setTimeout(foldInit, 0); setInterval(foldCounts, 4000);
+setTimeout(foldInit, 0); setInterval(() => { if (!busyKeys()) foldCounts(); }, 8000);
 document.addEventListener('focusin', e => {   // the focus left an open list: it folds again (the page keeps the focused thing in view)
   const t = e.target; if (!t.closest || !t.closest('#p-iptv') || $('#ctx').classList.contains('on')) return;
   let shut = false;
@@ -3554,7 +3593,7 @@ function iRailUi() {
   const n = { pinwrap: PINS.length, mostwrap: MOST.length, favwrap: (MYFAV || []).length, dynwrap: DYNCH.filter(c => c.st === 'ok' || c.st === 'app').length, gspwrap: GSP.length, k4wrap: K4.length, allwrap: ILIST.length, m3uwrap: m3uList().length, m3uvwrap: M3UV.all.length };
   document.querySelectorAll('#iRail .ri[data-ipane]').forEach(r => { const k = r.dataset.ipane; if (r.dataset.need) r.hidden = !n[k] && document.activeElement !== r; const s = r.querySelector('small'); if (s) s.textContent = n[k] ? AR(n[k]) : ''; });
 }
-setInterval(iRailUi, 4000); setTimeout(() => { iPane(IPANE); iRailUi(); }, 0);
+setInterval(() => { if (!busyKeys() && $('#p-iptv').classList.contains('on')) iRailUi(); }, 8000); setTimeout(() => { iPane(IPANE); iRailUi(); }, 0);
 let IGT = null;
 document.addEventListener('focusin', e => iTrack(e.target));
 function iTrack(t) {   // (also called by move(): a WebView without window focus may not send focusin)
@@ -3702,11 +3741,14 @@ function ctxOpen(b) {
   CTX = { b, c, list, i: +b.dataset.i, match };
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
   const rows = match ? [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]
-    : [['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
+    : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)']] : []), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-13c', NEWS_ROWS = [
+const NEWS = '2026-11-13d', NEWS_ROWS = [
+  ['↔', 'رتّب قنوات الرئيسية: ضغطة مطوّلة على قناة ← «رتّب» ← ◀ ▶ ثم OK'],
+  ['⚡', 'التنقّل أسرع: الفحص والتحديثات تنتظر لين توقف الأسهم'],
+  ['🌍', 'المباريات: القنوات المحلية للفريقين وقنوات يوتيوب (مثل بي إن الإخبارية) صارت ضمن الناقلين'],
   ['⭐', 'قوائمي: النجمة جنب القائمة تخليها مصدر قنوات المباريات الأول'],
   ['🔗', 'المباريات: كل القنوات الناقلة تنربط بقنواتك (▶) مو وحدة بس، والمنصات مثل Red Bull ويوتيوب ما تنحسب قنوات'],
   ['📺', 'الرئيسية: MBC 1 ثم عُمان مباشر ثم MBC 4 ثم القرآن الكريم، بعدها المثبّتة بترتيب تثبيتها'],
@@ -3752,6 +3794,7 @@ async function ctxDo(k) {
   if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
+  if (k === 'reorder') return reorderStart(x.i);
   if (k === 'pin') { togglePin(x.c); iptvUi(); dynUi(); gspUi(true); favUi(); return; }
   if (k === 'fav') { toggleFav(x.c); if (x.b && document.body.contains(x.b)) x.b.classList.toggle('fav', isFav(x.c)); }
 }
@@ -3780,7 +3823,7 @@ $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml(
 homeLayout(); uiApply(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
-setInterval(tick, 20000); setInterval(loadMatches, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
+setInterval(tick, 20000); setInterval(() => { if (!busyKeys()) loadMatches(); }, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();
 // a TV that reports a smaller CSS width (720p / 1080p at a density): the 1920×1080 design scaled to fit

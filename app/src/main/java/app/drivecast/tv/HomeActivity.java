@@ -410,6 +410,10 @@ public class HomeActivity extends Activity {
         @JavascriptInterface
         public boolean scanStart(String urlsJson, boolean force) { return Scan.start(HomeActivity.this, urlsJson, force); }
 
+        /** the scan waits while the arrows are in use (ms from now) */
+        @JavascriptInterface
+        public void scanHold(int ms) { Scan.holdUntil = System.currentTimeMillis() + Math.max(0, Math.min(ms, 60000)); }
+
         /** {t, running, done, total, r: {url: 1|0}} */
         @JavascriptInterface
         public String scanState() { return Scan.state(HomeActivity.this); }
