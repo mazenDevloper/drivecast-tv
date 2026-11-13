@@ -59,7 +59,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 /* tvOS feel: the focused card lifts on a spring and catches the light (a glass sheen across it) */
 .f{transition:transform .38s cubic-bezier(.2,.9,.25,1.18),box-shadow .38s ease,background-color .25s}
 .ichan:focus,.chan:focus,.vid:focus,.app:focus,.chip:focus{background-image:linear-gradient(125deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 60%)}
-.ichan{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,22,30,.72);backdrop-filter:blur(18px) saturate(1.4);border-color:rgba(255,255,255,.14)}
+.ichan{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,22,30,.86);border-color:rgba(255,255,255,.14)}
 .tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
 .heroRow{display:flex;gap:28px;align-items:stretch}
 .hero{display:flex;flex-direction:column;gap:12px;width:1040px;flex:none;padding:22px 32px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
@@ -167,6 +167,11 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .nextm .tv img{height:24px;max-width:84px;object-fit:contain;border-radius:5px;background:#fff;padding:2px 4px}
 .nextm:focus .tv span{color:#111;border-color:#bbb}
 #homeScroll{display:flex;flex-direction:column;gap:20px}
+/* ⚡ the light look (on a TV by default): no frosted glass anywhere, no smooth-scroll animation — the moves answer at once */
+body.lite *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.lite .glass{background:rgba(18,26,34,.9)!important}
+body.lite .ichan,body.lite .f{transition-duration:.08s!important}
+.grid.ch>.ichan,.epgg>*{content-visibility:auto;contain-intrinsic-size:auto 120px}
 /* 📺 وضع المسلسلات: the channels and the apps right under the top row, the Quran and the day's worship after them */
 body.mode-series #homeScroll>.heroRow{order:0} body.mode-series #shLive{order:1} body.mode-series #shApps{order:2} body.mode-series #ibada{order:3} body.mode-series #shQuran{order:4}
 .nextm .nowch{display:flex;align-items:center;gap:18px;margin-top:8px}
@@ -519,17 +524,9 @@ body.ambient .phrase.on{display:block}
   </div></section>
   <section class="page" id="p-iptv"><div class="tvx">
     <nav class="irail" id="iRail">
-      <button class="f ri" data-ipane="search"><i>🔍</i><b>بحث</b><small></small></button>
-      <button class="f ri" data-ipane="pinwrap" data-need="pin"><i>📌</i><b>المثبّتة</b><small></small></button>
-      <button class="f ri" data-ipane="mostwrap" data-need="most"><i>🔥</i><b>الأكثر مشاهدة</b><small></small></button>
-      <button class="f ri" data-ipane="favwrap"><i>⭐</i><b>المفضّلة</b><small></small></button>
-      <button class="f ri" data-ipane="dynwrap"><i>⚡</i><b>رياضية متجددة</b><small></small></button>
-      <button class="f ri" data-ipane="gspwrap"><i>🏟️</i><b>كل الرياضية</b><small></small></button>
-      <button class="f ri" data-ipane="k4wrap" data-need="k4"><i>🔷</i><b>4K</b><small></small></button>
       <button class="f ri" data-ipane="allwrap"><i>📺</i><b>كل القنوات</b><small></small></button>
+      <button class="f ri" data-ipane="search"><i>🔍</i><b>بحث</b><small></small></button>
       <button class="f ri" data-ipane="epgwrap"><i>📅</i><b>دليل البرامج</b><small></small></button>
-      <button class="f ri" data-ipane="ytlwrap"><i>🔴</i><b>يوتيوب مباشر</b><small></small></button>
-      <button class="f ri" data-ipane="b5wrap"><i>⚽</i><b>الدوريات الخمس</b><small></small></button>
       <button class="f ri" data-ipane="m3uwrap"><i>📂</i><b>قوائمي M3U</b><small></small></button>
       <button class="f ri" data-ipane="m3uvwrap"><i>🔗</i><b>افتح رابط M3U</b><small></small></button>
       <button class="f ri scanri" data-act="scan-all"><i>🩺</i><b>افحص كل القنوات</b><small id="scanBadge"></small></button>
@@ -550,7 +547,7 @@ body.ambient .phrase.on{display:block}
     <div class="ipane" id="ytlwrap"><h2>🔴 مباشر الآن على يوتيوب — دوريات العالم</h2><div class="shelf" id="s-ytll"></div><div class="shelf" id="s-ytl" style="flex-wrap:wrap"><div class="empty">أدوّر على البث المباشر…</div></div></div>
     <div class="ipane" id="b5wrap"><h2>⚽ قنوات الدوريات الخمس الكبرى</h2><div class="shelf" id="s-b5l"></div><div class="shelf" id="s-b5" style="flex-wrap:wrap"></div><div class="shelf" id="s-b5f" hidden></div></div>
     <div hidden><h2>مفضّلتك في DriveCast</h2><div class="shelf" id="s-ifav" style="flex-wrap:wrap"></div></div>
-    <div class="ipane" id="allwrap"><h2>📺 كل القنوات <small style="font-size:18px;font-weight:400;opacity:.6">· ☆ للمفضّلة: مطوّلاً على OK</small></h2>
+    <div class="ipane" id="allwrap"><h2>📺 كل القنوات <small style="font-size:18px;font-weight:400;opacity:.6">· كل المصادر في مكان واحد: الرياضية والدوريات و4K ويوتيوب وقوائمك · ☆ للمفضّلة: مطوّلاً على OK</small></h2>
       <input class="f bin" id="s-isearch" type="search" placeholder="🔍 اكتب اسم القناة…" autocomplete="off">
       <div class="shelf ifilt" id="s-ifilt"></div>
       <div class="ibrowse"><div class="glist" id="s-igroups"></div><div class="grid ch" id="s-ilist"></div></div></div>
@@ -1700,7 +1697,7 @@ function passFilt(c) {
   const v = SCAN[c.url], o = v && typeof v === 'object' ? v : {};
   if (FILT.q.trim() && !arNorm(c.name + ' ' + (c.group || '')).includes(arNorm(FILT.q))) return false;
   if (FILT.ok && SCAN[c.url] === 0 && !c.dyn) return false;   // «تعمل»: what the scan found dead is hidden; not checked yet → still shown
-  if (FILT.k4 && !(o.h >= 2000)) return false;
+  if (FILT.k4 && !(o.h >= 2000 || c.k4 >= 2000)) return false;
   if (FILT.fhd && !(o.h >= 1000)) return false;
   if (FILT.hd && !(o.h >= 700)) return false;
   if (FILT.hdr && !/HDR|HLG|DV/.test(o.r || '')) return false;
@@ -1802,28 +1799,72 @@ function liveHtml(c, i) {
 }
 const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}${epgNow(c) ? `<small class="epg">▸ ${esc(epgNow(c))}</small>` : ''}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
+// 📺 «كل القنوات» is the one place for every channel the TV knows — the lists, the sports ones, the big five's, the 4K ones, YouTube's
+// live matches, your own lists, favourites, pinned, most watched — sorted into kinds (a channel can be in several: a pinned 4K
+// sports channel is in all three). «الكل» is chosen first; the kinds follow in this order:
+const HUBC = [['pin', '📌 المثبّتة'], ['all', 'الكل'], ['spar', '⚽ رياضة عربية'], ['b5', '🏆 الدوريات الخمس'], ['gen', '📺 عام عربي ومسلسلات'], ['om', '🇴🇲 عُمان'],
+  ['spw', '🌍 رياضة أجنبية'], ['k4', '🔷 4K'], ['yt', '🔴 يوتيوب مباشر'], ['mine', '📂 قوائمي'], ['fav', '⭐ المفضّلة'], ['most', '🔥 الأكثر مشاهدة'],
+  ['news', '📰 أخبار'], ['rel', '🕌 دينية'], ['kids', '🧸 أطفال'], ['other', '🌐 قنوات العالم']];
+const SPORTY_RE = /sport|رياض|kass|الكأس|bein|\bssc\b|ad sports|dazn|espn|eurosport|sky sport|tnt sport|arena|setanta|fox sport|tsn|supersport|match|football|soccer|golf|racing|nba|nfl|ufc|wwe|fight|tennis|cricket|ثمانية/i;
+const NEWS_RE = /news|أخبار|اخبار|jazeera|الجزيرة|arabiya|العربية|hadath|الحدث|asharq|الشرق|ekhbariya|الإخبارية|cnn|bbc|france ?24|euronews|rt arabic|trt arabi|sky news|alghad|al ?mayadeen|al ?araby/i;
+const REL_RE = /quran|قرآن|القرآن|sunnah|السنة|iqraa|اقرأ|إقرأ|makkah|مكة|madinah|المدينة|majd|المجد|resalah|الرسالة|islam|حرم/i;
+const KIDS_RE = /spacetoon|سبيستون|cartoon|kids|أطفال|baraem|براعم|jeem|جيم|mbc ?3|majid|ماجد|toyor|طيور|nick|disney|cn arabia|karameesh|كراميش/i;
+const OM_RE = /\boman\b|عمان|عُمان|majan|مجان/i;
+let HUB = null, HUBK = '';
 function allChannels() {
-  const seen = new Set(), out = [];
-  const add = (c, g) => { if (!c || !c.url || seen.has(c.url)) return; seen.add(c.url); out.push(g ? { ...c, group: g } : c); };
-  DYNCH.forEach(c => c.st === 'ok' && add(c));
-  ILIST.forEach(c => add(c));
-  (SPORTS?.list || []).forEach(c => add(c, 'رياضة عالمية'));
-  return out;
+  const ytAll = Object.values(YTLALL || {}).flat();
+  const key = [ILIST.length, GSP.length, B5LIST.length, K4.length, PINS.length, MOST.length, (MYFAV || []).length, (SPORTS?.list || []).length, ytAll.length, DYNCH.filter(c => c.st === 'ok').length].join('|');
+  if (HUB && key === HUBK) return HUB;
+  const by = new Map(), out = [];
+  const add = (c, ...cats) => {
+    if (!c || !c.url) return;
+    let h = by.get(c.url) || by.get('k:' + favKey(c));
+    if (!h) { h = { ...c, cats: new Set() }; by.set(c.url, h); by.set('k:' + favKey(c), h); out.push(h); }
+    cats.forEach(x => x && h.cats.add(x));
+    if (!h.logo && c.logo) h.logo = c.logo;
+    if (c.k4 && !h.k4) h.k4 = c.k4;
+  };
+  PINS.forEach(c => add(c, 'pin'));
+  DYNCH.forEach(c => c.st === 'ok' && add(c, 'spar'));
+  ILIST.forEach(c => add(c, c.mine && 'mine'));
+  (MYFAV || []).forEach(c => add(c, 'fav')); IFAV.forEach(c => add(c, 'fav'));
+  MOST.forEach(c => add(c, 'most'));
+  B5LIST.forEach(c => add(c, 'b5'));
+  GSP.forEach(c => add(c));
+  K4.forEach(c => add(c, 'k4'));
+  (SPORTS?.list || []).forEach(c => add(c));
+  ytAll.forEach(v => add({ name: v.title, url: 'https://www.youtube.com/watch?v=' + v.id, logo: `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`, group: v.league }, 'yt'));
+  for (const h of out) {   // the kind by its name
+    if (h.cats.has('yt')) continue;
+    const n = h.name + ' ' + (h.group || ''), ar = isArabChannel(h.name), sp = SPORTY_RE.test(n) || h.dyn;
+    if (OM_RE.test(n) || ccOf(h) === 'om') h.cats.add('om');
+    if (sp) h.cats.add(ar ? 'spar' : 'spw');
+    else if (REL_RE.test(n)) h.cats.add('rel');
+    else if (KIDS_RE.test(n)) h.cats.add('kids');
+    else if (NEWS_RE.test(n)) h.cats.add('news');
+    else if (ar) h.cats.add('gen');
+    else h.cats.add('other');
+    const v = SCAN[h.url]; if (v && typeof v === 'object' && v.h >= 2000) h.cats.add('k4');   // the scan found it 4K
+  }
+  HUB = out; HUBK = key; return out;
 }
+const CATRANK = Object.fromEntries(HUBC.map(([k], i) => [k, i]));
+const catOf = c => { let b = 99; for (const k of c.cats || []) if (k !== 'pin' && k !== 'fav' && k !== 'most' && k !== 'mine' && k !== 'k4' && CATRANK[k] < b) b = CATRANK[k]; return b; };
 function iptvUi() {
   const ALL = allChannels();
-  const groups = ['all', ...new Set(ALL.map(c => c.group).filter(Boolean))].slice(0, 40);
-  const gn = {}; ALL.forEach(c => { gn[c.group] = (gn[c.group] || 0) + 1; });
-  const gk = groups.map(g => g + (gn[g] || ALL.length)).join('|');
-  if (gk !== window.__gk) { window.__gk = gk; $('#s-igroups').innerHTML = groups.map(g => `<button class="chip f ${g === IGROUP ? 'on' : ''}" data-igroup="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}<small>${AR(g === 'all' ? ALL.length : gn[g])}</small></button>`).join(''); }
+  if (!HUBC.some(([k]) => k === IGROUP)) IGROUP = 'all';
+  const gn = {}; for (const c of ALL) for (const k of c.cats) gn[k] = (gn[k] || 0) + 1;
+  const groups = HUBC.filter(([k]) => k === 'all' || gn[k]);
+  const gk = groups.map(([k]) => k + (k === 'all' ? ALL.length : gn[k])).join('|');
+  if (gk !== window.__gk) { window.__gk = gk; $('#s-igroups').innerHTML = groups.map(([k, t]) => `<button class="chip f ${k === IGROUP ? 'on' : ''}" data-igroup="${k}">${t}<small>${AR(k === 'all' ? ALL.length : gn[k])}</small></button>`).join(''); }
   else document.querySelectorAll('#s-igroups .chip').forEach(b => b.classList.toggle('on', b.dataset.igroup === IGROUP));
   filtUi();
-  let pool = ALL.filter(c => FILT.q.trim() || IGROUP === 'all' || c.group === IGROUP);   // a name search looks in every group
+  let pool = ALL.filter(c => FILT.q.trim() || IGROUP === 'all' || c.cats.has(IGROUP));   // a name search looks in every kind
   if (FILT.q.trim()) { const seen = new Set(pool.map(c => c.url)); pool = pool.concat([...MYFAV, ...IFAV].filter(c => c && c.url && !seen.has(c.url) && seen.add(c.url))); }   // a name search also looks in the favourites
   pool = pool.filter(passFilt);
-  // working ones first (green), then not checked yet
-  pool.sort((a, b) => (isOk(b) ? 1 : 0) - (isOk(a) ? 1 : 0));
-  const shown = pool.slice(0, 400);
+  // «الكل»: by kind (Arab sports, the big five, Arab general…); inside a kind the working ones first (green), then not checked yet
+  pool = pool.map((c, i) => [IGROUP === 'all' ? catOf(c) : 0, isOk(c) ? 0 : 1, i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map(x => x[3]);
+  const shown = pool.slice(0, 300);
   window.__shown = shown;
   $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || `<div class="empty">${FILT.q.trim() ? 'ما لقيت قناة بهذا الاسم' : ALL.length ? 'ما فيه قنوات بهذا الفلتر' : 'جارٍ التحميل…'}</div>`;
 }
@@ -2068,6 +2109,7 @@ async function loadLists() {
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
   lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4();
+  setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
 // does not have it; then your other DriveCast favourites
@@ -3015,6 +3057,7 @@ function sections() {
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
       { k: 'hlogo', l: 'شعار القناة', o: [['tile', 'على مربع أبيض (أوضح)'], ['clear', 'بدون خلفية']], d: 'tile' },
+      { k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
     ]],
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
@@ -3100,7 +3143,7 @@ function applySet(k, v) {
   if (k === 'wall') { try { localStorage.wall = v; } catch (e) {} applyWall(); }
   if (k === 'clock') { tick(); nextUi(); }
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
-  if (/^(uiscale|hcard|hart|hlogo|motion)$/.test(k)) { uiApply(); liveRefresh(); }
+  if (/^(uiscale|hcard|hart|hlogo|motion|lite)$/.test(k)) { uiApply(); liveRefresh(); }
   if (k === 'mode') { uiApply(); liveUi(); nextUi(); }
   if (/^iq/.test(k)) prayersUi();
 }
@@ -3139,7 +3182,7 @@ function uiApply() {
   const z = +S('uiscale', '100') || 100; document.documentElement.style.zoom = z === 100 ? '' : String(z / 100);
   const b = document.body.classList;
   b.toggle('hc-mid', S('hcard', 'big') === 'mid'); b.toggle('hc-small', S('hcard', 'big') === 'small');
-  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES());
+  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES()); b.toggle('lite', S('lite', 'on') === 'on');
 }
 function homeLayout() {
   const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
@@ -3460,11 +3503,11 @@ function ambient(on) {
 }
 // ---- 📺 the Channels tab: a side menu of the lists and one list beside it. ▲▼ in the menu shows its list at once, ◀ or OK goes
 // into it, ▶ from its edge or Back comes back to the menu. Each list remembers the card you were on.
-let IPANE = (() => { try { return localStorage.getItem('ipane') || 'allwrap'; } catch (e) { return 'allwrap'; } })();
+let IPANE = (() => { try { const k = localStorage.getItem('ipane') || 'allwrap'; return /^(allwrap|epgwrap|m3uwrap|m3uvwrap)$/.test(k) ? k : 'allwrap'; } catch (e) { return 'allwrap'; } })();   // the merged panes now live in «كل القنوات»
 const IPLAST = {};
 function iPane(id) {
   if (id === 'search') id = 'allwrap';
-  if (!id || !$('#' + id) || !$('#' + id).classList.contains('ipane')) id = 'allwrap';
+  if (!id || !$('#' + id) || !$('#' + id).classList.contains('ipane') || !$(`#iRail .ri[data-ipane="${id}"]`)) id = 'allwrap';
   const was = IPANE; IPANE = id; try { localStorage.setItem('ipane', id); } catch (e) {}
   document.querySelectorAll('#iPanes>.ipane').forEach(p => p.classList.toggle('on', p.id === id));
   document.querySelectorAll('#iRail .ri').forEach(r => r.classList.toggle('on', r.dataset.ipane === id));
@@ -3579,7 +3622,10 @@ function move(dir) {
   if (MOVING) return moveStep(dir);
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
   const scope = $('#ctx').classList.contains('on') ? $('#ctx') : $('#ytp').classList.contains('on') ? $('#ytp') : $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
-  const all = [...scope.querySelectorAll('.f')].filter(visible), cur = document.activeElement;
+  const cur = document.activeElement, pg = scope === document && document.querySelector('.page.on');
+  const inP = pg && cur && cur.closest && cur.closest('#iPanes'), pane = inP && document.querySelector('#iPanes>.ipane.on');
+  const sel = pg ? [...document.querySelectorAll('.tabs .f'), ...(pane ? [...document.querySelectorAll('#iRail .f'), ...pane.querySelectorAll('.f')] : pg.querySelectorAll('.f'))] : [...scope.querySelectorAll('.f')];
+  const all = sel.filter(visible);
   if (!all.includes(cur)) return all[0]?.focus();
   const inRail = cur.closest && cur.closest('#iRail'), inPane = !inRail && cur.closest && cur.closest('#iPanes');
   if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) return iRailFocus();
@@ -3611,7 +3657,7 @@ function move(dir) {
   best.focus();
   if (inPane) iTrack(best);
   if (best.classList.contains('tab')) { document.querySelectorAll('.scroll').forEach(s => s.scrollTo({ top: 0, behavior: 'smooth' })); return; }
-  best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'smooth' });
+  best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: document.body.classList.contains('lite') ? 'auto' : 'smooth' });
 }
 let HOLD = null;
 function holdPlay(b) {
@@ -3635,7 +3681,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-13a', NEWS_ROWS = [
+const NEWS = '2026-11-13b', NEWS_ROWS = [
+  ['📺', '«كل القنوات» صار المكان الوحيد لكل القنوات: رياضة عربية، الدوريات الخمس، عام عربي ومسلسلات، عُمان، رياضة أجنبية، 4K، يوتيوب، قوائمك — والفلتر (مثل 4K) يدوّر فيها كلها'],
+  ['⚡', 'الواجهة أسرع: بدون الزجاج الشفاف اللي كان يثقّل التنقّل (تقدر ترجّعه من الإعدادات)'],
   ['📺', 'وضع المسلسلات (الإعدادات ← الواجهة لهذا الجهاز ← الوضع): «الآن في MBC 1» بدل المباراة، وقنوات MBC وعمان والقرآن ودبي أول الرئيسية'],
   ['🇸🇦', 'دليل MBC والقنوات السعودية صار بالعربي الأصلي من شاهد'],
   ['🔇', 'بدون أصوات عند التنقّل، وفحص القنوات أخف على الشبكة'],
