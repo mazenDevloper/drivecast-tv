@@ -173,7 +173,7 @@ body.lite .glass{background:rgba(18,26,34,.9)!important}
 body.lite .ichan,body.lite .f{transition-duration:.08s!important}
 .grid.ch>.ichan,.epgg>*{content-visibility:auto;contain-intrinsic-size:auto 120px}
 /* 📺 وضع المسلسلات: the channels and the apps right under the top row, the Quran and the day's worship after them */
-body.mode-series #homeScroll>.heroRow{order:0} body.mode-series #shLive{order:1} body.mode-series #shApps{order:2} body.mode-series #ibada{order:3} body.mode-series #shQuran{order:4}
+
 .nextm .nowch{display:flex;align-items:center;gap:18px;margin-top:8px}
 .nextm .nowch>img{width:110px;height:110px;object-fit:contain;background:#fff;border-radius:22px;padding:8px;flex:none}
 .nextm .nowch b{display:block;font-size:30px;line-height:1.25;font-weight:800}
@@ -2151,6 +2151,15 @@ setInterval(liveRefresh, 60e3);
 // 📺 وضع المسلسلات: the home's channels in this order — MBC 1, Oman's channels, the Quran, MBC's other channels, Dubai's, then the
 // Arabic drama channels; each found in the lists by its name (one that the scan found working first)
 const SERIES = () => S('mode', 'sport') === 'series';
+const POS5 = [['', 'تلقائي'], ['1', 'الأول'], ['2', 'الثاني'], ['3', 'الثالث'], ['4', 'الرابع'], ['5', 'الخامس']];
+// ↕ the home's sections in the order chosen in the settings (a section not placed keeps its usual place: in وضع المسلسلات the
+// channels and the apps come right under the top row); and only the tabs chosen are shown at the top
+function homeOrder() {
+  const secs = [['hero', '#homeScroll>.heroRow'], ['live', '#shLive'], ['apps', '#shApps'], ['quran', '#shQuran'], ['ibada', '#ibada']];
+  const def = SERIES() ? { hero: 1, live: 2, apps: 3, ibada: 4, quran: 5 } : { hero: 1, ibada: 2, quran: 3, live: 4, apps: 5 };
+  for (const [k, q] of secs) { const el = $(q); if (!el) continue; const v = +S('pos-' + k, '') || def[k]; el.style.order = String(v * 2 + (S('pos-' + k, '') ? 0 : 1)); }
+  for (const t of ['board', 'subs', 'apps', 'quran']) { const b = $(`#tabs [data-page="${t}"]`); if (b) b.hidden = S('tab-' + t, t === 'quran' ? 'on' : 'off') === 'off'; }
+}
 const SERIES_PICKS = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV( \(|$|\s*HD)/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^Oman TV Cultur/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|Oman.*Quran)/i,
   /^MBC Drama\b/i, /^MBC ?4\b/i, /^MBC ?5\b/i, /^MBC Masr\b(?! ?2)/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC ?2\b/i, /^MBC Max/i, /^MBC Action/i, /^MBC ?3\b/i,
   /^Dubai( TV)?( \(|$|\s*HD)/i, /^Sama Dubai/i, /^Dubai Zaman/i, /^Dubai One/i,
@@ -3104,6 +3113,10 @@ function sections() {
       { k: 'h-prayer', l: 'كرت الصلاة', o: SHOW, d: 'on' }, { k: 'h-match', l: 'كرت أقرب مباراة', o: SHOW, d: 'on' },
       { k: 'h-quran', l: 'رف القرآن والأذكار', o: SHOW, d: 'on' }, { k: 'h-live', l: 'رف القنوات المباشرة', o: SHOW, d: 'on' },
       { k: 'h-apps', l: 'التطبيقات', o: SHOW, d: 'on' },
+      { k: 'pos-hero', l: '↕ مكان «الصلاة والمباراة»', o: POS5, d: '' }, { k: 'pos-live', l: '↕ مكان «القنوات المباشرة»', o: POS5, d: '' },
+      { k: 'pos-apps', l: '↕ مكان «التطبيقات»', o: POS5, d: '' }, { k: 'pos-quran', l: '↕ مكان «القرآن والأذكار»', o: POS5, d: '' }, { k: 'pos-ibada', l: '↕ مكان «عبادات اليوم»', o: POS5, d: '' },
+      { k: 'tab-board', l: 'تبويب «لوحتي» في الأعلى', o: SHOW, d: 'off' }, { k: 'tab-subs', l: 'تبويب «الاشتراكات» في الأعلى', o: SHOW, d: 'off' },
+      { k: 'tab-apps', l: 'تبويب «التطبيقات» في الأعلى', o: SHOW, d: 'off' }, { k: 'tab-quran', l: 'تبويب «القرآن» في الأعلى', o: SHOW, d: 'on' },
       { k: 'clock', l: 'الساعة', o: [['12', '١٢ ساعة'], ['24', '٢٤ ساعة']], d: '12' },
       { k: 'spirit', l: '📖 وضع الأعلى: آية مع تفسيرها واسم من أسماء الله الحسنى', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'iqbig', l: '⏳ وضع الأعلى: عدّ تنازلي كبير للإقامة', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
@@ -3207,7 +3220,8 @@ function applySet(k, v) {
   if (k === 'clock') { tick(); nextUi(); }
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
   if (/^(uiscale|hcard|hart|hlogo|motion|lite)$/.test(k)) { uiApply(); liveRefresh(); }
-  if (k === 'mode') { uiApply(); liveUi(); nextUi(); }
+  if (k === 'mode') { uiApply(); liveUi(); nextUi(); homeOrder(); }
+  if (/^(pos-|tab-)/.test(k)) homeOrder();
   if (/^iq/.test(k)) prayersUi();
 }
 // ---- ⬆️ updates from GitHub: checked on start and every 6 hours; a newer build → the badge by the clock (OK = update)
@@ -3740,12 +3754,16 @@ function ctxOpen(b) {
   if (!c) return;
   CTX = { b, c, list, i: +b.dataset.i, match };
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
-  const rows = match ? [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]
+  const rows = match ? [...(SERIES() ? [['play', '▶︎', 'شغّل MBC 1']] : [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]), ['mode', SERIES() ? '⚽' : '📺', SERIES() ? 'غيّر إلى وضع الرياضة' : 'غيّر إلى وضع المسلسلات']]
     : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)']] : []), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-13d', NEWS_ROWS = [
+const NEWS = '2026-11-13e', NEWS_ROWS = [
+  ['🇴🇲', 'دليل قنوات عُمان الأربع بالعربي من «عين» مع صور البرامج'],
+  ['🗂️', 'تبويبات أقل في الأعلى (لوحتي والاشتراكات والتطبيقات ترجع من الإعدادات ← الشاشة الرئيسية)'],
+  ['↕', 'رتّب أقسام الرئيسية من الإعدادات ← الشاشة الرئيسية'],
+  ['📺', 'وضع المسلسلات: ضغطة مطوّلة على كرت المباراة ← «غيّر إلى وضع المسلسلات»'],
   ['↔', 'رتّب قنوات الرئيسية: ضغطة مطوّلة على قناة ← «رتّب» ← ◀ ▶ ثم OK'],
   ['⚡', 'التنقّل أسرع: الفحص والتحديثات تنتظر لين توقف الأسهم'],
   ['🌍', 'المباريات: القنوات المحلية للفريقين وقنوات يوتيوب (مثل بي إن الإخبارية) صارت ضمن الناقلين'],
@@ -3791,6 +3809,8 @@ async function ctxDo(k) {
     if (/^mloc\d/.test(k)) return playChannel(x.loc, +k.slice(4));
     return;
   }
+  if (x.match && k === 'mode') { setPref('mode', SERIES() ? 'sport' : 'series'); uiApply(); liveUi(); nextUi(); homeOrder(); return; }
+  if (x.match && k === 'play' && SERIES()) { const c = nowChannel(); return c ? playChannel([c, ...LIVE.filter(y => y !== c)], 0) : null; }
   if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
@@ -3820,7 +3840,7 @@ document.addEventListener('keydown', e => {
 });
 
 $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml();
-homeLayout(); uiApply(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
+homeLayout(); uiApply(); homeOrder(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); loadReciters(); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
 setInterval(tick, 20000); setInterval(() => { if (!busyKeys()) loadMatches(); }, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
