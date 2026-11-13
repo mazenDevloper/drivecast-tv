@@ -25,17 +25,18 @@ for (const rows of Object.values(d.c)) for (const r of rows) {
 }
 (async () => {
   const b = await chromium.launch();
-  const p = await b.newPage();
   const bad = new Set(); let tried = 0;
   const hosts = [...byHost.entries()];
   for (let i = 0; i < hosts.length; i += 25) {   // 25 hosts a page, up to 5 pictures each
     const chunk = hosts.slice(i, i + 25).map(([h, us]) => [h, [...new Set(us)].sort(() => Math.random() - .5).slice(0, 5)]);
     tried += chunk.length;
-    await p.setContent('<meta name="referrer" content="no-referrer"><body></body>');
+    const p = await b.newPage();   // a fresh page each round: the last round's slow pictures don't hold this one
+    await p.setContent('<meta name="referrer" content="no-referrer"><body></body>', { waitUntil: 'domcontentloaded' });
     const res = await p.evaluate(async chunk => {
       const one = u => new Promise(ok => { const im = new Image(); const t = setTimeout(() => ok(false), 12000); im.onload = () => { clearTimeout(t); ok(im.naturalWidth > 16); }; im.onerror = () => { clearTimeout(t); ok(false); }; im.referrerPolicy = 'no-referrer'; im.src = u; });
       return Promise.all(chunk.map(async ([h, us]) => [h, (await Promise.all(us.map(one))).filter(Boolean).length, us.length]));
     }, chunk);
+    await p.close().catch(() => {});
     for (const [h, okN, n] of res) if (okN * 2 < n) bad.add(h);
   }
   await b.close();
