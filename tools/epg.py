@@ -111,6 +111,47 @@ def translate(c, out):
     json.dump(tr, open(os.path.join(os.path.dirname(out), 'tr.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print(f'🌐 {done} new titles translated, {n} programmes shown in Arabic ({len(tr)} kept)', flush=True)
 
+# 📺 MBC and the Saudi channels in their own words: Shahid's guide (MBC's) in Arabic — the other guides carry MBC 1 only in an
+# English transliteration («Hamdiyya», «Leba: El Classico»). [site id, guide id (Free-TV's tvg-id), names the TV may call it]
+SHAHID = [
+    (387238, 'MBC1.ae', ['MBC 1', 'MBC1', 'ام بي سي 1']), (400917, 'MBC2.ae', ['MBC 2', 'MBC2']), (409385, 'MBC3.ae', ['MBC 3', 'MBC3']),
+    (400919, 'MBC4.ae', ['MBC 4', 'MBC4']), (387937, 'MBC5.ae', ['MBC 5', 'MBC5']), (400921, 'MBCAction.ae', ['MBC Action']),
+    (409387, 'MBCBollywood.ae', ['MBC Bollywood']), (387251, 'MBCDrama.ae', ['MBC Drama', 'ام بي سي دراما']), (387296, 'MBCPlusDrama.sa', ['MBC Plus Drama', 'MBC+ Drama']),
+    (387294, 'MBCIraq.iq', ['MBC Iraq', 'MBC العراق']), (387290, 'MBCMasr.eg', ['MBC Masr', 'MBC مصر']), (387293, 'MBCMasr2.eg', ['MBC Masr 2', 'MBC Masr2']),
+    (49923122575716, 'MBCMasrDrama.sa', ['MBC Masr Drama']), (400924, 'MBCMax.ae', ['MBC Max']), (418308, 'MBCPersia.ae', ['MBC Persia']),
+    (387286, 'Alarabiya.ae', ['Al Arabiya', 'العربية']), (387288, 'AlHadath.sa', ['Al Hadath', 'الحدث']), (946938, 'AlSaudiya.sa', ['Al Saudiya', 'السعودية']),
+    (946946, 'AlQuranAlKareemTV.sa', ['Al Quran Al Kareem', 'القرآن الكريم', 'Saudi Quran']), (946942, 'AlSunnahAlNabawiyahTV.sa', ['Al Sunnah Al Nabawiyah', 'السنة النبوية']),
+    (946948, 'AlEkhbariya.sa', ['Al Ekhbariya', 'الإخبارية']), (946940, 'SBC.sa', ['SBC']), (414449, 'Wanasah.ae', ['Wanasah', 'وناسه']),
+    (409390, 'SpacetoonArabic.ae', ['Spacetoon', 'سبيستون']), (995495, 'SaudiThaqafiyaTV.sa', ['Al Thaqafiya', 'الثقافية']), (946945, 'ThikrayatTV.sa', ['Thikrayat', 'ذكريات']),
+    (975435, 'BabAlHara.sa', ['Bab Al Hara', 'باب الحارة']), (988045, 'Maraya.sa', ['Maraya', 'مرايا']), (862837, 'AsharqNews.sa', ['Asharq News', 'الشرق']),
+]
+def shahid(guide, lo, hi):
+    from datetime import datetime, timezone
+    names, n = {}, 0
+    days = sorted({datetime.fromtimestamp(t, timezone.utc).strftime('%Y-%m-%d') for t in (lo, time.time(), hi)})
+    for sid, gid, nm in SHAHID:
+        got, mine = 0, {}
+        for d in days:
+            u = (f'https://api2.shahid.net/proxy/v2.1/shahid-epg-api/?csvChannelIds={sid}&from={d}T00:00:00.000Z&to={d}T23:59:59.999Z'
+                 f'&country=SA&language=ar&Accept-Language=ar')
+            try: j = json.loads(get(u, 30).read().decode('utf-8'))
+            except Exception as e: print(f'  shahid {gid}: {e}', flush=True); continue
+            for ch in j.get('items') or []:
+                for it in ch.get('items') or []:
+                    if it.get('emptySlot'): continue
+                    a = when(re.sub(r'[-:T]', '', (it.get('actualFrom') or it.get('from') or ''))[:14] + ' +0000')
+                    b = when(re.sub(r'[-:T]', '', (it.get('actualTo') or it.get('to') or ''))[:14] + ' +0000')
+                    t = re.sub(r'\s+', ' ', it.get('title') or '').strip()
+                    t = re.sub(r'\s*موسم\s*(\d+)\s*حلقة\s*(\d+)$', lambda m: (f' · الموسم {m.group(1)} الحلقة {m.group(2)}' if m.group(1) != '1' else f' · الحلقة {m.group(2)}'), t)   # «مناعة موسم 1 حلقة 14» → «مناعة · الحلقة 14»
+                    if not t or not a or not b or b <= lo or a >= hi: continue
+                    img = (it.get('productPoster') or '').replace('{height}', '360').replace('{width}', '640').replace('{croppingPoint}', 'mc')
+                    mine[a] = [a, b, t[:70], img]; got += 1
+        if got:
+            guide[gid] = mine; n += got   # MBC's own guide replaces the others' for this channel
+            for x in nm: names.setdefault(x, gid)
+    print(f'  {n:6d}  Shahid (MBC, in Arabic)', flush=True)
+    return names
+
 def main(out):
     pl = get(PLAYLIST).read().decode('utf-8', 'replace')
     head = pl.split('\n', 1)[0]
@@ -151,6 +192,7 @@ def main(out):
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
     names = extra(guide, lo, hi, out)
+    names = shahid(guide, lo, hi) | names   # MBC's own guide first: its channels are found by name before any other guide's
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]

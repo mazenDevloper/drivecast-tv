@@ -75,8 +75,16 @@ public class HomeActivity extends Activity {
      * zapping. Now the dead view is dropped and a new one is made when the home screen is next shown.
      */
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    /** 🔇 no clicks when the focus moves: the system's navigation sounds off for this view and all inside it */
+    static void quiet(android.view.View v) {
+        if (v == null) return;
+        v.setSoundEffectsEnabled(false);
+        if (v instanceof android.view.ViewGroup) { android.view.ViewGroup g = (android.view.ViewGroup) v; for (int i = 0; i < g.getChildCount(); i++) quiet(g.getChildAt(i)); }
+    }
+
     private void makeWeb() {
         web = new WebView(this);
+        web.setSoundEffectsEnabled(false);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -140,6 +148,7 @@ public class HomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         MessageServer.start(this);   // the phone remote's server: back if the system stopped it while the TV slept
+        quiet(getWindow().getDecorView());
         front = this;
         alive = this;
         if (web == null) makeWeb();

@@ -269,6 +269,7 @@ public class PlayerActivity extends Activity {
         FrameLayout.LayoutParams tkp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP); tkp.setMargins((int) dp(60), (int) dp(22), (int) dp(220), 0);
         root.addView(ticker, tkp); ticker.setVisibility(View.GONE); Scan.paused = true;   // the daily scan waits while a channel plays
         setContentView(root);
+        root.post(() -> HomeActivity.quiet(getWindow().getDecorView()));   // 🔇 the side list's moves without clicks
 
         // 🎞️ smooth and sharp: the first guess of the line is fast (so a channel starts at its top quality), the buffer is deep
         // (60 s ahead, 3 s to start, 6 s after a stall), the quality goes up after 3 s of room and down only after 25 s of a weak line.
@@ -515,7 +516,7 @@ public class PlayerActivity extends Activity {
             listsBuild(); if (li >= lists.size()) li = 0;
             listView(); if (posOf(Math.max(0, cur)) < 0) { li = 0; listView(); }
             sel = Math.max(0, posOf(Math.max(0, cur)));
-            listFill(); listPanel.setVisibility(View.VISIBLE); listPanel.setAlpha(0f); listPanel.setTranslationX(dp(60)); listPanel.animate().alpha(1f).translationX(0).setDuration(220); listMark();
+            listFill(); HomeActivity.quiet(listPanel); listPanel.setVisibility(View.VISIBLE); listPanel.setAlpha(0f); listPanel.setTranslationX(dp(60)); listPanel.animate().alpha(1f).translationX(0).setDuration(220); listMark();
         }
         else { h.removeCallbacks(listHide); listPanel.animate().alpha(0f).translationX(dp(60)).setDuration(200).withEndAction(() -> { if (!listOn) listPanel.setVisibility(View.GONE); }); }
     }

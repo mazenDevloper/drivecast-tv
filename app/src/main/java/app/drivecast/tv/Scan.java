@@ -42,7 +42,7 @@ public class Scan {
         final boolean top = fresh;
         running = true; done.set(0); total.set(urls.size());
         new Thread(() -> {
-            ExecutorService pool = Executors.newFixedThreadPool(10);
+            ExecutorService pool = Executors.newFixedThreadPool(4);   // gentle on the home network: 4 at a time (10 filled some routers, and the TV felt offline)
             for (final String u : urls) pool.execute(() -> {
                 while (paused) { try { Thread.sleep(1000); } catch (InterruptedException e) { return; } }
                 boolean ok = false;

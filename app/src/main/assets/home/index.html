@@ -167,6 +167,15 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .nextm .tv img{height:24px;max-width:84px;object-fit:contain;border-radius:5px;background:#fff;padding:2px 4px}
 .nextm:focus .tv span{color:#111;border-color:#bbb}
 #homeScroll{display:flex;flex-direction:column;gap:20px}
+/* 📺 وضع المسلسلات: the channels and the apps right under the top row, the Quran and the day's worship after them */
+body.mode-series #homeScroll>.heroRow{order:0} body.mode-series #shLive{order:1} body.mode-series #shApps{order:2} body.mode-series #ibada{order:3} body.mode-series #shQuran{order:4}
+.nextm .nowch{display:flex;align-items:center;gap:18px;margin-top:8px}
+.nextm .nowch>img{width:110px;height:110px;object-fit:contain;background:#fff;border-radius:22px;padding:8px;flex:none}
+.nextm .nowch b{display:block;font-size:30px;line-height:1.25;font-weight:800}
+.nextm .nowch .pbar{display:block;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden;margin:10px 0 6px}
+.nextm .nowch .pbar i{display:block;height:100%;background:#3ddc97}
+.nextm .nowch em{font-style:normal;opacity:.75;font-size:18px}
+.nextm.series{background-size:cover;background-position:center}
 .appgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px;padding:12px 4px 20px}
 .appgrid .app{width:auto;height:160px}
 .empty{font-size:22px;color:var(--dim);padding:20px 4px}
@@ -2068,11 +2077,28 @@ const PICKS = [/^Oman TV\b/i, /^Oman TV Cultural/i, /^Oman TV Mubashir/i, /^Oman
 // the home's cards follow the guide: redrawn each minute (the focus stays on the same card)
 function liveRefresh() {
   if (!$('#p-home').classList.contains('on') || document.body.classList.contains('ambient')) return;
+  if (SERIES()) nowUi();
   const a = document.activeElement, i = a && a.dataset && a.dataset.ilist === 'live' ? a.dataset.i : null;
   $('#s-live').innerHTML = LIVE.map((c, k) => liveHtml(c, k)).join('') || $('#s-live').innerHTML;
   if (i != null) $(`#s-live [data-i="${i}"]`)?.focus({ preventScroll: true });
 }
 setInterval(liveRefresh, 60e3);
+// 📺 وضع المسلسلات: the home's channels in this order — MBC 1, Oman's channels, the Quran, MBC's other channels, Dubai's, then the
+// Arabic drama channels; each found in the lists by its name (one that the scan found working first)
+const SERIES = () => S('mode', 'sport') === 'series';
+const SERIES_PICKS = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV( \(|$|\s*HD)/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^Oman TV Cultur/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|Oman.*Quran)/i,
+  /^MBC Drama\b/i, /^MBC ?4\b/i, /^MBC ?5\b/i, /^MBC Masr\b(?! ?2)/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC ?2\b/i, /^MBC Max/i, /^MBC Action/i, /^MBC ?3\b/i,
+  /^Dubai( TV)?( \(|$|\s*HD)/i, /^Sama Dubai/i, /^Dubai Zaman/i, /^Dubai One/i,
+  /^Rotana (Drama|Khalijia|Khaleejiah)/i, /^Abu Dhabi (TV|Drama)/i, /^Al Emarat/i, /^Sharjah TV/i, /^Saudi Drama|^SBC\b/i, /^Roya Drama/i, /^(CBC|ON|Al Nahar) Drama/i, /^Syria Drama/i, /^LBC/i, /^Zee Alwan/i, /^Al Rai\b/i, /^Kuwait TV/i, /^Qatar TV/i];
+function seriesPicks() {
+  const pool = [...ILIST, ...IFAV, ...(MYFAV || [])].filter(c => c && c.url && !/geo-blocked|radio|\bFM\b/i.test(c.name)), out = [];
+  for (const re of SERIES_PICKS) {
+    const all = pool.filter(c => re.test(c.name.replace(/^\s*\W+\s*/, '')));
+    const c = all.find(x => SCAN[x.url] === 1 || (SCAN[x.url] && typeof SCAN[x.url] === 'object')) || all.find(x => SCAN[x.url] !== 0) || all[0];
+    if (c && !out.some(o => favKey(o) === favKey(c))) out.push(c);
+  }
+  return out;
+}
 function liveUi() {
   const usable = c => !/geo-blocked|radio|\bFM\b/i.test(c.name);
   const picks = [];
@@ -2084,6 +2110,7 @@ function liveUi() {
   const mine = MYFAV.filter(f => !picks.some(p => p.name === f.name));
   pinUi(); mostUi(); const pins = [...PINS, ...MOST.slice(0, 4).filter(m => !PINS.some(p => favKey(p) === favKey(m)))].filter(p => !picks.some(x => favKey(x) === favKey(p)));
   LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
+  if (SERIES()) { const sp = seriesPicks(); LIVE = [...sp, ...LIVE.filter(x => !sp.some(p => favKey(p) === favKey(x)))].slice(0, 40); nowUi(); }
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
@@ -2240,7 +2267,21 @@ function nextTv(m) {
   if (!go && !chs.length) return '📺 القناة الناقلة غير معروفة';
   return (go ? `<span class="go">${img(go.want)}${go.local ? '🌍 ' : ''}▶ ${esc(go.label)}</span>` : '') + chs.map(c => `<span>${img(c) || '📺 '}${esc(c)}</span>`).join('');
 }
+// 📺 وضع المسلسلات: the top card is «الآن في MBC 1» — its programme now (Shahid's guide, in Arabic), how far, and what's next
+function nowChannel() { return seriesPicks().find(c => /^MBC ?1\b/i.test(c.name)) || null; }
+function nowUi() {
+  const el = $('#nextm'), c = nowChannel(); el.classList.add('series'); $('#miniM').hidden = true;
+  if (!c) { el.style.backgroundImage = ''; el.innerHTML = '<small>الآن في MBC 1</small><div class="empty">قناة MBC 1 مو موجودة في قوائمك</div>'; return; }
+  const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
+  el.style.backgroundImage = r && r[3] ? `linear-gradient(90deg,rgba(8,12,18,.55),rgba(8,12,18,.92)),url("${String(r[3]).replace(/"/g, '%22')}")` : '';
+  el.innerHTML = `<small>📺 الآن في ${esc(c.name)}</small><div class="nowch">${c.logo ? `<img src="${esc(c.logo)}" alt="" onerror="this.remove()">` : ''}<div style="flex:1;min-width:0">`
+    + (r ? `<b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)).toFixed(0)}%"></i></i><em>باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</em>` : '<b class="dim">بث مباشر</b>')
+    + (nx ? `<em style="display:block;margin-top:4px">التالي ${hm(nx[0])} · ${esc(nx[2])}</em>` : '') + `</div></div>`;
+}
+setInterval(() => { if (SERIES()) nowUi(); }, 60e3);
 function nextUi() {
+  if (SERIES()) return nowUi();
+  $('#nextm').classList.remove('series'); $('#nextm').style.backgroundImage = '';
   const el = $('#nextm'), m = NEXTM;
   if (!m) { el.innerHTML = '<small>أقرب مباراة</small><div class="empty">لا مباريات قريبة لفرقك المميّزة بالجزيرة في DriveCast</div>'; $('#miniM').hidden = true; return; }
   $('#miniM').hidden = false;
@@ -2969,6 +3010,7 @@ function sections() {
       { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
     ]],
     ['🎛️', 'الواجهة لهذا الجهاز', [
+      { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: 'sport' },
       { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
@@ -3059,6 +3101,7 @@ function applySet(k, v) {
   if (k === 'clock') { tick(); nextUi(); }
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
   if (/^(uiscale|hcard|hart|hlogo|motion)$/.test(k)) { uiApply(); liveRefresh(); }
+  if (k === 'mode') { uiApply(); liveUi(); nextUi(); }
   if (/^iq/.test(k)) prayersUi();
 }
 // ---- ⬆️ updates from GitHub: checked on start and every 6 hours; a newer build → the badge by the clock (OK = update)
@@ -3096,7 +3139,7 @@ function uiApply() {
   const z = +S('uiscale', '100') || 100; document.documentElement.style.zoom = z === 100 ? '' : String(z / 100);
   const b = document.body.classList;
   b.toggle('hc-mid', S('hcard', 'big') === 'mid'); b.toggle('hc-small', S('hcard', 'big') === 'small');
-  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off');
+  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES());
 }
 function homeLayout() {
   const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
@@ -3240,7 +3283,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-close') return closePlayer();
-  if (b.dataset.act === 'nextm') return playMatchChannel();
+  if (b.dataset.act === 'nextm') { if (SERIES()) { const c = nowChannel(); if (c) return playChannel([c, ...LIVE.filter(x => x !== c)], 0); return; } return playMatchChannel(); }
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.act === 'gofilt') { foldToggle('allwrap', true); const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
@@ -3592,7 +3635,10 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-12h', NEWS_ROWS = [
+const NEWS = '2026-11-13a', NEWS_ROWS = [
+  ['📺', 'وضع المسلسلات (الإعدادات ← الواجهة لهذا الجهاز ← الوضع): «الآن في MBC 1» بدل المباراة، وقنوات MBC وعمان والقرآن ودبي أول الرئيسية'],
+  ['🇸🇦', 'دليل MBC والقنوات السعودية صار بالعربي الأصلي من شاهد'],
+  ['🔇', 'بدون أصوات عند التنقّل، وفحص القنوات أخف على الشبكة'],
   ['🌐', 'دليل البرامج بالعربي: العناوين الأجنبية تنترجم تلقائياً، والقنوات العربية أول الدليل'],
   ['🔷', 'قنوات 4K المفتوحة في صفحة القنوات، وخيار «تحسين الصورة إلى 4K» في الإعدادات ← القنوات والمشغّل'],
   ['🎛️', 'إعدادات «الواجهة لهذا الجهاز»: حجم الواجهة وحجم كروت القنوات وصورة البرنامج والشعار'],
