@@ -189,6 +189,10 @@ def shahid(guide, lo, hi):
     print(f'  {n:6d}  Shahid (MBC, in Arabic)', flush=True)
     return names
 
+OWN = ('MBC', 'Oman', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
+PRIO_RE = re.compile(r'mbc|oman|abu.?dhabi|ad.?sport|bein|alkass|al.?kass|quran|dubai|sharjah|saudi|ssc|thmanyah', re.I)
+def prio(i): return bool(PRIO_RE.search(i))
+
 def main(out):
     pl = get(PLAYLIST).read().decode('utf-8', 'replace')
     head = pl.split('\n', 1)[0]
@@ -234,8 +238,17 @@ def main(out):
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
         rows = [r for r in rows if r[1] > now - 600][:MAX_PER]
-        rows = [r if k < 3 and len(r) > 3 and r[3] and len(r[3]) < 300 else r[:3] for k, r in enumerate(rows)]   # the programme's picture: the next three only (the file stays small)
+        keep = len(rows) if prio(i) else 6   # the programme's picture: every one on the channels watched most, the next six elsewhere
+        rows = [r if k < keep and len(r) > 3 and r[3] and len(r[3]) < 300 else r[:3] for k, r in enumerate(rows)]
         if rows: c[i] = rows
+    # a guide that gives several unrelated channels the same programmes (sat.tv's Quran channels show «بن 10» and «الفخ») is wrong
+    # for all of them: a run of the same four titles on 3+ channels drops those channels' guides (MBC's and Oman's own never)
+    sig = {}
+    for i, rows in c.items():
+        if len(rows) >= 4 and not i.startswith(OWN): sig.setdefault(tuple(r[2] for r in rows[:4]), []).append(i)
+    junk = [i for ids in sig.values() if len(ids) >= 3 and len({re.sub(r'[^a-z]', '', i.split('.')[-2].lower())[:5] for i in ids}) >= 3 for i in ids]
+    for i in junk: c.pop(i, None)
+    print(f'🧹 {len(junk)} channels with another channel\'s guide dropped', flush=True)
     translate(c, out)
     json.dump({'t': int(now), 'c': c, 'n': {k: v for k, v in names.items() if v in c}}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os

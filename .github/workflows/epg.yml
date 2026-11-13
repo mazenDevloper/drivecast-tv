@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['tools/epg.py', 'tools/imgcheck.js', 'tools/sports_epg.py', 'tools/k4.py', '.github/workflows/epg.yml']
+    paths: ['tools/epg.py', 'tools/imgcheck.js', 'tools/logos.py', 'tools/sports_epg.py', 'tools/k4.py', '.github/workflows/epg.yml']
 permissions:
   contents: write
 concurrency: epg
@@ -20,10 +20,11 @@ jobs:
         run: |
           mkdir out && { python3 tools/sports_epg.py out/sports.json || echo '::warning::sports guide failed'; }
           python3 tools/epg.py out/epg.json
+          python3 tools/logos.py out/logos.json || echo '::warning::logos failed'
           { npm i --no-save --silent playwright@1.48.2 >/dev/null && npx playwright install --with-deps chromium >/dev/null 2>&1 && node tools/imgcheck.js out/epg.json; } || echo '::warning::picture check skipped'
           { sudo apt-get -qq install -y ffmpeg >/dev/null && python3 tools/k4.py out/k4.json; } || echo '::warning::4K list failed'
       - name: Publish
         run: |
-          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json) $(test -f k4.json && echo k4.json) $(test -f tr.json && echo tr.json)
+          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json) $(test -f k4.json && echo k4.json) $(test -f tr.json && echo tr.json) $(test -f logos.json && echo logos.json)
           git -c user.name=guide -c user.email=guide@users.noreply.github.com commit -qm "guide $(date -u +%FT%RZ)"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" epg

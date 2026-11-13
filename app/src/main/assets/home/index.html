@@ -309,7 +309,7 @@ body.hc-small .ichan.big .logo-big{height:100px!important;min-width:100px}
 body.hc-mid .ichan.big .top img{width:96px;height:96px;border-radius:20px}
 body.hc-mid .ichan.big .logo-big{height:124px!important;min-width:124px}
 body.no-art .ichan.big .art{display:none}
-body.logo-clear .ichan.big .top img{background:none;padding:0}
+body.logo-clear .ichan.big .top img,body.logo-clear .ichan>img,body.logo-clear .nextm .nowch>img{background:none!important;padding:0!important;box-shadow:none!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.65))}
 body.still .ichan.big:focus,body.still .f:focus{transform:none!important;transition:none!important}   /* in a row (the home's live shelf) the cards keep their size */
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
@@ -1812,12 +1812,30 @@ function liveHtml(c, i) {
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
   const art = (r && r[3]) || '', pct = r ? Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)) : 0;
   return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}" data-ilist="live" data-i="${i}">`
-    + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : c.logo ? `<img class="logo-big" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '')
-    + `<span class="top">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
+    + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : logoOf(c) ? logoImg(c, 'logo-big') : '')
+    + `<span class="top">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
     + (r ? `<span class="pnow"><small>▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</small><b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i></span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
     + (nx ? `<span class="pnx" dir="auto">التالي ${hm(nx[0])} · ${esc(nx[2])}</span>` : '') + `</button>`;
 }
-const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}${epgNow(c) ? `<small class="epg">▸ ${esc(epgNow(c))}</small>` : ''}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
+// 🏷️ the logo library (tools/logos.py → branch «epg» logos.json): a channel's logo found by its name — tv-logos' transparent ones
+// first, then iptv-org's; it wins over the list's own logo (some lists' logos don't load), which stays as the fallback
+let LOGOS = null, LOGOI = null, logosAt = 0; const LOGOC = new Map();
+async function loadLogos() {
+  if (Date.now() - logosAt < 12 * 3600e3 && LOGOS) return; logosAt = Date.now();
+  const d = await getJ('https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/logos.json');
+  if (d && typeof d === 'object') { LOGOS = d; LOGOI = null; LOGOC.clear(); try { liveRefresh(true); } catch (e) {} } else logosAt = 0;
+}
+function logoOf(c) {
+  if (!c) return '';
+  if (!LOGOS) return c.logo || '';
+  if (LOGOC.has(c.name)) return LOGOC.get(c.name) || c.logo || '';
+  if (!LOGOI) { LOGOI = new Map(); for (const [n, u] of Object.entries(LOGOS)) { const k = channelKey(n); if (k && !LOGOI.has(k)) LOGOI.set(k, u); } }
+  const k = channelKey(String(c.name || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(/\b(fhd|uhd|hd|sd|4k|1080p?|720p?)\b/gi, ''));
+  const ok = k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t));
+  const u = (ok && LOGOI.get(k)) || ''; LOGOC.set(c.name, u); return u || c.logo || '';
+}
+const logoImg = (c, cls, hide) => { const u = logoOf(c); return u ? `<img${cls ? ` class="${cls}"` : ''} src="${esc(u)}" data-raw="${esc(c.logo && c.logo !== u ? c.logo : '')}" alt="" loading="lazy" decoding="async" onerror="if(this.dataset.raw){this.src=this.dataset.raw;this.dataset.raw=''}else ${hide ? "this.style.visibility='hidden'" : 'this.remove()'}">` : ''; };
+const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}${epgNow(c) ? `<small class="epg">▸ ${esc(epgNow(c))}</small>` : ''}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
 // 📺 «كل القنوات» is the one place for every channel the TV knows — the lists, the sports ones, the big five's, the 4K ones, YouTube's
 // live matches, your own lists, favourites, pinned, most watched — sorted into kinds (a channel can be in several: a pinned 4K
@@ -2133,7 +2151,7 @@ async function loadLists() {
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
-  lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4();
+  lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
   setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
@@ -2381,7 +2399,7 @@ function nowUi() {
   if (!c) { el.style.backgroundImage = ''; el.innerHTML = '<small>الآن في MBC 1</small><div class="empty">قناة MBC 1 مو موجودة في قوائمك</div>'; return; }
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
   el.style.backgroundImage = r && r[3] ? `linear-gradient(90deg,rgba(8,12,18,.55),rgba(8,12,18,.92)),url("${artUrl(r[3]).replace(/"/g, '%22')}"),url("${String(r[3]).replace(/"/g, '%22')}")` : '';
-  el.innerHTML = `<small>📺 الآن في ${esc(c.name)}</small><div class="nowch">${c.logo ? `<img src="${esc(c.logo)}" alt="" onerror="this.remove()">` : ''}<div style="flex:1;min-width:0">`
+  el.innerHTML = `<small>📺 الآن في ${esc(c.name)}</small><div class="nowch">${logoImg(c)}<div style="flex:1;min-width:0">`
     + (r ? `<b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)).toFixed(0)}%"></i></i><em>باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</em>` : '<b class="dim">بث مباشر</b>')
     + (nx ? `<em style="display:block;margin-top:4px">التالي ${hm(nx[0])} · ${esc(nx[2])}</em>` : '') + `</div></div>`;
 }
@@ -3136,7 +3154,7 @@ function sections() {
       { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
-      { k: 'hlogo', l: 'شعار القناة', o: [['tile', 'على مربع أبيض (أوضح)'], ['clear', 'بدون خلفية']], d: 'tile' },
+      { k: 'hlogo', l: 'شعار القناة', o: [['clear', 'بدون خلفية'], ['tile', 'على مربع أبيض']], d: 'clear' },
       { k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
     ]],
@@ -3263,7 +3281,7 @@ function uiApply() {
   const z = +S('uiscale', '100') || 100; document.documentElement.style.zoom = z === 100 ? '' : String(z / 100);
   const b = document.body.classList;
   b.toggle('hc-mid', S('hcard', 'big') === 'mid'); b.toggle('hc-small', S('hcard', 'big') === 'small');
-  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'tile') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES()); b.toggle('lite', S('lite', 'on') === 'on');
+  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'clear') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES()); b.toggle('lite', S('lite', 'on') === 'on');
 }
 function homeLayout() {
   const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
@@ -3763,7 +3781,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-13e', NEWS_ROWS = [
+const NEWS = '2026-11-13f', NEWS_ROWS = [
+  ['🏷️', 'مكتبة شعارات: كل قناة تتعرّف بالاسم وتاخذ شعارها الشفاف (بدون خلفية)'],
+  ['🖼️', 'صور برامج MBC وعُمان وأبوظبي وبي إن ما تختفي بعد أول ثلاث برامج'],
   ['🇴🇲', 'دليل قنوات عُمان الأربع بالعربي من «عين» مع صور البرامج'],
   ['🗂️', 'تبويبات أقل في الأعلى (لوحتي والاشتراكات والتطبيقات ترجع من الإعدادات ← الشاشة الرئيسية)'],
   ['↕', 'رتّب أقسام الرئيسية من الإعدادات ← الشاشة الرئيسية'],
