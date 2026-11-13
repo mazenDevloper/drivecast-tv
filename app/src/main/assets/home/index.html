@@ -1804,11 +1804,15 @@ function scanMaybe() {   // once a day: all the channels the TV knows (favourite
 }
 setInterval(scanMaybe, 3600e3);
 // 📺 the home's channels: big cards — the programme on now (its picture behind, its name, how far it is), and what comes next
+// 🖼️ a programme's picture through an image service (wsrv.nl): made 720×405 WebP (some guides send 2–15 MB pictures, which
+// slowed the TV), and fetched by the service, so a site that refuses other sites' pages still shows; the original if it fails
+const artUrl = u => u ? `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=720&h=405&fit=cover&a=attention&q=72&output=webp` : '';
+const artImg = (u, cls) => `<img class="${cls}" src="${esc(artUrl(u))}" data-raw="${esc(u)}" alt="" loading="lazy" decoding="async" onerror="if(this.dataset.raw&&this.src!==this.dataset.raw){this.src=this.dataset.raw;this.dataset.raw=''}else this.remove()">`;
 function liveHtml(c, i) {
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
   const art = (r && r[3]) || '', pct = r ? Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)) : 0;
   return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}" data-ilist="live" data-i="${i}">`
-    + (art && S('hart', 'on') !== 'off' ? `<img class="art" src="${esc(art)}" alt="" loading="lazy" onerror="this.remove()">` : c.logo ? `<img class="logo-big" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '')
+    + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : c.logo ? `<img class="logo-big" src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : '')
     + `<span class="top">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : ''}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
     + (r ? `<span class="pnow"><small>▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</small><b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i></span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
     + (nx ? `<span class="pnx" dir="auto">التالي ${hm(nx[0])} · ${esc(nx[2])}</span>` : '') + `</button>`;
@@ -2376,7 +2380,7 @@ function nowUi() {
   const el = $('#nextm'), c = nowChannel(); el.classList.add('series'); $('#miniM').hidden = true;
   if (!c) { el.style.backgroundImage = ''; el.innerHTML = '<small>الآن في MBC 1</small><div class="empty">قناة MBC 1 مو موجودة في قوائمك</div>'; return; }
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
-  el.style.backgroundImage = r && r[3] ? `linear-gradient(90deg,rgba(8,12,18,.55),rgba(8,12,18,.92)),url("${String(r[3]).replace(/"/g, '%22')}")` : '';
+  el.style.backgroundImage = r && r[3] ? `linear-gradient(90deg,rgba(8,12,18,.55),rgba(8,12,18,.92)),url("${artUrl(r[3]).replace(/"/g, '%22')}"),url("${String(r[3]).replace(/"/g, '%22')}")` : '';
   el.innerHTML = `<small>📺 الآن في ${esc(c.name)}</small><div class="nowch">${c.logo ? `<img src="${esc(c.logo)}" alt="" onerror="this.remove()">` : ''}<div style="flex:1;min-width:0">`
     + (r ? `<b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)).toFixed(0)}%"></i></i><em>باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</em>` : '<b class="dim">بث مباشر</b>')
     + (nx ? `<em style="display:block;margin-top:4px">التالي ${hm(nx[0])} · ${esc(nx[2])}</em>` : '') + `</div></div>`;
