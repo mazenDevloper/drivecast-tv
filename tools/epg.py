@@ -192,7 +192,7 @@ def main(out):
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
     names = extra(guide, lo, hi, out)
-    names = shahid(guide, lo, hi) | names   # MBC's own guide first: its channels are found by name before any other guide's
+    sh = shahid(guide, lo, hi); names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
