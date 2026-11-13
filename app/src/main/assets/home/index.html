@@ -527,7 +527,7 @@ body.ambient .phrase.on{display:block}
     <div class="ipane" id="epgwrap"><h2>📅 دليل البرامج <small id="epgn" style="font-size:18px;font-weight:400;opacity:.6">· الآن وبعده لقنواتك · OK على البرنامج الحالي يشغّل القناة · على برنامج قادم ⏰ يذكّرك</small></h2>
       <div class="epgg" id="s-epg"></div></div>
     <div class="ipane" id="m3uwrap"><h2>📂 قوائمي الخاصة (M3U) <small id="m3un" style="font-size:18px;font-weight:400;opacity:.6"></small></h2>
-      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uIn" type="url" placeholder="الصق رابط القائمة هنا: https://…/list.m3u" style="flex:1;min-width:520px;margin:8px 0"><button class="chip f" data-act="m3u-add">➕ أضف القائمة</button><button class="chip f" data-act="m3u-file" id="m3uFileB" hidden>☁️ ارفع ملف من هذا الجهاز</button><input type="file" id="m3uFileIn" accept=".m3u,.m3u8,.txt" hidden></div>
+      <div class="shelf" style="flex-wrap:wrap;align-items:center"><input class="f bin" id="m3uIn" type="url" placeholder="رابط القائمة (…/list.m3u) أو رابط المجلد — ياخذ أحدث ملف m3u فيه" style="flex:1;min-width:520px;margin:8px 0"><button class="chip f" data-act="m3u-add">➕ أضف القائمة</button><button class="chip f" data-act="m3u-file" id="m3uFileB" hidden>☁️ ارفع ملف من هذا الجهاز</button><input type="file" id="m3uFileIn" accept=".m3u,.m3u8,.txt" hidden></div>
       <div class="empty" style="margin:2px 6px 10px">الأسهل من الجوال: افتح صفحة الريموت (عنوان التلفزيون :8080) ← الأذكار ← «قائمة قنوات خاصة» والصق الرابط</div>
       <div class="shelf" id="s-m3u" style="flex-wrap:wrap"></div></div>
     <div class="ipane" id="dynwrap"><h2>⚡ رياضية متجددة <small style="font-size:18px;font-weight:400;opacity:.6">· 🟢 = لقى سيرفر شغّال الآن · كل قناة تُسأل على كل سيرفراتها</small> <button class="chip f" data-act="dyn-again" style="font-size:18px;margin-inline-start:14px">↻ افحص من جديد</button></h2><div class="shelf" id="s-dyn" style="flex-wrap:wrap"></div></div>
@@ -1533,7 +1533,47 @@ function mostUi() {
 }
 // 📂 the owner's own channel lists (M3U addresses; setting «m3u», one per line — typed here or sent from the phone page)
 const m3uList = () => String(S('m3u', '') || '').split(/\s+/).filter(u => /^https?:\/\//.test(u));
-let M3UN = {}, M3UNAME = {};
+let M3UN = {}, M3UNAME = {}, M3UFILE = {};
+// 📁 a folder's address instead of a file's: the newest .m3u / .m3u8 in it is found each time the lists load.
+// GitHub (github.com/o/r[/tree/branch/path] or raw.githubusercontent.com/o/r/branch/path/): the folder's files by the
+// date of their last commit; any other web folder (an index page): its .m3u links, the newest by «Last-Modified».
+const isM3uFile = u => /\.m3u8?(\?|#|$)/i.test(u) || /\/hub\/m3u\?/.test(u);
+async function m3uResolve(u) {
+  if (isM3uFile(u)) return u;
+  let c = null; try { c = JSON.parse(localStorage.getItem('m3ur:' + u) || 'null'); } catch (e) {}
+  if (c && Date.now() - c.t < 3 * 3600e3) { M3UFILE[u] = c.f; return c.f; }
+  let f = '';
+  try {
+    let m = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)(?:\/tree\/([^/]+)\/?(.*?))?\/?$/i), o, r, br, path;
+    if (m) [, o, r, br, path] = m;
+    else if ((m = u.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/(?:refs\/heads\/)?([^/]+)\/?(.*?)\/?$/i))) [, o, r, br, path] = m;
+    if (o) {
+      r = r.replace(/\.git$/, ''); path = (path || '').replace(/^\/+|\/+$/g, '');
+      const api = `https://api.github.com/repos/${o}/${r}`;
+      if (!br) br = ((await getJ(api)) || {}).default_branch || 'main';
+      const tree = await getJ(`${api}/git/trees/${br}?recursive=1`);
+      const files = ((tree && tree.tree) || []).filter(x => x.type === 'blob' && /\.m3u8?$/i.test(x.path) && (!path || x.path.startsWith(path + '/')) && !x.path.slice(path ? path.length + 1 : 0).includes('/'));
+      const pool = files.length ? files : ((tree && tree.tree) || []).filter(x => x.type === 'blob' && /\.m3u8?$/i.test(x.path) && (!path || x.path.startsWith(path + '/')));
+      let best = '', bt = -1;
+      for (const x of pool.slice(0, 12)) {
+        const cm = await getJ(`${api}/commits?sha=${br}&path=${encodeURIComponent(x.path)}&per_page=1`);
+        const t = Date.parse((cm && cm[0] && cm[0].commit && cm[0].commit.committer && cm[0].commit.committer.date) || '') || 0;
+        if (t > bt) { bt = t; best = x.path; }
+      }
+      if (best) f = `https://raw.githubusercontent.com/${o}/${r}/${br}/${best.split('/').map(encodeURIComponent).join('/')}`;
+    } else {
+      const html = await getText(u), base = u.endsWith('/') ? u : u + '/';
+      const links = [...new Set([...String(html || '').matchAll(/href=["']([^"'#?]+\.m3u8?)["']/gi)].map(x => new URL(x[1], base).href))];
+      let bt = -1;
+      for (const l of links.slice(0, 12)) {
+        let t = 0; try { t = Date.parse((await fetch(l, { method: 'HEAD' })).headers.get('last-modified') || '') || 0; } catch (e) {}
+        if (t > bt || !f) { bt = Math.max(bt, t); f = l; }
+      }
+    }
+  } catch (e) {}
+  if (f) { M3UFILE[u] = f; try { localStorage.setItem('m3ur:' + u, JSON.stringify({ t: Date.now(), f })); } catch (e) {} }
+  return f || (c && c.f) || u;
+}
 // ☁️ the web version: a file from this computer / phone, kept in the cloud with the TV's key, then added to the lists
 setTimeout(() => { const b = $('#m3uFileB'); if (b && window.DCTV && DCTV.key) b.hidden = false; }, 1500);
 async function m3uUpload(f) {
@@ -1550,7 +1590,7 @@ async function m3uUpload(f) {
 document.addEventListener('change', e => { if (e.target && e.target.id === 'm3uFileIn') { m3uUpload(e.target.files[0]); e.target.value = ''; } });   // address → how many channels it gave
 function m3uUi() {
   const l = m3uList(), box = $('#s-m3u'); if (!box) return;
-  box.innerHTML = l.map((u, i) => `<span class="m3urow"><button class="chip f" data-m3uv="${esc(u)}" title="افتح وتصفّح">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : '📂 ' + esc(u.replace(/^https?:\/\//, '').slice(0, 46))}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;▶</button><button class="chip f m3ux" data-act="m3u-del" data-u="${esc(u)}" title="احذف القائمة">✕</button></span>`).join('');
+  box.innerHTML = l.map((u, i) => `<span class="m3urow"><button class="chip f" data-m3uv="${esc(u)}" title="افتح وتصفّح">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : (isM3uFile(u) ? '📂 ' : '📁 ') + esc(u.replace(/^https?:\/\//, '').slice(0, 46)) + (M3UFILE[u] && M3UFILE[u] !== u ? ' → ' + esc(decodeURIComponent(M3UFILE[u].split('/').pop())) : '')}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;▶</button><button class="chip f m3ux" data-act="m3u-del" data-u="${esc(u)}" title="احذف القائمة">✕</button></span>`).join('');
   const n = $('#m3un'); if (n) n.textContent = l.length ? `· ${AR(l.length)} قائمة — قنواتها تحت «كل القنوات» في مجموعة «📂 قائمتي»` : '· أضف رابط قائمتك وتنضاف قنواتها مع الفحص والمصادر الاحتياطية';
 }
 function m3uAdd(u) {
@@ -1998,7 +2038,7 @@ async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
   await pullFavs();
   const mineU = m3uList();
-  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(u => getText(u))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
+  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(async u => getText(await m3uResolve(u)))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
   const seen = new Set(), names = new Set(); ILIST = []; ALT = new Map();
   const alt = c => { const k = chKey(c.name); if (!ALT.has(k)) ALT.set(k, []); const a = ALT.get(k); if (!a.includes(c.url) && !/^yt-live:|youtu/.test(c.url)) a.push(c.url); };
   // Free-TV/IPTV: the first source. Its marks (Ⓢ SD, Ⓖ geo-blocked, Ⓨ YouTube) off the names; Arab countries first, in Arabic
