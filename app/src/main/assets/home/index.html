@@ -264,13 +264,13 @@ body.nightdim #nightVeil{opacity:.42}
 .ytl{width:420px}.ytl em{color:#ff6b6b;font-style:normal;font-weight:700}
 .shelf .ichan{flex:none;width:380px}
 #s-live{flex-wrap:nowrap}
-.ichan.big{width:480px;height:280px;flex:none;position:relative;flex-direction:column;align-items:stretch;justify-content:flex-end;gap:8px;padding:18px 22px;isolation:isolate}
+.ichan.big{width:500px;height:300px;flex:none;position:relative;flex-direction:column;align-items:stretch;justify-content:flex-end;gap:8px;padding:18px 22px;isolation:isolate}
 .ichan.big .art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;border-radius:inherit}
 .ichan.big .art.blur{object-fit:contain;padding:30px 120px 110px;opacity:.28;filter:blur(1px)}
 .ichan.big::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,12,18,.15) 0%,rgba(8,12,18,.55) 45%,rgba(8,12,18,.94) 100%)}
 .ichan.big.ok::before,.ichan.big.bad::before{position:absolute;top:16px;left:16px;margin:0}
 .ichan.big .top{position:absolute;top:16px;right:18px;left:44px;display:flex;align-items:center;gap:12px}
-.ichan.big .top img{width:84px;height:84px;object-fit:contain;background:#fff;border-radius:18px;padding:7px;flex:none;box-shadow:0 4px 14px rgba(0,0,0,.45);image-rendering:-webkit-optimize-contrast}
+.ichan.big .top img{width:116px!important;height:116px!important;object-fit:contain;background:#fff;border-radius:24px;padding:9px;flex:none;box-shadow:0 4px 14px rgba(0,0,0,.45);image-rendering:-webkit-optimize-contrast}
 .ichan.big .cn{font-size:21px;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big .pnow{display:flex;flex-direction:column;gap:6px}
 .ichan.big .pnow small{font-size:15px;color:#9fe3b4}
@@ -280,14 +280,18 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
 .ichan.big .pnx{font-size:16px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big:focus{transform:scale(1.035)}
-.ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);height:110px;max-width:62%;object-fit:contain;z-index:-1;filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+.ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:auto!important;height:150px!important;min-width:150px;max-width:72%;object-fit:contain;z-index:0;background:#fff;border-radius:26px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+body.logo-clear .ichan.big .logo-big{background:none;padding:0;box-shadow:none;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
+.ichan.big .pnow,.ichan.big .pnx{position:relative;z-index:1}
 .ichan.big:has(.logo-big) .top img{display:none}
 body.hc-mid .ichan.big{width:400px;height:236px}
 body.hc-mid .ichan.big .pnow b{font-size:22px}
 body.hc-small .ichan.big{width:330px;height:196px;padding:14px 16px}
 body.hc-small .ichan.big .pnow b{font-size:19px;-webkit-line-clamp:1}
-body.hc-small .ichan.big .top img{width:56px;height:56px}
-body.hc-small .ichan.big .logo-big{height:72px}
+body.hc-small .ichan.big .top img{width:76px;height:76px;border-radius:18px}
+body.hc-small .ichan.big .logo-big{height:100px!important;min-width:100px}
+body.hc-mid .ichan.big .top img{width:96px;height:96px;border-radius:20px}
+body.hc-mid .ichan.big .logo-big{height:124px!important;min-width:124px}
 body.no-art .ichan.big .art{display:none}
 body.logo-clear .ichan.big .top img{background:none;padding:0}
 body.still .ichan.big:focus,body.still .f:focus{transform:none!important;transition:none!important}   /* in a row (the home's live shelf) the cards keep their size */
