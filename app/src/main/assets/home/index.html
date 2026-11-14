@@ -2238,7 +2238,7 @@ const HORD = () => { try { return JSON.parse(localStorage.getItem('homeorder') |
 let REORD = null;
 function reorderStart(i) {
   REORD = { i }; document.body.classList.add('reorder');
-  const say = $('#liveNote'); if (say) say.textContent = '↔ ◀ ▶ حرّك القناة · OK للحفظ';
+  const say = $('#liveNote'); if (say) say.textContent = '↔ ◀ ▶ حرّك القناة · OK للحفظ · ▼ خيارات القناة';
   liveRefresh(true);
 }
 function reorderEnd() {
@@ -2250,6 +2250,8 @@ function reorderEnd() {
 document.addEventListener('keydown', e => {
   if (!REORD) return;
   const k = e.key; e.preventDefault(); e.stopImmediatePropagation();
+  if (e.repeat) return;   // the OK still held from the long press that started it
+  if (k === 'ArrowDown') { const i = REORD.i; reorderEnd(); const b = $(`#s-live [data-i="${i}"]`); if (b) { b.focus({ preventScroll: true }); ctxOpen(b); } return; }
   if (k === 'Enter' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || k === 'BrowserBack') return reorderEnd();
   if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
   const rtl = getComputedStyle($('#s-live')).direction === 'rtl', d = (k === 'ArrowLeft') === rtl ? 1 : -1, i = REORD.i, j = i + d;
@@ -3824,6 +3826,7 @@ function move(dir) {
 let HOLD = null;
 function holdPlay(b) {
   if (b.dataset.mi != null) return matchPanel(+b.dataset.mi);
+  if (b.dataset.ilist === 'live' && S('hold', 'menu') !== 'ext') return reorderStart(+b.dataset.i);   // ↔ like Google TV: a long press picks the channel up
   if (S('hold', 'menu') === 'ext') {
     if (b.dataset.act === 'nextm') return playMatchChannel(true);
     const list = listOf(b.dataset.ilist), c = list && list[+b.dataset.i];
@@ -3852,7 +3855,7 @@ const NEWS = '2026-11-14a', NEWS_ROWS = [
   ['🗂️', 'تبويبات أقل في الأعلى (لوحتي والاشتراكات والتطبيقات ترجع من الإعدادات ← الشاشة الرئيسية)'],
   ['↕', 'رتّب أقسام الرئيسية من الإعدادات ← الشاشة الرئيسية'],
   ['📺', 'وضع المسلسلات: ضغطة مطوّلة على كرت المباراة ← «غيّر إلى وضع المسلسلات»'],
-  ['↔', 'رتّب قنوات الرئيسية: ضغطة مطوّلة على قناة ← «رتّب» ← ◀ ▶ ثم OK'],
+  ['↔', 'رتّب قنوات الرئيسية مثل قوقل تي في: ضغطة مطوّلة على القناة ← ◀ ▶ ثم OK (▼ لخياراتها)'],
   ['⚡', 'التنقّل أسرع: الفحص والتحديثات تنتظر لين توقف الأسهم'],
   ['🌍', 'المباريات: القنوات المحلية للفريقين وقنوات يوتيوب (مثل بي إن الإخبارية) صارت ضمن الناقلين'],
   ['⭐', 'قوائمي: النجمة جنب القائمة تخليها مصدر قنوات المباريات الأول'],
