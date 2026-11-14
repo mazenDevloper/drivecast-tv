@@ -49,8 +49,8 @@ public class Update extends BroadcastReceiver {
             JSONObject r = new JSONObject(body);
             Matcher m = Pattern.compile("build (\\d+)").matcher(r.optString("name"));
             long latest = m.find() ? Long.parseLong(m.group(1)) : 0;
-            // the release carries both editions: DriveCastTV.apk (full, first) and DriveCastTV-Lite.apk
-            String url = "", want = BuildConfig.LITE ? "DriveCastTV-Lite.apk" : "DriveCastTV.apk";
+            // the release carries both editions: DriveCastTV.apk (full, first) and DriveCastTVLite.apk
+            String url = "", want = BuildConfig.LITE ? "DriveCastTVLite.apk" : "DriveCastTV.apk";
             org.json.JSONArray as = r.optJSONArray("assets");
             for (int k = 0; as != null && k < as.length(); k++) if (want.equals(as.getJSONObject(k).optString("name"))) url = as.getJSONObject(k).optString("browser_download_url");
             if (url.isEmpty() && !BuildConfig.LITE && as != null && as.length() > 0) url = as.getJSONObject(0).optString("browser_download_url");
