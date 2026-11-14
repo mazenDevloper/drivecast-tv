@@ -1,0 +1,15 @@
+ok the TV is on the hub (dctv-5ogb4svz,dctv-8cp44pdw,dctv-ifb5bns)
+ok a wrong code is refused
+ok ping with the code
+ok snapshot: 5 apps, board 25 chars, prayers yes
+ok web remote: /status {"mouse":true,"enabled":true,"force":true,"home":true,"ip":"10.0.2.16"}
+ok event from the TV: prefs
+ok a setting from the web
+ok a page fetched by the TV
+ok event from the TV: prefs
+ok cloud copy saved by the TV (73027 chars)
+ok cloud copy refuses a wrong key
+ok web saves to the cloud
+ok the TV took the cloud change: من السحابة 1794651684065
+ok a channel started from the web
+zap

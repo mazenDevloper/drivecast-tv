@@ -1,0 +1,66 @@
+# DriveCast TV test (2026-11-14 10:17Z, device emulator-5554, 11)
+- ✅ installed
+- ✅ HOME opens DriveCast TV once the stock launcher is off
+- 01-home.png: the home page after HOME
+- 02-focus.png: first DOWN: focus visible on the prayer / match row
+- 03-shelves.png: scrolled down: the mosque comes closer, shelves readable
+- 04-apps.png: the apps grid at the bottom
+- 05-ambient.png: UP from the tabs: the photo, the day, prayer + match bars
+- 06-page-1.png: tab 1
+- 06-page-2.png: tab 2
+- 06-page-3.png: tab 3
+- 06-page-4.png: tab 4
+- 06-page-5.png: tab 5
+- 07-settings.png: MENU: settings panel
+- 07b-after-home.png: after BACK + HOME
+- ✅ still running after BACK / HOME (pid 3241)
+- port: tcp6       0      0 :::8080                 :::*                    LISTEN     
+- service:   * ServiceRecord{210a10c u0 app.drivecast.tv/.MouseService}
+- service:   * ServiceRecord{91997a1 u0 app.drivecast.tv/org.chromium.content.app.SandboxedProcessService0:0}
+- service:   * ServiceRecord{6f50cfc u0 app.drivecast.tv/.MessageServer}
+- ✅ phone page served
+- ✅ status: {"mouse":true,"enabled":true,"force":true,"home":true,"ip":"10.0.2.16"}
+- ✅ reciters from DriveCast: 12
+- 08-phone-ambient.png: phone: «الصورة»
+- 09-quran.png: phone: Al-Kahf, Mishary
+- ✅ audio is playing
+- ✅ adhan at its alarm: the Haram adhan played
+- ✅ adhan audible (a player started)
+- ✅ adhan: muted box raised to volume 3/15
+- 10a-adhan.png: the adhan at its time: banner + sound
+- ✅ iqamah at its time after the adhan: played
+- 10b-iqama.png: the iqamah
+- ✅ next prayer's adhan is set: next 2@1794655740000
+- 10-mouse.png: phone mouse: pointer moved + tap
+- ✅ board saved from the phone
+- 11-board.png: «لوحتي» with a sample board
+- 12-board-focus.png: a board card in focus
+- 13-board-edit.png: OK on a card: the edit panel
+- 14-number-7.png: number 7: the 7th tab
+- 15-settings.png: 0: the settings, first section
+- 15b-settings-home.png: settings: the home screen section
+- 16-channels.png: 5: the channels, the big five leagues on top
+- ✅ mouse switched back on by the app
+- web: {"pin":"…","id":"dctv-5ogb4svz","online":true}
+- ✅ pairing by the TV's address sends the browser back paired
+- ✅ web: the TV is on the hub (dctv-5ogb4svz,dctv-8cp44pdw,dctv-ifb5bns)
+- ✅ web: a wrong code is refused
+- ✅ web: ping with the code
+- ✅ web: snapshot: 5 apps, board 25 chars, prayers yes
+- ✅ web: web remote: /status {"mouse":true,"enabled":true,"force":true,"home":true,"ip":"10.0.2.16"}
+- ✅ web: event from the TV: prefs
+- ✅ web: a setting from the web
+- ✅ web: a page fetched by the TV
+- ✅ web: event from the TV: prefs
+- ✅ web: cloud copy saved by the TV (73027 chars)
+- ✅ web: cloud copy refuses a wrong key
+- ✅ web: web saves to the cloud
+- ✅ web: the TV took the cloud change: من السحابة 1794651684065
+- ✅ web: a channel started from the web
+- 17-web-channel.png: a channel started from the web
+- 18-zapping.png: after 45 fast channel changes
+- 19-player-info.png: OK: the channel's info bar (resolution, codec, bit depth…)
+- ✅ zapping: still in the player, same process
+- ✅ no crash
+- ✅ no ANR
+- memory:         TOTAL   185601   132092    23408       86   185601    67470    38906    19662
