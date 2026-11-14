@@ -456,6 +456,7 @@ body.ambient .phrase.on{display:block}
 /* 📺 the Channels tab: a side menu of the lists, one list beside it (made for a TV box remote) */
 .liteonly{display:none}html.lite .liteonly{display:block}html.lite .fullonly{display:none!important}
 #s-radio .card{width:520px}
+html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition-duration:0s!important}
 #p-iptv .tvx{display:flex;gap:26px;height:930px;min-height:0}
 #p-iptv .irail{flex:none;width:300px;display:flex;flex-direction:column;gap:6px;overflow:auto;padding:8px 8px 120px;scrollbar-width:none}
 #p-iptv .irail::-webkit-scrollbar{display:none}
@@ -1441,7 +1442,7 @@ async function loadSubs() {
 }
 
 // ---- IPTV: DriveCast's favourite channels + iptv-org's Arabic list, played full screen (up / down = next channel)
-let ILIST = [], IGROUP = 'all', IFAV = [];
+let ILIST = [], IGROUP = LITE ? 'gen' : 'all', IFAV = [];   // 🪶 lite: «📺 عام عربي ومسلسلات» first
 function parseM3u(t) {
   const out = []; let meta = null;
   for (const raw of String(t || '').split(/\r?\n/)) {
@@ -1801,6 +1802,7 @@ function bestApply() {   // red first address + a green one among its sources �
   return n;
 }
 function scanNext() {
+  if (LITE && SCANMAN !== 1) return false;   // 🪶 lite: the follow-up passes only after a scan that was asked for
   if (!ILIST.length || !TV.scanStart || SCANPASS > 8 || !SCANT || Date.now() - SCANT > 23 * 3600e3) return false;
   bestApply();
   const todo = [];
@@ -1811,6 +1813,7 @@ function scanNext() {
 }
 function scanMaybe() {   // once a day: all the channels the TV knows (favourites, lists, sports, big five)
   if (!window.TV || !TV.scanStart || TV === FAKE) return;
+  if (LITE) { scanPoll(); return; }   // 🪶 lite: no scan on its own — 🩺 «افحص كل القنوات» when wanted
   scanPoll();
   const urls = [...new Set([...IFAV, ...ILIST, ...(SPORTS?.list || []), ...(MYFAV || [])].map(c => c.url).filter(u => /^https?:/i.test(u) && !/youtube\.com|youtu\.be/i.test(u)))];   // YouTube opens in YouTube: nothing to scan
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
@@ -2004,6 +2007,7 @@ function firstUp(urls) {
 const dynCands = c => { const d = DYN.find(x => x[0] === c.name); return [...new Set([...(DYNC[c.name] || []).map(x => x.url), ...(d && d[2] ? d[2]() : [])])]; };
 /** look for a working server for every channel (one channel after the other; the cards turn green / red as answers come) */
 async function loadDyn(force) {
+  if (LITE && !force) return;   // 🪶 lite: a channel's servers are asked when it is opened
   if (dynBusy || (!force && Date.now() - dynAt < 10 * 60e3)) return; dynBusy = true; dynAt = Date.now();
   try {
     const gar = ((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/ae.json')) || []).concat((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/qa.json')) || []).flatMap(x => (x.sources?.streams || []).map(url => ({ name: x.name, url, logo: '' })));
@@ -2073,6 +2077,7 @@ function gspUi(done) {
   if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
 async function loadGarden(force) {
+  if (LITE && !force) return;   // 🪶 lite: only when asked
   if (gspBusy || (!force && Date.now() - gspAt < 30 * 60e3)) return; gspBusy = true; gspAt = Date.now();
   const say = t => { const n = $('#gspn'); if (n) n.textContent = '· ' + t; };
   try {
@@ -2111,6 +2116,7 @@ async function loadEpg() {
 const SPGURL = 'https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/sports.json', ARABCC = new Set(['qa', 'ae', 'sa', 'eg', 'om', 'kw', 'bh', 'iq', 'jo', 'lb', 'ma', 'dz', 'tn', 'ly']);
 let SPG = null, spgAt = 0;
 async function loadSpg() {
+  if (LITE && SERIES()) return;
   if (Date.now() - spgAt < 2 * 3600e3) return; spgAt = Date.now();
   const d = await getJ(SPGURL); if (d && d.g) SPG = d; else spgAt = 0;
 }
@@ -2334,6 +2340,7 @@ function ytlUi() {
 }
 // every sports channel in the iptv lists of the whole world (iptv-org), once per hour: the broadcasters abroad
 async function loadSports() {
+  if (LITE && SERIES()) return;
   if (SPORTS && Date.now() - SPORTS.at < 3600e3) return;
   const t = await getText('https://iptv-org.github.io/iptv/categories/sports.m3u');
   if (t) { SPORTS = { at: Date.now(), list: parseM3u(t).filter(c => !/geo-blocked/i.test(c.name)) }; big5Ui(); scanMaybe(); }   // the foreign channels join the daily scan
@@ -2605,6 +2612,7 @@ async function mFetch(k) {
 const BIGL = /الأمم الأوروبية|أبطال أوروبا|أبطال آسيا|الدوري الأوروبي|كأس العالم|كأس الأمم|الإنجليزي|الإسباني|الإيطالي|الألماني|الفرنسي|السعودي|كأس ملك|كأس الاتحاد|champions|premier league|la ?liga|serie a|bundesliga|ligue 1|nations league|world cup/i;
 const hourAr = h => { h = h % 24; const h12 = h % 12 || 12; return AR(h12) + (h < 12 ? ' ص' : ' م'); };
 async function loadMatches() {
+  if (LITE && SERIES()) return;   // 🪶 lite: no matches tab in وضع المسلسلات
   const box = $('#s-matches'); if (!box.children.length) box.innerHTML = '<div class="empty">أجيب مباريات اليوم…</div>';
   try {
     const [all, mine] = await Promise.all([mFetch(MTAB === 'tom' ? 'tom' : 'all'), mFetch('mine'), loadSpg()]);
@@ -2648,6 +2656,7 @@ setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'to
 // ⏰ a match of the user's teams starts in 5 minutes: an alert over everything (the photo view, the launcher, a playing channel)
 let OFFER = null;
 async function matchAlerts() {
+  if (LITE && SERIES()) return;
   try {
     const d = await mFetch('all'), mine = await mFetch('mine');
     const list = [...((d && d.matches) || []), ...((mine && mine.matches) || [])];
@@ -3141,7 +3150,7 @@ function show(page) {
   if (page === 'matches') loadMatches();
   if (page === 'quran') { quranUi(); if (LITE) { if (!radioOn) radioStart(); liteRadioUi(); setTimeout(() => $('#s-radio .f')?.focus({ preventScroll: true }), 0); } else loadReciters(); }
   if (page === 'subs') loadSubs();
-  if (page === 'iptv') { loadIptv(); iPane(IPANE); }
+  if (page === 'iptv') { loadIptv(); iPane(LITE ? 'allwrap' : IPANE); if (LITE) liteFirst(); }
 }
 // ⚙️ settings: every part of the TV in one place — sections on the right, their choices on the left (0 on the remote)
 const ON = [['on', 'نعم'], ['off', 'لا']], SHOW = [['on', 'يظهر'], ['off', 'مخفي']];
@@ -3194,7 +3203,7 @@ function sections() {
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'up4k', l: '🔷 تحسين الصورة إلى 4K (تكبير بالمعالج مع توضيح الحواف — يحتاج جهاز قوي)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
       { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },
-      { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: LITE ? 'off' : 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
       { k: 'pip', l: '📺 صورة داخل صورة (Home والقناة شغّالة → تكمل في الزاوية)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'autolast', l: '▶ آخر قناة لما يشتغل التلفزيون', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
@@ -3637,7 +3646,7 @@ setInterval(ibUi, 60e3); setTimeout(ibUi, 2500);
 function ambient(on) {
   if (on) skyNote();
   document.body.classList.toggle('ambient', on);
-  document.body.classList.toggle('livepic', on && S('livepic', 'on') !== 'off');
+  document.body.classList.toggle('livepic', on && S('livepic', LITE ? 'off' : 'on') !== 'off');
   if (on) { ambWidgets(); loadPhrase(); ambIqTick(); ambNoteUi(); ibUi(); loadAyah().then(spiritUi); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
 }
@@ -3663,6 +3672,17 @@ function iEnter(item) {
   const last = IPLAST[IPANE] && p.querySelector(IPLAST[IPANE]);
   const pick = (last && visible(last) && last) || (IPANE === 'm3uvwrap' && !M3UV.all.length && $('#m3uvIn')) || [...p.querySelectorAll('[data-ilist].f, .epgg .f')].find(visible) || [...p.querySelectorAll('.f')].find(visible);
   if (pick) { pick.focus({ preventScroll: true }); pick.scrollIntoView({ block: 'center', inline: 'nearest' }); }
+}
+/** 🪶 lite: the channels tab opens on its first channel (the lists may still be loading: a few tries) */
+function liteFirst(n = 0) {
+  clearTimeout(liteFirst.t);
+  liteFirst.t = setTimeout(() => {
+    if (!$('#p-iptv').classList.contains('on')) return;
+    const a = document.activeElement; if (a && a.closest && a.closest('#iPanes, #iRail') && a !== document.body) return;   // already moved on
+    const c = $('#s-ilist [data-ilist]');
+    if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'center' }); IPLAST.allwrap = `[data-ilist="${c.dataset.ilist}"][data-i="${c.dataset.i}"]`; }
+    else if (n < 15) liteFirst(n + 1);
+  }, n ? 700 : 60);
 }
 function iRailFocus() { const r = $(`#iRail .ri[data-ipane="${IPANE}"]`) || $('#iRail .ri'); if (r) { r.focus({ preventScroll: true }); r.scrollIntoView({ block: 'nearest' }); } }
 function iRailUi() {
@@ -3768,7 +3788,7 @@ function move(dir) {
   const all = sel.filter(visible);
   if (!all.includes(cur)) return all[0]?.focus();
   const inRail = cur.closest && cur.closest('#iRail'), inPane = !inRail && cur.closest && cur.closest('#iPanes');
-  if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) return iRailFocus();
+  if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) { const c = LITE && $('#s-ilist [data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'center' }); return; } return iRailFocus(); }
   if (inRail && scope === document) {   // the side menu: ▲▼ go through it (the list beside shows at once), ◀ goes into the list
     if (dir === 'left') return iEnter();
     if (dir === 'right') return;
