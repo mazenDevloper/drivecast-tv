@@ -294,6 +294,10 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
 .ichan.big .pnx{font-size:16px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big:focus{transform:scale(1.035)}
+.lcw{display:flex;flex-direction:column;gap:10px;flex:none}
+.epgnav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 6px;font-size:17px;color:rgba(255,255,255,.6)}
+.lar{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:8px 18px;font:inherit;font-size:17px;min-width:120px}
+.lar:focus{background:#fff;color:#111;transform:scale(1.06)} .lar[disabled]{opacity:.3}
 .ichan.big.moving{outline:4px dashed #ffd60a;outline-offset:6px;transform:scale(1.06) translateY(-6px)!important}
 #liveNote{color:#ffd60a;font-size:20px;margin-inline-start:12px}
 .ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:auto!important;height:150px!important;min-width:150px;max-width:72%;object-fit:contain;z-index:0;background:#fff;border-radius:26px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
@@ -1808,13 +1812,21 @@ setInterval(scanMaybe, 3600e3);
 // slowed the TV), and fetched by the service, so a site that refuses other sites' pages still shows; the original if it fails
 const artUrl = u => u ? `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=720&h=405&fit=cover&a=attention&q=72&output=webp` : '';
 const artImg = (u, cls) => `<img class="${cls}" src="${esc(artUrl(u))}" data-raw="${esc(u)}" alt="" loading="lazy" decoding="async" onerror="if(this.dataset.raw&&this.src!==this.dataset.raw){this.src=this.dataset.raw;this.dataset.raw=''}else this.remove()">`;
+// ⏮ ⏭ under each home card: through the channel's guide — the card shows that programme (its picture, its name, its time)
+const EOFF = {};
 function liveHtml(c, i) {
-  const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
-  const art = (r && r[3]) || '', pct = r ? Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)) : 0;
+  const all = epgRows(c), now = Date.now() / 1000, k0 = Math.max(0, Math.min(EOFF[favKey(c)] || 0, all.length - 1));
+  const live0 = all[0] && all[0][0] <= now, rows = all.slice(k0);
+  const r = k0 === 0 ? (live0 ? rows[0] : null) : rows[0], nx = k0 === 0 ? (live0 ? rows[1] : rows[0]) : rows[1];
+  const art = (r && r[3]) || '', pct = r && k0 === 0 ? Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)) : 0;
+  const nav = all.length > 1 ? `<div class="epgnav"><button class="f lar" data-lar="-1" data-li="${i}"${k0 ? '' : ' disabled'}>⏮ السابق</button><span>${AR(k0 + 1)} / ${AR(all.length)}</span><button class="f lar" data-lar="1" data-li="${i}"${k0 >= all.length - 1 ? ' disabled' : ''}>التالي ⏭</button></div>` : '';
+  return `<div class="lcw">` + liveCard(c, i, r, nx, art, pct, k0, now) + nav + `</div>`;
+}
+function liveCard(c, i, r, nx, art, pct, k0, now) {
   return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}" data-ilist="live" data-i="${i}">`
     + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : logoOf(c) ? logoImg(c, 'logo-big') : '')
     + `<span class="top">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
-    + (r ? `<span class="pnow"><small>▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</small><b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i></span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
+    + (r ? `<span class="pnow"><small>${k0 ? `⏭ ${hm(r[0])} – ${hm(r[1])} · بعد ${minutesAr(Math.max(1, Math.round((r[0] - now) / 60)))}` : `▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}`}</small><b dir="auto">${esc(r[2])}</b>${k0 ? '' : `<i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i>`}</span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
     + (nx ? `<span class="pnx" dir="auto">التالي ${hm(nx[0])} · ${esc(nx[2])}</span>` : '') + `</button>`;
 }
 // 🏷️ the logo library (tools/logos.py → branch «epg» logos.json): a channel's logo found by its name — tv-logos' transparent ones
@@ -2164,10 +2176,11 @@ function liveRefresh(force) {
   if (!$('#p-home').classList.contains('on') || document.body.classList.contains('ambient')) return;
   if (!force && (REORD || (typeof busyKeys === 'function' && busyKeys()))) return setTimeout(liveRefresh, 5000);   // never redraw under the arrows
   if (SERIES()) nowUi();
-  const a = document.activeElement, i = a && a.dataset && a.dataset.ilist === 'live' ? a.dataset.i : null;
+  const a = document.activeElement, i = a && a.dataset && a.dataset.ilist === 'live' ? a.dataset.i : null, la = a && a.dataset && a.dataset.lar ? [a.dataset.lar, a.dataset.li] : null;
   $('#s-live').innerHTML = LIVE.map((c, k) => liveHtml(c, k)).join('') || $('#s-live').innerHTML;
   if (REORD) { const b = $(`#s-live [data-i="${REORD.i}"]`); if (b) { b.classList.add('moving'); b.focus({ preventScroll: true }); b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } return; }
   if (i != null) $(`#s-live [data-i="${i}"]`)?.focus({ preventScroll: true });
+  if (la) $(`#s-live [data-lar="${la[0]}"][data-li="${la[1]}"]`)?.focus({ preventScroll: true });
 }
 setInterval(liveRefresh, 60e3);
 // 📺 وضع المسلسلات: the home's channels in this order — MBC 1, Oman's channels, the Quran, MBC's other channels, Dubai's, then the
@@ -2237,6 +2250,7 @@ function liveUi() {
   const ord = HORD(); if (ord.length) { const at = k => { const x = ord.indexOf(k); return x < 0 ? 1e4 : x; }; LIVE = LIVE.map((c, i) => [at(favKey(c)), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); }
   if (SERIES()) nowUi();
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
+  if (!window.__first && LIVE.length && $('#p-home').classList.contains('on') && !LASTKEY) { window.__first = 1; const f = $('#s-live .ichan'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ block: 'center', inline: 'nearest' }); } }   // the first selection: the home's first channel
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
 // [name, the league's Arabic name, its Arabic broadcaster, who, the broadcasters abroad (a channel → true)]
@@ -3337,6 +3351,15 @@ addEventListener('offline', () => netState(false)); addEventListener('online', (
 setInterval(() => { if (navigator.onLine === false) netState(false); else if ($('#offline')?.classList.contains('on') && !$('#offline').classList.contains('back')) netState(true); }, 15e3);
 // ↩ back from a channel or an app: the card you pressed has the focus again (even if its shelf was redrawn meanwhile)
 let LASTCARD = null;
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('[data-lar]'); if (!a) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const i = +a.dataset.li, c = LIVE[i]; if (!c) return;
+  const n = epgRows(c).length, k = Math.max(0, Math.min((EOFF[favKey(c)] || 0) + (+a.dataset.lar), n - 1)); EOFF[favKey(c)] = k;
+  const w = a.closest('.lcw'), d = a.dataset.lar; if (!w) return;
+  w.outerHTML = liveHtml(c, i);
+  const nb = $(`#s-live [data-lar="${d}"][data-li="${i}"]`); (nb && !nb.disabled ? nb : $(`#s-live [data-lar="${-d}"][data-li="${i}"]`) || $(`#s-live [data-i="${i}"]`))?.focus({ preventScroll: true });
+}, true);
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-ilist],[data-app],[data-act]'); if (b) LASTCARD = { page: b.closest('.page')?.id, sel: b.dataset.ilist ? `[data-ilist="${b.dataset.ilist}"][data-i="${b.dataset.i}"]` : b.dataset.app ? `[data-app="${CSS.escape(b.dataset.app)}"]` : `[data-act="${b.dataset.act}"]` }; }, true);
 function backFocus() {
   if (!LASTCARD || document.body.classList.contains('ambient')) return;
@@ -3781,7 +3804,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-13f', NEWS_ROWS = [
+const NEWS = '2026-11-14a', NEWS_ROWS = [
+  ['⏭', 'تحت كل قناة في الرئيسية: ⏮ السابق و التالي ⏭ تقلّب برامجها (الصورة والاسم والوقت)'],
+  ['🎯', 'أول تحديد على أول قناة في الرئيسية'],
   ['🏷️', 'مكتبة شعارات: كل قناة تتعرّف بالاسم وتاخذ شعارها الشفاف (بدون خلفية)'],
   ['🖼️', 'صور برامج MBC وعُمان وأبوظبي وبي إن ما تختفي بعد أول ثلاث برامج'],
   ['🇴🇲', 'دليل قنوات عُمان الأربع بالعربي من «عين» مع صور البرامج'],
