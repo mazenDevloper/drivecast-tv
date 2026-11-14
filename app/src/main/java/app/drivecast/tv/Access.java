@@ -17,7 +17,7 @@ import android.provider.Settings;
  * from the message service, and the moment the setting is changed. «إبقاء الماوس مفعّل» in the settings turns this off.
  */
 final class Access {
-    static final String ME = new ComponentName("app.drivecast.tv", MouseService.class.getName()).flattenToString();
+    static final String ME = new ComponentName(BuildConfig.APPLICATION_ID, MouseService.class.getName()).flattenToString();
     private static boolean watching;
 
     private Access() { }
@@ -28,7 +28,7 @@ final class Access {
     static boolean enabled(Context c) {
         String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
         boolean in = list != null && (":" + list + ":").toLowerCase().contains(":" + ME.toLowerCase() + ":")
-                || list != null && list.toLowerCase().contains("app.drivecast.tv/.mouseservice");
+                || list != null && list.toLowerCase().contains(BuildConfig.APPLICATION_ID + "/.mouseservice");
         return in && Settings.Secure.getInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 0) == 1;
     }
 
@@ -46,7 +46,7 @@ final class Access {
         try {
             String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
             if (list == null || list.trim().isEmpty() || "null".equals(list)) list = ME;
-            else if (!list.toLowerCase().contains("app.drivecast.tv/")) list = list + ":" + ME;
+            else if (!list.toLowerCase().contains(BuildConfig.APPLICATION_ID + "/")) list = list + ":" + ME;
             Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
             Settings.Secure.putInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
         } catch (Exception e) { return false; }

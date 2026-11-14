@@ -47,7 +47,7 @@ public class Adhan extends BroadcastReceiver {
         {"adhan-fajr.mp3", "https://archive.org/download/Mp3CollectionAdzan/Adzan-SubuhMakkah1.mp3"},
         {"iqama.mp3", "https://archive.org/download/IqamaMakkahIsha3111434SheikhMajedAbbas/Iqama%20-%20Makkah%20Isha%20%5B3-11-1434%5D%20Sheikh%20Majed%20Abbas.mp3"}};
     private static final int[] IQAMA_MIN = {25, 20, 20, 10, 20};
-    static final String HOME = "app.drivecast.tv";   // this app is the home screen
+    static final String HOME = BuildConfig.APPLICATION_ID;   // this app is the home screen (app.drivecast.tv / .lite)
     private static final String[] KEYS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
     static final String[] NAMES = {"الفجر", "الظهر", "العصر", "المغرب", "العشاء"};
 

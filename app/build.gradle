@@ -19,6 +19,14 @@ android {
 
     buildFeatures { buildConfig true }
 
+    // two editions: «full» (app.drivecast.tv) and «lite» (app.drivecast.tv.lite — its own app beside the full one: the Arabic
+    // and Arabic sports channels only, 📻 the radio instead of the Quran tab, وضع المسلسلات first, no matches tab there)
+    flavorDimensions 'edition'
+    productFlavors {
+        full { dimension 'edition'; buildConfigField 'boolean', 'LITE', 'false' }
+        lite { dimension 'edition'; applicationIdSuffix '.lite'; versionNameSuffix '-lite'; buildConfigField 'boolean', 'LITE', 'true' }
+    }
+
     // one key for every build, so a new build installs over the old one (the TV's «⬆️ تحديث»). The key is in the repository
     // (app/signing/drivecast-tv.jks) on purpose: GitHub's build and a laptop's sign alike, with no secrets to set up. The TV
     // takes updates only from this repository's own release, so the key being public does not let anyone else push one to it.

@@ -242,6 +242,9 @@ public class HomeActivity extends Activity {
     }
 
     class Bridge {
+        /** the lite edition (Arabic channels only, the radio tab, وضع المسلسلات first) */
+        @JavascriptInterface
+        public boolean lite() { return BuildConfig.LITE; }
         /** "boot" once, just after the TV started; then "" */
         @JavascriptInterface
         public String wake() { String w = wake; wake = ""; return w; }

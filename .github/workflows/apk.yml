@@ -22,15 +22,19 @@ jobs:
           chmod +x gradlew
           for i in 1 2 3; do ./gradlew -q assembleRelease && break; echo "retry $i"; sleep 30; done
           # Gradle's download servers down: the Gradle that comes with the runner
-          [ -f app/build/outputs/apk/release/app-release.apk ] || { gradle --version | head -3; gradle -q assembleRelease; }
-          test -f app/build/outputs/apk/release/app-release.apk
-          cp app/build/outputs/apk/release/app-release.apk DriveCastTV.apk
+          O=app/build/outputs/apk
+          [ -f $O/full/release/app-full-release.apk ] || { gradle --version | head -3; gradle -q assembleRelease; }
+          test -f $O/full/release/app-full-release.apk && test -f $O/lite/release/app-lite-release.apk
+          cp $O/full/release/app-full-release.apk DriveCastTV.apk
+          cp $O/lite/release/app-lite-release.apk DriveCastTV-Lite.apk
           # the APK must carry DriveCast TV's own key (its certificate's SHA-256), or the TV refuses it as an update
           AS=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | tail -1)
-          "$AS" verify --print-certs DriveCastTV.apk | grep -qi 'SHA-256 digest: f4d6ca901e1e97a8d918196941890d0f9cb0ef7e29d615395c43656509aae0d2' \
-            || { "$AS" verify --print-certs DriveCastTV.apk; echo "::error::The APK is not signed with DriveCast TV's key"; exit 1; }
+          for A in DriveCastTV.apk DriveCastTV-Lite.apk; do
+            "$AS" verify --print-certs $A | grep -qi 'SHA-256 digest: f4d6ca901e1e97a8d918196941890d0f9cb0ef7e29d615395c43656509aae0d2' \
+              || { "$AS" verify --print-certs $A; echo "::error::$A is not signed with DriveCast TV's key"; exit 1; }
+          done
       - name: Release «latest»
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           gh release delete latest -y --cleanup-tag 2>/dev/null || true
-          gh release create latest DriveCastTV.apk -t "DriveCast TV (build ${{ github.run_number }})" -n "الشاشة الرئيسية للتلفزيون. ثبّتها مع كلود: اقرأ skills/drivecast-tv/SKILL.md"
+          gh release create latest DriveCastTV.apk DriveCastTV-Lite.apk -t "DriveCast TV (build ${{ github.run_number }})" -n "الشاشة الرئيسية للتلفزيون. ثبّتها مع كلود: اقرأ skills/drivecast-tv/SKILL.md"

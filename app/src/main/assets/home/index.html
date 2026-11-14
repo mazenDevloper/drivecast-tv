@@ -454,6 +454,8 @@ body.ambient .phrase.on{display:block}
 .pill .gold{color:var(--gold)}
 .pill .tx{display:flex;flex-direction:column;gap:4px;min-width:0}.pill .tx span{font-size:23px}
 /* 📺 the Channels tab: a side menu of the lists, one list beside it (made for a TV box remote) */
+.liteonly{display:none}html.lite .liteonly{display:block}html.lite .fullonly{display:none!important}
+#s-radio .card{width:520px}
 #p-iptv .tvx{display:flex;gap:26px;height:930px;min-height:0}
 #p-iptv .irail{flex:none;width:300px;display:flex;flex-direction:column;gap:6px;overflow:auto;padding:8px 8px 120px;scrollbar-width:none}
 #p-iptv .irail::-webkit-scrollbar{display:none}
@@ -519,8 +521,9 @@ body.ambient .phrase.on{display:block}
   </div></section>
 
   <section class="page" id="p-quran"><div class="scroll">
-    <h2>القارئ</h2><div class="shelf" id="s-reciters"></div>
-    <h2>السور</h2><div class="grid" id="s-surahs"></div>
+    <div class="liteonly"><h2>📻 راديو القرآن — التلاوات الأكثر شيوعًا</h2><div class="shelf" id="s-radio"></div></div>
+    <h2 class="fullonly">القارئ</h2><div class="shelf fullonly" id="s-reciters"></div>
+    <h2 class="fullonly">السور</h2><div class="grid fullonly" id="s-surahs"></div>
     <h2>الأذكار والرقية</h2><div class="shelf" id="s-quran2" style="flex-wrap:wrap"></div>
   </div></section>
   <section class="page" id="p-subs"><div class="scroll">
@@ -619,6 +622,10 @@ const FAKE = {   // in a browser (preview) the page still shows, with sample dat
   setCity: () => {}, phoneUrl: () => 'http://192.168.1.20:8080', canOverlay: () => true, settings: () => {},
 };
 const TV = window.TV || FAKE;
+// 🪶 the lite edition (DriveCast TV Lite, its own app): the Arabic and Arabic sports channels only, 📻 the radio instead of the
+// Quran tab (it plays at once), وضع المسلسلات first, and no matches tab while in it
+const LITE = (() => { try { return !!(TV.lite && TV.lite()) || /[?&]lite=1\b/.test(location.search); } catch (e) { return false; } })();
+if (LITE) document.documentElement.classList.add('lite');
 // ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
 let SET = {};
 function loadSet() { try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
@@ -1324,9 +1331,11 @@ function sndGo() {
   miniAudio();
 }
 function radioUi() {
+  liteRadioUi();
   if (radioOn && RNOW) { $('#plTitle').textContent = '📻 سورة ' + SURAHS[RNOW.s - 1]; $('#plSub').textContent = RNAME[RNOW.r] + ' · راديو القرآن — التلاوات الأكثر شيوعًا'; }
   homeCards(); miniAudio();
 }
+function liteRadioUi() { const b = $('#s-radio'); if (b && LITE) b.innerHTML = radioHtml(); }
 function radioStart() { SND = null; if (playing) { audio.pause(); playing = null; } radioOn = true; RNOW = null; quranUi(); radioTune(false); }
 /** a browser that refuses sound before a touch: the radio starts at the first one */
 function radioBlocked() {
@@ -1896,7 +1905,8 @@ function allChannels() {
     else h.cats.add('other');
     const v = SCAN[h.url]; if (v && typeof v === 'object' && v.h >= 2000) h.cats.add('k4');   // the scan found it 4K
   }
-  HUB = out; HUBK = key; return out;
+  HUB = LITE ? out.filter(h => h.cats.has('spar') || h.cats.has('om') || (!h.cats.has('yt') && !h.cats.has('spw') && !h.cats.has('other') && liteOk(h))) : out;   // 🪶 lite: Arabic and Arabic sports
+  HUBK = key; return HUB;
 }
 const CATRANK = Object.fromEntries(HUBC.map(([k], i) => [k, i]));
 const catOf = c => { let b = 99; for (const k of c.cats || []) if (k !== 'pin' && k !== 'fav' && k !== 'most' && k !== 'mine' && k !== 'k4' && CATRANK[k] < b) b = CATRANK[k]; return b; };
@@ -2047,6 +2057,7 @@ const GAR_AR = { 'Oman Sports TV': 'عُمان الرياضية', 'Bahrain Sport
 // 🔷 the open 4K channels, checked on GitHub every 4 hours (tools/k4.py → branch «epg» k4.json)
 let K4 = [], k4At = 0;
 async function loadK4() {
+  if (LITE) return;   // 🪶 the world's 4K channels: not in the lite edition
   if (Date.now() - k4At < 3 * 3600e3 && K4.length) return; k4At = Date.now();
   const d = await getJ('https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/k4.json');
   if (Array.isArray(d)) K4 = d.map(x => ({ name: x.n + (x.geo ? ' 🌍' : ''), url: x.u, logo: x.logo || '', k4: x.h, group: '4K' }));
@@ -2162,7 +2173,8 @@ async function loadLists() {
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
-  texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1] } : c); }));
+  texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1], arl: 1 } : { ...c, arl: 1 }); }));
+  if (LITE) ILIST = ILIST.filter(liteOk);
   lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
   setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
@@ -2185,7 +2197,8 @@ function liveRefresh(force) {
 setInterval(liveRefresh, 60e3);
 // 📺 وضع المسلسلات: the home's channels in this order — MBC 1, Oman's channels, the Quran, MBC's other channels, Dubai's, then the
 // Arabic drama channels; each found in the lists by its name (one that the scan found working first)
-const SERIES = () => S('mode', 'sport') === 'series';
+const MODE0 = LITE ? 'series' : 'sport';
+const SERIES = () => S('mode', MODE0) === 'series';
 const POS5 = [['', 'تلقائي'], ['1', 'الأول'], ['2', 'الثاني'], ['3', 'الثالث'], ['4', 'الرابع'], ['5', 'الخامس']];
 // ↕ the home's sections in the order chosen in the settings (a section not placed keeps its usual place: in وضع المسلسلات the
 // channels and the apps come right under the top row); and only the tabs chosen are shown at the top
@@ -2194,6 +2207,7 @@ function homeOrder() {
   const def = SERIES() ? { hero: 1, live: 2, apps: 3, ibada: 4, quran: 5 } : { hero: 1, ibada: 2, quran: 3, live: 4, apps: 5 };
   for (const [k, q] of secs) { const el = $(q); if (!el) continue; const v = +S('pos-' + k, '') || def[k]; el.style.order = String(v * 2 + (S('pos-' + k, '') ? 0 : 1)); }
   for (const t of ['board', 'subs', 'apps', 'quran']) { const b = $(`#tabs [data-page="${t}"]`); if (b) b.hidden = S('tab-' + t, t === 'quran' ? 'on' : 'off') === 'off'; }
+  if (LITE) { const m = $('#tabs [data-page="matches"]'); if (m) m.hidden = SERIES(); const q = $('#tabs [data-page="quran"]'); if (q) q.textContent = '📻 الراديو'; }
 }
 const SERIES_PICKS = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV( \(|$|\s*HD)/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^Oman TV Cultur/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|Oman.*Quran)/i,
   /^MBC Drama\b/i, /^MBC ?4\b/i, /^MBC ?5\b/i, /^MBC Masr\b(?! ?2)/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC ?2\b/i, /^MBC Max/i, /^MBC Action/i, /^MBC ?3\b/i,
@@ -2303,6 +2317,7 @@ function ytParseLive(html) {
   return ytParse(html).filter(v => !v.len);   // a live video has no length
 }
 async function loadYtLive() {
+  if (LITE) return;   // 🪶 the world's leagues on YouTube: not in the lite edition
   if (Date.now() - ytlAt < 20 * 60e3) return ytlUi(); ytlAt = Date.now();
   for (let k = 1; k < YTLEAGUES.length; k++) {
     const t = await getText('https://www.youtube.com/results?sp=EgJAAQ%253D%253D&hl=ar&search_query=' + encodeURIComponent(YTLEAGUES[k][1]));
@@ -2860,6 +2875,8 @@ function uniqueChannels(names) {
 const ARAB_BRANDS = new Set(["bein", "thmanyah", "ssc", "adsport", "dubaisport", "sharjahsport", "ksasport", "alkass", "mbc", "starzplay", "shahid"]);
 const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|saudi|emirates|abu dhabi|dubai|sharjah|ajman|nile|on time|ontime|al ?jazeera|arryadia|arriyadia|alwan|aloula|al ?oula|tunisia|algeri|maroc|morocc|egypt|cbc|dmc|nahar|rotana|alhadath|alarabiya|ad sports|ad sport|ktv)\b/i;
 
+/** the lite edition keeps a channel: from the Arabic lists (iptv-org's Arabic / Gulf ones, Free-TV's Arab countries) or Arabic by its name */
+const liteOk = c => !!c && (c.arl || (c.ar != null && c.ar < 99) || isArabChannel(c.name || ''));
 function isArabChannel(name) {
   if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
   // beIN also runs foreign feeds (USA, France, Turkey, Asia...): those are not the Arab channels
@@ -3122,7 +3139,7 @@ function show(page) {
   document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
   document.body.classList.toggle('deep', page !== 'home' || $('#homeScroll').scrollTop > 60);
   if (page === 'matches') loadMatches();
-  if (page === 'quran') { quranUi(); loadReciters(); }
+  if (page === 'quran') { quranUi(); if (LITE) { if (!radioOn) radioStart(); liteRadioUi(); setTimeout(() => $('#s-radio .f')?.focus({ preventScroll: true }), 0); } else loadReciters(); }
   if (page === 'subs') loadSubs();
   if (page === 'iptv') { loadIptv(); iPane(IPANE); }
 }
@@ -3164,7 +3181,7 @@ function sections() {
       { k: 'phrase-on', l: 'العبارة في وضع الصورة', o: SHOW, d: 'on' },
     ]],
     ['🎛️', 'الواجهة لهذا الجهاز', [
-      { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: 'sport' },
+      { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
       { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
