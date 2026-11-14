@@ -278,7 +278,7 @@ body.nightdim #nightVeil{opacity:.42}
 .ytl{width:420px}.ytl em{color:#ff6b6b;font-style:normal;font-weight:700}
 .shelf .ichan{flex:none;width:380px}
 #s-live{flex-wrap:nowrap}
-.ichan.big{width:500px;height:300px;flex:none;position:relative;flex-direction:column;align-items:stretch;justify-content:flex-end;gap:8px;padding:18px 22px;isolation:isolate}
+.ichan.big{width:500px;height:360px;flex:none;position:relative;flex-direction:column;align-items:stretch;justify-content:flex-end;gap:8px;padding:18px 22px;isolation:isolate}
 .ichan.big .art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;border-radius:inherit}
 .ichan.big .art.blur{object-fit:contain;padding:30px 120px 110px;opacity:.28;filter:blur(1px)}
 .ichan.big::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,12,18,.15) 0%,rgba(8,12,18,.55) 45%,rgba(8,12,18,.94) 100%)}
@@ -287,12 +287,12 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .top img{width:116px!important;height:116px!important;object-fit:contain;background:#fff;border-radius:24px;padding:9px;flex:none;box-shadow:0 4px 14px rgba(0,0,0,.45);image-rendering:-webkit-optimize-contrast}
 .ichan.big .cn{font-size:21px;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ichan.big .pnow{display:flex;flex-direction:column;gap:6px}
-.ichan.big .pnow small{font-size:15px;color:#9fe3b4}
-.ichan.big .pnow b{font-size:26px;font-weight:800;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 1px 8px rgba(0,0,0,.6)}
-.ichan.big .pnow b.dim{font-size:18px;font-weight:500;opacity:.8}
-.ichan.big .pbar{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
+.ichan.big .pnow small{font-size:19px;font-weight:600;color:#9fe3b4;text-shadow:0 1px 4px #000}
+.ichan.big .pnow b{font-size:32px;font-weight:800;line-height:1.3;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 8px rgba(0,0,0,.75)}
+.ichan.big .pnow b.dim{font-size:22px;font-weight:500;opacity:.8}
+.ichan.big .pbar{display:block;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
-.ichan.big .pnx{font-size:21px;font-weight:600;color:#fff;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(6,10,16,.72);border-radius:10px;padding:4px 10px;margin-top:4px;text-shadow:0 1px 3px #000;max-width:100%;box-sizing:border-box}
+.ichan.big .pnx{font-size:26px;display:block;font-weight:600;color:#fff;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(6,10,16,.72);border-radius:10px;padding:4px 10px;margin-top:4px;text-shadow:0 1px 3px #000;max-width:100%;box-sizing:border-box}
 .nxl{color:#5fe0a0;font-weight:700;margin-inline-end:6px}
 .nextm .nxt{display:block;margin-top:8px;font-size:22px;font-weight:600;color:#fff;background:rgba(6,10,16,.6);border-radius:10px;padding:4px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px #000}
 .ichan.big:focus{transform:scale(1.035)}
@@ -306,10 +306,14 @@ body.nightdim #nightVeil{opacity:.42}
 body.logo-clear .ichan.big .logo-big{background:none;padding:0;box-shadow:none;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
 .ichan.big .pnow,.ichan.big .pnx{position:relative;z-index:1}
 .ichan.big:has(.logo-big) .top img{display:none}
-body.hc-mid .ichan.big{width:400px;height:236px}
-body.hc-mid .ichan.big .pnow b{font-size:22px}
-body.hc-small .ichan.big{width:330px;height:196px;padding:14px 16px}
-body.hc-small .ichan.big .pnow b{font-size:19px;-webkit-line-clamp:1}
+body.hc-mid .ichan.big{width:400px;height:283px}
+body.hc-mid .ichan.big .pnow b{font-size:27px}
+body.hc-mid .ichan.big .pnx{font-size:22px}
+body.hc-mid .ichan.big .pnow small{font-size:17px}
+body.hc-small .ichan.big{width:330px;height:235px;padding:14px 16px}
+body.hc-small .ichan.big .pnow b{font-size:23px}
+body.hc-small .ichan.big .pnx{font-size:19px}
+body.hc-small .ichan.big .pnow small{font-size:15px}
 body.hc-small .ichan.big .top img{width:76px;height:76px;border-radius:18px}
 body.hc-small .ichan.big .logo-big{height:100px!important;min-width:100px}
 body.hc-mid .ichan.big .top img{width:96px;height:96px;border-radius:20px}
