@@ -463,6 +463,11 @@ body.ambient .phrase.on{display:block}
 .liteonly{display:none}html.lite .liteonly{display:block}html.lite .fullonly{display:none!important}
 #s-radio .card{width:520px}
 html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition-duration:0s!important}
+/* ⚡ the arrows: the focus moves at once */
+.f,.ichan,.tab,.chip,.ri{transition-duration:.05s!important}
+/* the tabs at the top: black and nearly solid, clear over any picture */
+.tabs{background:rgba(0,0,0,.86)!important;border-color:rgba(255,255,255,.14)!important;box-shadow:0 6px 22px rgba(0,0,0,.45)}
+.tab{color:#fff}
 #p-iptv .tvx{display:flex;gap:26px;height:930px;min-height:0}
 #p-iptv .irail{flex:none;width:300px;display:flex;flex-direction:column;gap:6px;overflow:auto;padding:8px 8px 120px;scrollbar-width:none}
 #p-iptv .irail::-webkit-scrollbar{display:none}
@@ -1825,7 +1830,7 @@ function bestApply() {   // red first address + a green one among its sources �
   return n;
 }
 function scanNext() {
-  if (LITE && SCANMAN !== 1) return false;   // 🪶 lite: the follow-up passes only after a scan that was asked for
+  if (SCANMAN !== 1) return false;   // the follow-up passes only after a scan that was asked for (both editions)
   if (!ILIST.length || !TV.scanStart || SCANPASS > 8 || !SCANT || Date.now() - SCANT > 23 * 3600e3) return false;
   bestApply();
   const todo = [];
@@ -1836,7 +1841,7 @@ function scanNext() {
 }
 function scanMaybe() {   // once a day: all the channels the TV knows (favourites, lists, sports, big five)
   if (!window.TV || !TV.scanStart || TV === FAKE) return;
-  if (LITE) { scanPoll(); return; }   // 🪶 lite: no scan on its own — 🩺 «افحص كل القنوات» when wanted
+  scanPoll(); return;   // no scan on its own (both editions): the last results are read; 🩺 «افحص كل القنوات» when wanted
   scanPoll();
   const urls = [...new Set([...IFAV, ...ILIST, ...(SPORTS?.list || []), ...(MYFAV || [])].map(c => c.url).filter(u => /^https?:/i.test(u) && !/youtube\.com|youtu\.be/i.test(u)))];   // YouTube opens in YouTube: nothing to scan
   if (urls.length && TV.scanStart(JSON.stringify(urls), false)) setTimeout(scanPoll, 4000);
@@ -2030,7 +2035,7 @@ function firstUp(urls) {
 const dynCands = c => { const d = DYN.find(x => x[0] === c.name); return [...new Set([...(DYNC[c.name] || []).map(x => x.url), ...(d && d[2] ? d[2]() : [])])]; };
 /** look for a working server for every channel (one channel after the other; the cards turn green / red as answers come) */
 async function loadDyn(force) {
-  if (LITE && !force) return;   // 🪶 lite: a channel's servers are asked when it is opened
+  if (!force) return;   // a channel's servers are asked when it is opened, or with 🩺 / ↻ (both editions)
   if (dynBusy || (!force && Date.now() - dynAt < 10 * 60e3)) return; dynBusy = true; dynAt = Date.now();
   try {
     const gar = ((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/ae.json')) || []).concat((await getJ('https://raw.githubusercontent.com/famelack/famelack-channels/main/tv/countries/qa.json')) || []).flatMap(x => (x.sources?.streams || []).map(url => ({ name: x.name, url, logo: '' })));
@@ -2100,7 +2105,7 @@ function gspUi(done) {
   if (was != null) box.querySelector(`[data-i="${was}"]`)?.focus();
 }
 async function loadGarden(force) {
-  if (LITE && !force) return;   // 🪶 lite: only when asked
+  if (!force) return;   // only when asked: 🩺 / ↻ (both editions)
   if (gspBusy || (!force && Date.now() - gspAt < 30 * 60e3)) return; gspBusy = true; gspAt = Date.now();
   const say = t => { const n = $('#gspn'); if (n) n.textContent = '· ' + t; };
   try {
@@ -3169,16 +3174,24 @@ function editAct(a) {
   $(`[data-be="${a}"]`)?.focus();
 }
 
-function show(page) {
+let TABT = null;
+function tabHover(t) {
+  if (!t || !t.dataset || !t.dataset.page || document.body.classList.contains('ambient')) return;
+  clearTimeout(TABT);
+  const page = t.dataset.page;
+  TABT = setTimeout(() => { if (document.activeElement !== t) return; if (!$('#p-' + page)?.classList.contains('on')) show(page, true); }, 120);
+}
+document.addEventListener('focusin', e => { const t = e.target; if (t && t.classList && t.classList.contains('tab')) tabHover(t); });
+function show(page, soft) {
   document.body.classList.toggle('board', page === 'board');
   if (page === 'board') loadBoard();
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + page));
   document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
   document.body.classList.toggle('deep', page !== 'home' || $('#homeScroll').scrollTop > 60);
   if (page === 'matches') loadMatches();
-  if (page === 'quran') { quranUi(); if (LITE) { if (!radioOn) radioStart(); liteRadioUi(); setTimeout(() => $('#s-radio .f')?.focus({ preventScroll: true }), 0); } else loadReciters(); }
+  if (page === 'quran') { quranUi(); if (LITE) { liteRadioUi(); if (!soft) { if (!radioOn) radioStart(); setTimeout(() => $('#s-radio .f')?.focus({ preventScroll: true }), 0); } else setTimeout(() => { const q = $('#tabs [data-page="quran"]'); if (document.activeElement === q && !radioOn) { radioStart(); liteRadioUi(); } }, 700); } else loadReciters(); }
   if (page === 'subs') loadSubs();
-  if (page === 'iptv') { loadIptv(); iPane(LITE ? 'allwrap' : IPANE); if (LITE) liteFirst(); }
+  if (page === 'iptv') { loadIptv(); iPane(LITE ? 'allwrap' : IPANE); if (LITE && !soft) liteFirst(); }
 }
 // ⚙️ settings: every part of the TV in one place — sections on the right, their choices on the left (0 on the remote)
 const ON = [['on', 'نعم'], ['off', 'لا']], SHOW = [['on', 'يظهر'], ['off', 'مخفي']];
@@ -3846,8 +3859,8 @@ function move(dir) {
   if (!best) { if (dir === 'up' && cur.classList.contains('tab') && !$('#panel').classList.contains('on')) ambient(true); return; }
   best.focus();
   if (inPane) iTrack(best);
-  if (best.classList.contains('tab')) { document.querySelectorAll('.scroll').forEach(s => s.scrollTo({ top: 0, behavior: 'smooth' })); return; }
-  best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: document.body.classList.contains('lite') ? 'auto' : 'smooth' });
+  if (best.classList.contains('tab')) { tabHover(best); document.querySelectorAll('.scroll').forEach(s => { s.scrollTop = 0; }); return; }
+  best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'auto' });   // at once: the remote never waits for a scroll
 }
 let HOLD = null;
 function holdPlay(b) {
