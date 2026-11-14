@@ -2241,6 +2241,7 @@ async function loadLists() {
   if (LITE) ILIST = ILIST.filter(liteOk);
   iptvHdrSend(ILIST);
   lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
+  setTimeout(() => { if (!$('#p-iptv').classList.contains('on') && !busyKeys()) { window.__iAt = Date.now(); loadIptv(); } }, 12000);   // ⚡ the channels page drawn ahead, hidden: the first visit is instant
   setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
 // the home shelf: Al Quran Al Kareem (Makkah, live from the Haram), Oman TV, Oman TV Live, Al Jazeera, MBC, Oman Sport — from the Arabic lists first, DriveCast's favourites when a list
@@ -3230,10 +3231,10 @@ function show(page, soft) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + page));
   document.querySelectorAll('.tab[data-page]').forEach(t => t.classList.toggle('on', t.dataset.page === page));
   document.body.classList.toggle('deep', page !== 'home' || $('#homeScroll').scrollTop > 60);
-  if (page === 'matches') loadMatches();
+  if (page === 'matches' && Date.now() - (window.__mAt || 0) > 90e3) { window.__mAt = Date.now(); loadMatches(); }   // ⚡ shown as it was if drawn in the last 90 s (it refreshes on its own)
   if (page === 'quran') { quranUi(); if (LITE) { liteRadioUi(); if (!soft) { if (!radioOn) radioStart(); setTimeout(() => $('#s-radio .f')?.focus({ preventScroll: true }), 0); } else setTimeout(() => { const q = $('#tabs [data-page="quran"]'); if (document.activeElement === q && !radioOn) { radioStart(); liteRadioUi(); } }, 700); } else loadReciters(); }
   if (page === 'subs') loadSubs();
-  if (page === 'iptv') { loadIptv(); iPane(LITE ? 'allwrap' : IPANE); if (LITE && !soft) liteFirst(); }
+  if (page === 'iptv') { if (Date.now() - (window.__iAt || 0) > 90e3) { window.__iAt = Date.now(); loadIptv(); } iPane(LITE ? 'allwrap' : IPANE); if (LITE && !soft) liteFirst(); }
 }
 // ⚙️ settings: every part of the TV in one place — sections on the right, their choices on the left (0 on the remote)
 const ON = [['on', 'نعم'], ['off', 'لا']], SHOW = [['on', 'يظهر'], ['off', 'مخفي']];
@@ -3278,6 +3279,7 @@ function sections() {
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
       { k: 'hlogo', l: 'شعار القناة', o: [['clear', 'بدون خلفية'], ['tile', 'على مربع أبيض']], d: 'clear' },
+      { k: 'up4k', l: '🔷 تحسين صورة القنوات إلى 4K (Upscale — يحتاج جهاز قوي)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
       { k: 'livebg', l: '🌅 خلفية حيّة خلف القوائم (الشمس والسماء والقمر تتحرّك — أبطأ على التلفزيون)', o: ON, d: 'off' },
       { k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
@@ -3933,7 +3935,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-14y', NEWS_ROWS = [
+const NEWS = '2026-11-14x', NEWS_ROWS = [
+  ['🔷', 'تحسين الصورة إلى 4K: الإعدادات ← الواجهة لهذا الجهاز'],
+  ['⚡', 'التنقّل بين التبويبات فوري: القنوات والمباريات ما تنعاد كل مرة'],
   ['⚽', 'افتح رابط M3U: ضغطة مطوّلة على مجلد تخليه مصدر قنوات المباريات (⚽ جنب اسمه)'],
   ['🎬', 'أفلام ومسلسلات قوائم IPTV ما تطلع في القنوات'],
   ['⚡', 'الأسهم صارت أسرع ٣–٥ مرات: الخلفية ثابتة خلف القوائم (الحيّة في شاشة الصور)، وأفلام ومسلسلات قوائم IPTV ما تنحسب قنوات'],
