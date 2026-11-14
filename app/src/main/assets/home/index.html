@@ -2275,7 +2275,7 @@ function liveUi() {
   LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   const rest = SERIES() ? [...seriesPicks(), ...LIVE] : LIVE, head = [...picksOf(HOME_TOP), ...PINS], seen = new Set();
   LIVE = [...head, ...rest].filter(c => { const k = favKey(c); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
-  const ord = HORD(); if (ord.length) { const at = k => { const x = ord.indexOf(k); return x < 0 ? 1e4 : x; }; LIVE = LIVE.map((c, i) => [at(favKey(c)), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); }
+  const ord = HORD(); if (ord.length) { const known = LIVE.filter(c => ord.includes(favKey(c))).sort((a, b) => ord.indexOf(favKey(a)) - ord.indexOf(favKey(b))); let k = 0; LIVE = LIVE.map(c => ord.includes(favKey(c)) ? known[k++] : c); }   // a channel the saved order lacks keeps its usual place
   if (SERIES()) nowUi();
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
   if (!window.__first && LIVE.length && $('#p-home').classList.contains('on') && !LASTKEY) { window.__first = 1; const f = $('#s-live .ichan'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ block: 'center', inline: 'nearest' }); } }   // the first selection: the home's first channel
