@@ -292,7 +292,9 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pnow b.dim{font-size:18px;font-weight:500;opacity:.8}
 .ichan.big .pbar{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
-.ichan.big .pnx{font-size:16px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ichan.big .pnx{font-size:21px;font-weight:600;color:#fff;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(6,10,16,.72);border-radius:10px;padding:4px 10px;margin-top:4px;text-shadow:0 1px 3px #000;max-width:100%;box-sizing:border-box}
+.nxl{color:#5fe0a0;font-weight:700;margin-inline-end:6px}
+.nextm .nxt{display:block;margin-top:8px;font-size:22px;font-weight:600;color:#fff;background:rgba(6,10,16,.6);border-radius:10px;padding:4px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px #000}
 .ichan.big:focus{transform:scale(1.035)}
 .lcw{display:flex;flex-direction:column;gap:10px;flex:none}
 .epgnav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 6px;font-size:17px;color:rgba(255,255,255,.6)}
@@ -1839,7 +1841,7 @@ function liveCard(c, i, r, nx, art, pct, k0, now) {
     + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : logoOf(c) ? logoImg(c, 'logo-big') : '')
     + `<span class="top">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
     + (r ? `<span class="pnow"><small>${k0 ? `⏭ ${hm(r[0])} – ${hm(r[1])} · بعد ${minutesAr(Math.max(1, Math.round((r[0] - now) / 60)))}` : `▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}`}</small><b dir="auto">${esc(r[2])}</b>${k0 ? '' : `<i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i>`}</span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
-    + (nx ? `<span class="pnx" dir="auto">التالي ${hm(nx[0])} · ${esc(nx[2])}</span>` : '') + `</button>`;
+    + (nx ? `<span class="pnx" dir="auto"><b class="nxl">التالي ${hm(nx[0])}</b> ${esc(nx[2])}</span>` : '') + `</button>`;
 }
 // 🏷️ the logo library (tools/logos.py → branch «epg» logos.json): a channel's logo found by its name — tv-logos' transparent ones
 // first, then iptv-org's; it wins over the list's own logo (some lists' logos don't load), which stays as the fallback
@@ -2230,7 +2232,7 @@ function picksOf(res) {
 }
 const seriesPicks = () => picksOf(SERIES_PICKS);
 // the home's channels always start with these four, then the pinned ones in the order they were pinned, then the rest
-const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^MBC ?4\b/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|القرآن الكريم)/i];
+const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^(Oman Sports?( TV)?\b|عُ?مان الرياضية)/i, /^MBC ?4\b/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|القرآن الكريم)/i];
 // ↔ the home's channels in the user's own order: «رتّب» (long press on a channel) → ◀ ▶ move it, OK (or back) keeps the order
 const HORD = () => { try { return JSON.parse(localStorage.getItem('homeorder') || '[]'); } catch (e) { return []; } };
 let REORD = null;
@@ -2437,7 +2439,7 @@ function nowUi() {
   el.style.backgroundImage = r && r[3] ? `linear-gradient(90deg,rgba(8,12,18,.55),rgba(8,12,18,.92)),url("${artUrl(r[3]).replace(/"/g, '%22')}"),url("${String(r[3]).replace(/"/g, '%22')}")` : '';
   el.innerHTML = `<small>📺 الآن في ${esc(c.name)}</small><div class="nowch">${logoImg(c)}<div style="flex:1;min-width:0">`
     + (r ? `<b dir="auto">${esc(r[2])}</b><i class="pbar"><i style="width:${Math.min(100, Math.max(2, (now - r[0]) / (r[1] - r[0]) * 100)).toFixed(0)}%"></i></i><em>باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}</em>` : '<b class="dim">بث مباشر</b>')
-    + (nx ? `<em style="display:block;margin-top:4px">التالي ${hm(nx[0])} · ${esc(nx[2])}</em>` : '') + `</div></div>`;
+    + (nx ? `<span class="nxt" dir="auto"><b class="nxl">التالي ${hm(nx[0])}</b> ${esc(nx[2])}</span>` : '') + `</div></div>`;
 }
 setInterval(() => { if (SERIES()) nowUi(); }, 60e3);
 function nextUi() {
