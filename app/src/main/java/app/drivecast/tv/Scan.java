@@ -42,27 +42,53 @@ public class Scan {
         } catch (Exception e) { return false; }
         if (urls.isEmpty()) return false;
         final boolean top = fresh;
+        // 🤝 gentle on each server: its channels spread through the scan (one of each server in turn), at most 2 at a time and
+        // 0.8 s apart; a server that stops answering (6 failures in a row) is left for the next scan — never asked thousands of
+        // times in a row (a list of 10 000 channels on one host got the home's line blocked there)
+        java.util.LinkedHashMap<String, java.util.ArrayDeque<String>> byHost = new java.util.LinkedHashMap<>();
+        for (String u : urls) { String h = hostOf(u); java.util.ArrayDeque<String> q = byHost.get(h); if (q == null) byHost.put(h, q = new java.util.ArrayDeque<>()); q.add(u); }
+        urls.clear();
+        for (boolean any = true; any; ) { any = false; for (java.util.ArrayDeque<String> q : byHost.values()) { String u = q.poll(); if (u != null) { urls.add(u); any = true; } } }
+        final java.util.Map<String, java.util.concurrent.Semaphore> gate = new java.util.concurrent.ConcurrentHashMap<>();
+        final java.util.Map<String, Long> last = new java.util.HashMap<>();
+        final java.util.Map<String, AtomicInteger> fails = new java.util.concurrent.ConcurrentHashMap<>();
         running = true; done.set(0); total.set(urls.size());
         new Thread(() -> {
             ExecutorService pool = Executors.newFixedThreadPool(4);   // gentle on the home network: 4 at a time (10 filled some routers, and the TV felt offline)
             for (final String u : urls) pool.execute(() -> {
                 while (paused || System.currentTimeMillis() < holdUntil) { try { Thread.sleep(500); } catch (InterruptedException e) { return; } }
-                boolean ok = false;
-                try { ok = works(u); } catch (Throwable ignored) { }
-                JSONObject inf = null;
-                if (ok) { try { inf = info(u); } catch (Throwable ignored) { } }
-                if (inf == null) inf = new JSONObject();
-                synchronized (res) { try { res.put(u, ok ? inf.put("ok", 1) : 0); } catch (Exception ignored) { } }
+                final String h = hostOf(u);
+                AtomicInteger miss = fails.get(h); if (miss == null) { fails.putIfAbsent(h, new AtomicInteger()); miss = fails.get(h); }
+                java.util.concurrent.Semaphore g = gate.get(h); if (g == null) { gate.putIfAbsent(h, new java.util.concurrent.Semaphore(2)); g = gate.get(h); }
+                if (miss.get() < 6) {
+                    try { g.acquire(); } catch (InterruptedException e) { return; }
+                    try {
+                        long wait;
+                        synchronized (last) { long now = System.currentTimeMillis(), at = Math.max(now, (last.containsKey(h) ? last.get(h) : 0L) + 800); last.put(h, at); wait = at - now; }
+                        if (wait > 0) try { Thread.sleep(wait); } catch (InterruptedException e) { return; }
+                        if (miss.get() < 6) {
+                            boolean ok = false;
+                            try { ok = works(u); } catch (Throwable ignored) { }
+                            JSONObject inf = null;
+                            if (ok) { try { inf = info(u); } catch (Throwable ignored) { } }
+                            if (inf == null) inf = new JSONObject();
+                            if (ok) miss.set(0); else miss.incrementAndGet();
+                            synchronized (res) { try { res.put(u, ok ? inf.put("ok", 1) : 0); } catch (Exception ignored) { } }
+                        }
+                    } finally { g.release(); }
+                }
                 int d = done.incrementAndGet();
                 if (d % 40 == 0) synchronized (res) { p.edit().putString("r", res.toString()).apply(); }   // partial results show while it runs
             });
             pool.shutdown();
-            try { pool.awaitTermination(40, java.util.concurrent.TimeUnit.MINUTES); } catch (InterruptedException ignored) { }
+            try { pool.awaitTermination(8, java.util.concurrent.TimeUnit.HOURS); } catch (InterruptedException ignored) { }   // a big list on one host takes a while at 0.8 s apart
             synchronized (res) { SharedPreferences.Editor ed = p.edit().putString("r", res.toString()); if (!top) ed.putLong("t", System.currentTimeMillis()); ed.apply(); }
             running = false;
         }, "scan").start();
         return true;
     }
+
+    private static String hostOf(String u) { try { String h = new URL(u).getHost(); return h == null ? "" : h.toLowerCase(java.util.Locale.ROOT); } catch (Exception e) { return ""; } }
 
     /** {t: last full scan (ms), running, done, total, r: {url: 1|0}} */
     public static String state(Context ctx) {

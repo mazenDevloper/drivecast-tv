@@ -1574,7 +1574,7 @@ const isM3uFile = u => /\.m3u8?(\?|#|$)/i.test(u) || /\/hub\/m3u\?/.test(u);
 async function m3uResolve(u) {
   if (isM3uFile(u)) return u;
   let c = null; try { c = JSON.parse(localStorage.getItem('m3ur:' + u) || 'null'); } catch (e) {}
-  if (c && Date.now() - c.t < 3 * 3600e3) { M3UFILE[u] = c.f; return c.f; }
+  if (c && Date.now() - c.t < 24 * 3600e3) { M3UFILE[u] = c.f; return c.f; }
   let f = '';
   try {
     let m = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)(?:\/tree\/([^/]+)\/?(.*?))?\/?$/i), o, r, br, path;
@@ -1587,12 +1587,8 @@ async function m3uResolve(u) {
       const tree = await getJ(`${api}/git/trees/${br}?recursive=1`);
       const files = ((tree && tree.tree) || []).filter(x => x.type === 'blob' && /\.m3u8?$/i.test(x.path) && (!path || x.path.startsWith(path + '/')) && !x.path.slice(path ? path.length + 1 : 0).includes('/'));
       const pool = files.length ? files : ((tree && tree.tree) || []).filter(x => x.type === 'blob' && /\.m3u8?$/i.test(x.path) && (!path || x.path.startsWith(path + '/')));
-      let best = '', bt = -1;
-      for (const x of pool.slice(0, 12)) {
-        const cm = await getJ(`${api}/commits?sha=${br}&path=${encodeURIComponent(x.path)}&per_page=1`);
-        const t = Date.parse((cm && cm[0] && cm[0].commit && cm[0].commit.committer && cm[0].commit.committer.date) || '') || 0;
-        if (t > bt) { bt = t; best = x.path; }
-      }
+      let best = '', bs = -1;
+      for (const x of pool) if ((x.size || 0) > bs) { bs = x.size || 0; best = x.path; }   // the biggest list (the tree gives sizes: no ask per file)
       if (best) f = `https://raw.githubusercontent.com/${o}/${r}/${br}/${best.split('/').map(encodeURIComponent).join('/')}`;
     } else {
       const html = await getText(u), base = u.endsWith('/') ? u : u + '/';

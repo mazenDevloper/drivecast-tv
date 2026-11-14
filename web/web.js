@@ -217,8 +217,27 @@
     const todo = force ? [...new Set(urls)] : urls.filter(u => !(u in SCN.r));   // the full scan once; then only the new ones (🩺 the manual scan: all again)
     if (!todo.length) return false;
     SCN.running = true; SCN.done = 0; SCN.total = todo.length;
+    // 🤝 gentle on each server: one of each server in turn, at most 2 at a time and 0.8 s apart; 6 failures in a row → that
+    // server is left for the next scan (never asked thousands of times in a row)
+    const hostOf = u => { try { return new URL(u).host; } catch (e) { return ''; } }, byHost = new Map();
+    for (const u of todo) { const h = hostOf(u); if (!byHost.has(h)) byHost.set(h, []); byHost.get(h).push(u); }
+    const order = []; for (let any = true; any; ) { any = false; for (const q of byHost.values()) if (q.length) { order.push(q.shift()); any = true; } }
+    const busy = {}, last = {}, miss = {}, nap = ms => new Promise(r => setTimeout(r, ms));
     let k = 0;
-    const worker = async () => { while (k < todo.length) { const u = todo[k++]; const v = await scanOne(u); if (v !== null) SCN.r[u] = v; else delete SCN.r[u]; if (++SCN.done % 20 === 0) scanSave(); } };
+    const worker = async () => {
+      while (k < order.length) {
+        const u = order[k++], h = hostOf(u);
+        if ((miss[h] || 0) < 6) {
+          while ((busy[h] || 0) >= 2) await nap(200);
+          busy[h] = (busy[h] || 0) + 1;
+          const at = Math.max(Date.now(), (last[h] || 0) + 800); last[h] = at; if (at > Date.now()) await nap(at - Date.now());
+          try {
+            if ((miss[h] || 0) < 6) { const v = await scanOne(u); if (v !== null) SCN.r[u] = v; else delete SCN.r[u]; miss[h] = v && v.ok ? 0 : (miss[h] || 0) + 1; }
+          } finally { busy[h]--; }
+        }
+        if (++SCN.done % 20 === 0) scanSave();
+      }
+    };
     Promise.all(Array.from({ length: 6 }, worker)).then(() => { SCN.running = false; SCN.t = Date.now(); scanSave(); });
     return true;
   }
