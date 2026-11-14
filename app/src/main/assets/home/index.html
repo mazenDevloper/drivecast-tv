@@ -1469,7 +1469,7 @@ let ILIST = [], IGROUP = LITE ? 'gen' : 'all', IFAV = [];   // 🪶 lite: «📺
 const HDRKEY = { 'user-agent': 'ua', 'http-user-agent': 'ua', 'referer': 'ref', 'referrer': 'ref', 'http-referrer': 'ref', 'http-referer': 'ref', 'origin': 'org', 'http-origin': 'org' };
 function hdrPairs(s, h) { for (const p of String(s || '').split('&')) { const i = p.indexOf('='); if (i < 1) continue; const k = HDRKEY[p.slice(0, i).trim().toLowerCase()]; if (k) { let v = p.slice(i + 1).trim(); try { v = decodeURIComponent(v); } catch (e) {} h[k] = v; } } }
 // 🎬 an IPTV list's films and series (Xtream «/movie/», «/series/», .mp4 / .mkv, groups VOD / SERIES / أفلام / مسلسلات)
-const isVod = c => /\.(mp4|mkv|avi|mov|m4v|wmv)(\?|$)|\/(movie|movies|series)\//i.test(c.url || '') || /^\s*(vod|series|movies?|films?|أفلام|افلام|مسلسلات)\b|\b(vod|series)\s*[|:]/i.test(c.group || '');
+const isVod = c => /\.(mp4|mkv|avi|mov|m4v|wmv|flv)(\?|$)|\/(movie|movies|series|vod)\//i.test(c.url || '') || /(^|[^a-z])(vod|series|movies?|films?|cinema|netflix|box ?office|tv ?shows?)([^a-z]|$)|أفلام|افلام|فيلم|مسلسل|سينما|مدبلج/i.test(c.group || '');
 const M3URE = {};   // the attributes' patterns made once (not three new ones per line of a 30 000-line list)
 function parseM3u(t) {
   const out = []; let meta = null, hdr = {};
@@ -1665,6 +1665,17 @@ function m3uUi() {
 // ⭐ one of «قوائمي» marked as the matches' source: its channels are the first a carrier is looked for in (then the rest)
 const m3uStar = () => { try { return localStorage.getItem('m3ustar') || ''; } catch (e) { return ''; } };
 let STARL = [];
+// ⚽ the folders (groups) of a list that the matches' carriers are looked for in — a long press on a folder in «افتح رابط M3U».
+// With folders chosen, only their channels are the matches' first source (not the whole list); the ⭐ list without folders: all of it
+const MGRP = () => { try { return JSON.parse(localStorage.getItem('mgroups') || '{}'); } catch (e) { return {}; } };
+function mgroupToggle(u, g) {
+  const m = MGRP(), l = new Set(m[u] || []); l.has(g) ? l.delete(g) : l.add(g); m[u] = [...l]; if (!m[u].length) delete m[u];
+  try { localStorage.setItem('mgroups', JSON.stringify(m)); } catch (e) {}
+  if (!m3uList().includes(u) && m[u]) { setPref('m3u', [...m3uList(), u].join(' ')); }   // the list joins «قوائمي» to be read with the others
+  window.__mgk = ''; m3uvUi(); $(`#m3uvGroups [data-mg="${CSS.escape(g)}"]`)?.focus();
+  $('#m3uvSay').textContent = l.has(g) ? `⚽ «${g}» صار مصدر قنوات المباريات` : `«${g}» ما عاد مصدر المباريات`;
+  listsAt = 0; loadLists();
+}
 function m3uAdd(u) {
   u = String(u || '').trim(); if (!/^https?:\/\/\S{6,}/.test(u)) { const n = $('#m3un'); if (n) n.textContent = '· الرابط لازم يبدأ بـ http'; return; }
   const l = m3uList(); if (!l.includes(u)) setPref('m3u', [...l, u].join('\n'));
@@ -1900,7 +1911,10 @@ function logoOf(c) {
   const ok = k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t));
   const u = (ok && LOGOI.get(k)) || ''; LOGOC.set(c.name, u); return u || c.logo || '';
 }
-const logoImg = (c, cls, hide) => { const u = logoOf(c); return u ? `<img${cls ? ` class="${cls}"` : ''} src="${esc(u)}" data-raw="${esc(c.logo && c.logo !== u ? c.logo : '')}" alt="" loading="lazy" decoding="async" onerror="if(this.dataset.raw){this.src=this.dataset.raw;this.dataset.raw=''}else ${hide ? "this.style.visibility='hidden'" : 'this.remove()'}">` : ''; };
+// ⚡ a logo made small by the image service (240 px WebP): the libraries' logos are up to 2000 px PNGs, and a few hundred of them,
+// decoded at each scroll, slowed the arrows; the original if the service fails
+const smallLogo = u => /^https?:/.test(u || '') ? `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=240&h=160&fit=inside&output=webp&q=80` : u;
+const logoImg = (c, cls, hide) => { const u = logoOf(c); return u ? `<img${cls ? ` class="${cls}"` : ''} src="${esc(smallLogo(u))}" data-raw="${esc(u)}" data-raw2="${esc(c.logo && c.logo !== u ? c.logo : '')}" alt="" loading="lazy" decoding="async" onerror="if(this.dataset.raw){this.src=this.dataset.raw;this.dataset.raw=''}else if(this.dataset.raw2){this.src=this.dataset.raw2;this.dataset.raw2=''}else ${hide ? "this.style.visibility='hidden'" : 'this.remove()'}">` : ''; };
 const ichHtml = (c, i, list) => `<button class="ichan f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}" data-ilist="${list}" data-i="${i}">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="nm">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}${epgNow(c) ? `<small class="epg">▸ ${esc(epgNow(c))}</small>` : ''}<small class="at">${esc(attrText(c))}</small></span><span class="pin" data-pin title="${isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'}">${isPin(c) ? '📌' : '⬆'}</span><span class="star" data-star title="المفضّلة">${isFav(c) ? '★' : '☆'}</span></button>`;
 /** every channel in one list: the dynamic sports channels first, then the Arabic lists, then the world's sports channels */
 // 📺 «كل القنوات» is the one place for every channel the TV knows — the lists, the sports ones, the big five's, the 4K ones, YouTube's
@@ -2215,8 +2229,10 @@ async function loadLists() {
   }).sort((a, b) => a.ar - b.ar);
   const cl = mineU.find(u => /\/hub\/m3u\?.*&id=/.test(u));
   if (cl) getJ(cl.replace(/&id=[^&]+/, '&list=1')).then(d => { for (const it of (d && d.lists) || []) for (const u of mineU) if (u.endsWith('&id=' + it.id)) M3UNAME[u] = it.name; m3uUi(); }).catch(() => {});
-  STARL = [];
-  mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)); if (mineU[k] === m3uStar()) STARL = l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 })); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
+  STARL = []; const MG = MGRP();
+  mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)), gs = MG[mineU[k]];
+    if (gs && gs.length) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url) && gs.includes(c.group)).map(c => ({ ...c, mine: 1, star: 1 })));
+    else if (mineU[k] === m3uStar()) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 }))); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
   m3uUi();
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
@@ -3771,8 +3787,9 @@ function iTrack(t) {   // (also called by move(): a WebView without window focus
     IPLAST[p.id] = t.dataset.igroup != null ? `[data-igroup="${CSS.escape(t.dataset.igroup)}"]` : `[data-mg="${CSS.escape(t.dataset.mg)}"]`;
     clearTimeout(IGT); IGT = setTimeout(() => {
       if (document.activeElement !== t) return;
-      if (t.dataset.igroup != null && IGROUP !== t.dataset.igroup) { IGROUP = t.dataset.igroup; iptvUi(); $('#iPanes').scrollTop = 0; }
-      if (t.dataset.mg != null && M3UV.group !== t.dataset.mg) { M3UV.group = t.dataset.mg; m3uvUi(); $('#iPanes').scrollTop = 0; }
+      const top = () => { const br = t.closest('.ibrowse'), ip = $('#iPanes'); if (br && ip && ip.scrollTop > br.offsetTop) ip.scrollTop = br.offsetTop; };   // the channels from their first row; the folders stay where they are
+      if (t.dataset.igroup != null && IGROUP !== t.dataset.igroup) { IGROUP = t.dataset.igroup; iptvUi(); top(); }
+      if (t.dataset.mg != null && M3UV.group !== t.dataset.mg) { M3UV.group = t.dataset.mg; m3uvUi(); top(); }
     }, 380);
   }
 }
@@ -3806,7 +3823,7 @@ async function m3uvOpen(u) {
   if (IPANE !== 'm3uvwrap') iPane('m3uvwrap');
   if (!/^https?:\/\/\S{6,}/.test(u)) { say('الرابط لازم يبدأ بـ http'); return; }
   $('#m3uvIn').value = u; say('⏳ أحمّل القائمة…');
-  const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url)).map(c => ({ ...c, name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
+  const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url) && !isVod(c)).map(c => ({ ...c, name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
   if (!l.length) { say(t ? 'هذا الرابط مو قائمة M3U، أو ما فيها قنوات' : 'ما قدرت أفتح الرابط — تأكد منه ومن الإنترنت'); return; }
   iptvHdrSend(l);
   Object.assign(M3UV, { url: u, all: l, group: 'all', q: '', f: {}, lim: 300 }); $('#m3uvQ').value = ''; window.__mgk = '';
@@ -3824,7 +3841,7 @@ function m3uvUi() {
   const groups = ['all', ...Object.keys(cnt)];
   if (M3UV.group !== 'all' && !cnt[M3UV.group]) M3UV.group = 'all';
   const gk = groups.map(g => g + (cnt[g] || base.length)).join('|');
-  if (gk !== window.__mgk) { window.__mgk = gk; $('#m3uvGroups').innerHTML = groups.slice(0, 400).map(g => `<button class="chip f ${g === M3UV.group ? 'on' : ''}" data-mg="${esc(g)}">${g === 'all' ? 'الكل' : esc(g)}<small>${AR(g === 'all' ? base.length : cnt[g])}</small></button>`).join(''); }
+  if (gk !== window.__mgk) { window.__mgk = gk; $('#m3uvGroups').innerHTML = groups.slice(0, 400).map(g => `<button class="chip f ${g === M3UV.group ? 'on' : ''}" data-mg="${esc(g)}">${(MGRP()[M3UV.url] || []).includes(g) ? '⚽ ' : ''}${g === 'all' ? 'الكل' : esc(g)}<small>${AR(g === 'all' ? base.length : cnt[g])}</small></button>`).join(''); }
   else document.querySelectorAll('#m3uvGroups .chip').forEach(b => b.classList.toggle('on', b.dataset.mg === M3UV.group));
   $('#m3uvFilt').innerHTML = M3UV_F.map(([k, t]) => `<button class="chip f chk ${M3UV.f[k] ? 'on' : ''}" data-mvf="${k}">${M3UV.f[k] ? '☑' : '☐'} ${t}</button>`).join('');
   const pool = base.filter(c => M3UV.group === 'all' || c.group === M3UV.group);
@@ -3887,10 +3904,14 @@ function move(dir) {
   best.focus();
   if (inPane) iTrack(best);
   if (best.classList.contains('tab')) { tabHover(best); document.querySelectorAll('.scroll').forEach(s => { s.scrollTop = 0; }); return; }
+  const gl = best.closest('.glist');
+  if (gl) { const ip = $('#iPanes'), br = gl.closest('.ibrowse'); if (ip && br && (gl.getBoundingClientRect().bottom > innerHeight || gl.getBoundingClientRect().top < 0)) ip.scrollTop = br.offsetTop;   // the column whole on the screen first
+    const r = best.getBoundingClientRect(), g = gl.getBoundingClientRect(); if (r.top < g.top + 10) gl.scrollTop -= g.top + 10 - r.top; else if (r.bottom > g.bottom - 10) gl.scrollTop += r.bottom - g.bottom + 10; return; }   // only the folders' column moves
   best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'auto' });   // at once: the remote never waits for a scroll
 }
 let HOLD = null;
 function holdPlay(b) {
+  if (b.dataset.mg != null) return M3UV.url && mgroupToggle(M3UV.url, b.dataset.mg);
   if (b.dataset.mi != null) return matchPanel(+b.dataset.mi);
   if (b.dataset.ilist === 'live' && S('hold', 'menu') !== 'ext') return reorderStart(+b.dataset.i);   // ↔ like Google TV: a long press picks the channel up
   if (S('hold', 'menu') === 'ext') {
@@ -3912,7 +3933,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-14z', NEWS_ROWS = [
+const NEWS = '2026-11-14y', NEWS_ROWS = [
+  ['⚽', 'افتح رابط M3U: ضغطة مطوّلة على مجلد تخليه مصدر قنوات المباريات (⚽ جنب اسمه)'],
+  ['🎬', 'أفلام ومسلسلات قوائم IPTV ما تطلع في القنوات'],
   ['⚡', 'الأسهم صارت أسرع ٣–٥ مرات: الخلفية ثابتة خلف القوائم (الحيّة في شاشة الصور)، وأفلام ومسلسلات قوائم IPTV ما تنحسب قنوات'],
   ['⏭', 'تحت كل قناة في الرئيسية: ⏮ السابق و التالي ⏭ تقلّب برامجها (الصورة والاسم والوقت)'],
   ['🎯', 'أول تحديد على أول قناة في الرئيسية'],
@@ -3978,7 +4001,7 @@ async function ctxDo(k) {
 }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
-  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm' || b.dataset.mi != null)) return;
+  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
   HOLD = setTimeout(() => { HOLD = 'done'; holdPlay(b); }, 650);
