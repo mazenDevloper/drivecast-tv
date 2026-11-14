@@ -27,6 +27,15 @@ button,input,textarea,select{font-family:inherit}
 #rkCloud,#rkCloud2{position:absolute;left:0;top:0;width:200%;height:78%;opacity:0;transition:opacity 6s;animation:drift 600s linear infinite;will-change:transform}
 #rkCloud2{height:52%;animation-duration:1300s}
 @keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* ⚡ the sky's motion (clouds, rain) only on the photo screen (ambient): under the menus it repainted the whole screen every frame, and each
+   arrow press waited 140–230 ms for its turn (45 ms without) — the picture stays, still */
+#rkCloud,#rkCloud2,#rkRain{animation-play-state:paused!important}
+body.ambient #rkCloud,body.ambient #rkCloud2,body.ambient #rkRain{animation-play-state:running!important}
+/* ⚡ the picture behind the menus on its own layer, and still: the sunlit faces, the sky's masks, the sun and moon blended on it,
+   the stars, haze and clouds only on the photo screen (ambient) — each arrow under the menus redrew all of them (120–270 ms on a
+   TV box; 35–50 ms without). «خلفية حيّة خلف القوائم» in the settings brings them back */
+#wall{will-change:transform;isolation:isolate;contain:strict}
+body:not(.ambient):not(.livebg) :is(#rkF,#rkSky,#rkSun,#rkMoon,#wMoonBox,#rkStars,#rkHaze,#rkTint,#rkCloud,#rkCloud2,#rkRain,.met){display:none!important}
 #rkHaze{position:absolute;inset:0;opacity:0;transition:opacity 6s;background:linear-gradient(180deg,rgba(214,206,190,.55) 0%,rgba(220,212,196,.8) 70%,rgba(200,192,178,.6) 100%)}
 #rkRain{position:absolute;inset:-10% 0 0;opacity:0;transition:opacity 4s;background:repeating-linear-gradient(104deg,rgba(220,230,245,0) 0 22px,rgba(220,230,245,.32) 22px 23px,rgba(220,230,245,0) 23px 47px),repeating-linear-gradient(100deg,rgba(220,230,245,0) 0 31px,rgba(220,230,245,.22) 31px 32px,rgba(220,230,245,0) 32px 71px);background-size:100% 160px,100% 220px;animation:rain .55s linear infinite}
 @keyframes rain{to{background-position:-26px 160px,-34px 220px}}
@@ -305,7 +314,7 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .logo-big{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:auto!important;height:150px!important;min-width:150px;max-width:72%;object-fit:contain;z-index:0;background:#fff;border-radius:26px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 body.logo-clear .ichan.big .logo-big{background:none;padding:0;box-shadow:none;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
 .ichan.big .pnow,.ichan.big .pnx{position:relative;z-index:1}
-.ichan.big:has(.logo-big) .top img{display:none}
+.ichan.big.nolart .top img{display:none}
 body.hc-mid .ichan.big{width:400px;height:283px}
 body.hc-mid .ichan.big .pnow b{font-size:27px}
 body.hc-mid .ichan.big .pnx{font-size:22px}
@@ -319,7 +328,8 @@ body.hc-small .ichan.big .logo-big{height:100px!important;min-width:100px}
 body.hc-mid .ichan.big .top img{width:96px;height:96px;border-radius:20px}
 body.hc-mid .ichan.big .logo-big{height:124px!important;min-width:124px}
 body.no-art .ichan.big .art{display:none}
-body.logo-clear .ichan.big .top img,body.logo-clear .ichan>img,body.logo-clear .nextm .nowch>img{background:none!important;padding:0!important;box-shadow:none!important;filter:drop-shadow(0 2px 8px rgba(0,0,0,.65))}
+body.logo-clear .ichan.big .top img,body.logo-clear .ichan>img,body.logo-clear .nextm .nowch>img{background:none!important;padding:0!important;box-shadow:none!important}
+body.logo-clear .ichan.big .top img,body.logo-clear .nextm .nowch>img{filter:drop-shadow(0 2px 8px rgba(0,0,0,.65))}
 body.still .ichan.big:focus,body.still .f:focus{transform:none!important;transition:none!important}   /* in a row (the home's live shelf) the cards keep their size */
 .player{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:1180px;height:96px;border-radius:999px;display:flex;align-items:center;gap:14px;padding:0 18px 0 34px;z-index:5}
 .player>div{flex:1;display:flex;flex-direction:column}.player b{font-size:26px}.player span{font-size:18px;color:var(--dim)}
@@ -1458,6 +1468,9 @@ let ILIST = [], IGROUP = LITE ? 'gen' : 'all', IFAV = [];   // 🪶 lite: «📺
 // #EXTHTTP:{"User-Agent": …}, #KODIPROP:…stream_headers=User-Agent=…&Referer=…, and «url|User-Agent=…&Referer=…»
 const HDRKEY = { 'user-agent': 'ua', 'http-user-agent': 'ua', 'referer': 'ref', 'referrer': 'ref', 'http-referrer': 'ref', 'http-referer': 'ref', 'origin': 'org', 'http-origin': 'org' };
 function hdrPairs(s, h) { for (const p of String(s || '').split('&')) { const i = p.indexOf('='); if (i < 1) continue; const k = HDRKEY[p.slice(0, i).trim().toLowerCase()]; if (k) { let v = p.slice(i + 1).trim(); try { v = decodeURIComponent(v); } catch (e) {} h[k] = v; } } }
+// 🎬 an IPTV list's films and series (Xtream «/movie/», «/series/», .mp4 / .mkv, groups VOD / SERIES / أفلام / مسلسلات)
+const isVod = c => /\.(mp4|mkv|avi|mov|m4v|wmv)(\?|$)|\/(movie|movies|series)\//i.test(c.url || '') || /^\s*(vod|series|movies?|films?|أفلام|افلام|مسلسلات)\b|\b(vod|series)\s*[|:]/i.test(c.group || '');
+const M3URE = {};   // the attributes' patterns made once (not three new ones per line of a 30 000-line list)
 function parseM3u(t) {
   const out = []; let meta = null, hdr = {};
   for (const raw of String(t || '').split(/\r?\n/)) {
@@ -1465,7 +1478,7 @@ function parseM3u(t) {
     if (/^#EXTVLCOPT:/i.test(l)) { const m = l.slice(11).match(/^([\w-]+)=(.*)$/); if (m && HDRKEY[m[1].toLowerCase()]) hdr[HDRKEY[m[1].toLowerCase()]] = m[2].trim(); continue; }
     if (/^#EXTHTTP:/i.test(l)) { try { const o = JSON.parse(l.slice(9)); for (const k in o) { const x = HDRKEY[k.toLowerCase()]; if (x) hdr[x] = String(o[k]); } } catch (e) {} continue; }
     if (/^#KODIPROP:.*stream_headers=/i.test(l)) { hdrPairs(l.split(/stream_headers=/i)[1], hdr); continue; }
-    if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', id: a('tvg-id').split('@')[0], cc: ((a('tvg-country').match(/^[a-z]{2}$/i) || [])[0] || (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '').toLowerCase() }; }
+    if (l.startsWith('#EXTINF')) { const a = k => (l.match(M3URE[k] || (M3URE[k] = new RegExp(k + '="([^"]*)"'))) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', id: a('tvg-id').split('@')[0], cc: ((a('tvg-country').match(/^[a-z]{2}$/i) || [])[0] || (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '').toLowerCase() }; }
     else if (!l.startsWith('#') && meta) {
       let url = l; const h = { ...hdr }; const p = url.indexOf('|'); if (p > 0) { hdrPairs(url.slice(p + 1), h); url = url.slice(0, p); }
       out.push(h.ua || h.ref || h.org ? { ...meta, url, ...h } : { ...meta, url }); meta = null; hdr = {};
@@ -1863,7 +1876,8 @@ function liveHtml(c, i) {
   return `<div class="lcw">` + liveCard(c, i, r, nx, art, pct, k0, now) + nav + `</div>`;
 }
 function liveCard(c, i, r, nx, art, pct, k0, now) {
-  return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}" data-ilist="live" data-i="${i}">`
+  const big = !(art && S('hart', 'on') !== 'off') && logoOf(c);
+  return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}${big ? ' nolart' : ''}" data-ilist="live" data-i="${i}">`
     + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : logoOf(c) ? logoImg(c, 'logo-big') : '')
     + `<span class="top">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
     + (r ? `<span class="pnow"><small>${k0 ? `⏭ ${hm(r[0])} – ${hm(r[1])} · بعد ${minutesAr(Math.max(1, Math.round((r[0] - now) / 60)))}` : `▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}`}</small><b dir="auto">${esc(r[2])}</b>${k0 ? '' : `<i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i>`}</span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
@@ -2202,7 +2216,7 @@ async function loadLists() {
   const cl = mineU.find(u => /\/hub\/m3u\?.*&id=/.test(u));
   if (cl) getJ(cl.replace(/&id=[^&]+/, '&list=1')).then(d => { for (const it of (d && d.lists) || []) for (const u of mineU) if (u.endsWith('&id=' + it.id)) M3UNAME[u] = it.name; m3uUi(); }).catch(() => {});
   STARL = [];
-  mineT.forEach((t, k) => { const l = parseM3u(t); if (mineU[k] === m3uStar()) STARL = l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 })); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
+  mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)); if (mineU[k] === m3uStar()) STARL = l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 })); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
   m3uUi();
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
@@ -2967,9 +2981,21 @@ const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.de
     for (const x of spgFor(m)) if (!all.some(c => sameChannel(x.n, { name: c, cc: ARABCC.has(x.cc) ? x.cc : '' }) || c === x.n)) { all.push(x.n); if (x.logo) { m.chl = m.chl || {}; if (!m.chl[x.n]) m.chl[x.n] = x.logo; } }   /* 🏟️ the guides' carriers */ return all.filter(c => !PLATFORM.test(c)).map((c, i) => [chRank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); } catch (e) { return (m.channels || []).filter(c => !PLATFORM.test(c)); } };
 // 🔗 every carrier of a match with the best channel of the lists for it (the ⭐ list first, a working one before one not checked)
 const MPOOLS = () => [...STARL, ...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
+const wkey = n => chToks(n).w.filter(t => !isNum(t)).sort().join(' ');
+let MIDX = null, MIDXK = '';
+function midx(pools) {
+  const k = [pools.length, ILIST.length, STARL.length, DYNCH.length, GSP.length, PINS.length].join(':');
+  if (MIDX && k === MIDXK) return MIDX;
+  MIDX = new Map(); MIDXK = k;
+  for (const c of pools) {
+    if (!c || !c.name) continue;
+    for (const nm of c.en ? [c.name, c.en] : [c.name]) { const key = wkey(nm); if (!key) continue; let a = MIDX.get(key); if (!a) MIDX.set(key, a = []); if (!a.includes(c)) a.push(c); }
+  }
+  return MIDX;
+}
 function bestFor(want, pools) {
   let best = null, bs = 0;
-  for (const c of pools) {
+  for (const c of midx(pools).get(wkey(want)) || []) {   // only the channels with the same words (sameChannel needs them anyway)
     if (!c || !c.name || /geo-blocked/i.test(c.name)) continue;
     let sc = sameChannel(want, c) || (c.en ? sameChannel(want, { ...c, name: c.en }) : 0); if (!sc) continue;
     if (c.star) sc += 60;
@@ -3236,6 +3262,7 @@ function sections() {
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
       { k: 'hlogo', l: 'شعار القناة', o: [['clear', 'بدون خلفية'], ['tile', 'على مربع أبيض']], d: 'clear' },
+      { k: 'livebg', l: '🌅 خلفية حيّة خلف القوائم (الشمس والسماء والقمر تتحرّك — أبطأ على التلفزيون)', o: ON, d: 'off' },
       { k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
     ]],
@@ -3323,7 +3350,7 @@ function applySet(k, v) {
   if (k === 'wall') { try { localStorage.wall = v; } catch (e) {} applyWall(); }
   if (k === 'clock') { tick(); nextUi(); }
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
-  if (/^(uiscale|hcard|hart|hlogo|motion|lite)$/.test(k)) { uiApply(); liveRefresh(); }
+  if (/^(uiscale|hcard|hart|hlogo|motion|lite|livebg)$/.test(k)) { uiApply(); liveRefresh(); }
   if (k === 'mode') { uiApply(); liveUi(); nextUi(); homeOrder(); }
   if (/^(pos-|tab-)/.test(k)) homeOrder();
   if (/^iq/.test(k)) prayersUi();
@@ -3363,7 +3390,7 @@ function uiApply() {
   const z = +S('uiscale', '100') || 100; document.documentElement.style.zoom = z === 100 ? '' : String(z / 100);
   const b = document.body.classList;
   b.toggle('hc-mid', S('hcard', 'big') === 'mid'); b.toggle('hc-small', S('hcard', 'big') === 'small');
-  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'clear') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES()); b.toggle('lite', S('lite', 'on') === 'on');
+  b.toggle('no-art', S('hart', 'on') === 'off'); b.toggle('logo-clear', S('hlogo', 'clear') === 'clear'); b.toggle('still', S('motion', 'on') === 'off'); b.toggle('mode-series', SERIES()); b.toggle('lite', S('lite', 'on') === 'on'); b.toggle('livebg', S('livebg', 'off') === 'on');
 }
 function homeLayout() {
   const vis = (sel, k) => { const el = $(sel); if (el) el.style.display = S(k, 'on') === 'off' ? 'none' : ''; };
@@ -3885,7 +3912,8 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-14a', NEWS_ROWS = [
+const NEWS = '2026-11-14z', NEWS_ROWS = [
+  ['⚡', 'الأسهم صارت أسرع ٣–٥ مرات: الخلفية ثابتة خلف القوائم (الحيّة في شاشة الصور)، وأفلام ومسلسلات قوائم IPTV ما تنحسب قنوات'],
   ['⏭', 'تحت كل قناة في الرئيسية: ⏮ السابق و التالي ⏭ تقلّب برامجها (الصورة والاسم والوقت)'],
   ['🎯', 'أول تحديد على أول قناة في الرئيسية'],
   ['🏷️', 'مكتبة شعارات: كل قناة تتعرّف بالاسم وتاخذ شعارها الشفاف (بدون خلفية)'],
