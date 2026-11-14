@@ -49,6 +49,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Iptv.init(this);
         Crash.install(this);
         alive = this;
         Reminder.schedule(this);
@@ -190,8 +191,8 @@ public class HomeActivity extends Activity {
                 c.setRequestProperty("Origin", "https://www.365scores.com"); c.setRequestProperty("Referer", "https://www.365scores.com/");
             } else if (siteOf(url) != null) {
                 c.setConnectTimeout(6000); c.setReadTimeout(8000);
-                c.setRequestProperty("User-Agent", BROWSER); c.setRequestProperty("Referer", siteOf(url) + "/"); c.setRequestProperty("Origin", siteOf(url));
-            } else c.setRequestProperty("User-Agent", "VLC/3.0.20");
+                Iptv.apply(c, url);
+            } else Iptv.apply(c, url);   // 📡 an IPTV list / stream: as an IPTV player (or the list's own headers)
             int code = c.getResponseCode();
             if (code >= 300 && code < 400 && hops < 5) { String to = c.getHeaderField("Location"); c.disconnect(); return to == null ? null : download(new java.net.URL(new java.net.URL(url), to).toString(), hops + 1); }
             java.io.InputStream in = new java.io.BufferedInputStream(c.getInputStream());
@@ -345,7 +346,8 @@ public class HomeActivity extends Activity {
             try {
                 JSONArray a = new JSONArray(channelsJson);
                 int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
-                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc"); }
+                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc");
+                    if (!c.optString("ua").isEmpty() || !c.optString("ref").isEmpty() || !c.optString("org").isEmpty()) Iptv.HDR.put(us[k], new String[]{c.optString("ua"), c.optString("ref"), c.optString("org")}); }
                 PlayerActivity.EPG = new HashMap<>();
                 for (int k = 0; k < n; k++) { JSONArray e = a.getJSONObject(k).optJSONArray("epg"); if (e != null && e.length() > 0) PlayerActivity.EPG.put(us[k], e); }
                 PlayerActivity.ALTS = new HashMap<>();
@@ -381,6 +383,10 @@ public class HomeActivity extends Activity {
             }
             return "";
         }
+
+        /** 📡 the channels' own headers from their lists: {"url": ["ua", "referer", "origin"]} */
+        @JavascriptInterface
+        public void iptvHeaders(String json) { Iptv.put(json); }
 
         @JavascriptInterface
         public void fetch(String url, String cb) {

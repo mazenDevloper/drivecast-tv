@@ -281,7 +281,7 @@ public class PlayerActivity extends Activity {
         trackSel.setParameters(trackSel.buildUponParameters().setForceHighestSupportedBitrate(pqMax).setExceedVideoConstraintsIfNecessary(true).setExceedRendererCapabilitiesIfNecessary(false));
         androidx.media3.exoplayer.DefaultLoadControl loadCtl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
                 .setBufferDurationsMs(30_000, 60_000, 3_000, 6_000).setPrioritizeTimeOverSizeThresholds(true).setBackBuffer(10_000, true).build();
-        http = new androidx.media3.datasource.DefaultHttpDataSource.Factory().setUserAgent(HomeActivity.BROWSER).setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
+        http = new androidx.media3.datasource.DefaultHttpDataSource.Factory().setUserAgent(Iptv.ua()).setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(12000).setReadTimeoutMs(15000);
         player = new ExoPlayer.Builder(this, new androidx.media3.exoplayer.DefaultRenderersFactory(this).setEnableDecoderFallback(true)).setBandwidthMeter(meter).setTrackSelector(trackSel).setLoadControl(loadCtl)
                 .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
@@ -598,10 +598,12 @@ public class PlayerActivity extends Activity {
     /** what is really coming in, as chips */
     private androidx.media3.datasource.DefaultHttpDataSource.Factory http;
     private void open() { try { if (player == null) return;
-        // the channel's own site as Referer / Origin where its CDN wants it
-        java.util.Map<String, String> hd = new java.util.HashMap<>(); String site = HomeActivity.siteOf(urls[i]);
-        if (site != null) { hd.put("Referer", site + "/"); hd.put("Origin", site); }
-        http.setDefaultRequestProperties(hd);
+        // 📡 as an IPTV player: the channel's own headers from its list (user agent, Referer, Origin), else its site's, else
+        // the IPTV player's (setting «ua»)
+        java.util.Map<String, String> hd = new java.util.HashMap<>();
+        String ref = Iptv.refererFor(urls[i]), org = Iptv.originFor(urls[i]);
+        if (ref != null) hd.put("Referer", ref); if (org != null) hd.put("Origin", org);
+        http.setUserAgent(Iptv.uaFor(urls[i])); http.setDefaultRequestProperties(hd);
         // a live channel plays ~20 s behind its edge (where the CDN allows): room in the buffer for the line's hiccups
         player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private void fill() { try { progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }

@@ -1449,12 +1449,22 @@ async function loadSubs() {
 
 // ---- IPTV: DriveCast's favourite channels + iptv-org's Arabic list, played full screen (up / down = next channel)
 let ILIST = [], IGROUP = LITE ? 'gen' : 'all', IFAV = [];   // 🪶 lite: «📺 عام عربي ومسلسلات» first
+// 📡 a channel's own headers, as IPTV players read them: #EXTVLCOPT:http-user-agent= / http-referrer= / http-origin=,
+// #EXTHTTP:{"User-Agent": …}, #KODIPROP:…stream_headers=User-Agent=…&Referer=…, and «url|User-Agent=…&Referer=…»
+const HDRKEY = { 'user-agent': 'ua', 'http-user-agent': 'ua', 'referer': 'ref', 'referrer': 'ref', 'http-referrer': 'ref', 'http-referer': 'ref', 'origin': 'org', 'http-origin': 'org' };
+function hdrPairs(s, h) { for (const p of String(s || '').split('&')) { const i = p.indexOf('='); if (i < 1) continue; const k = HDRKEY[p.slice(0, i).trim().toLowerCase()]; if (k) { let v = p.slice(i + 1).trim(); try { v = decodeURIComponent(v); } catch (e) {} h[k] = v; } } }
 function parseM3u(t) {
-  const out = []; let meta = null;
+  const out = []; let meta = null, hdr = {};
   for (const raw of String(t || '').split(/\r?\n/)) {
     const l = raw.trim(); if (!l) continue;
+    if (/^#EXTVLCOPT:/i.test(l)) { const m = l.slice(11).match(/^([\w-]+)=(.*)$/); if (m && HDRKEY[m[1].toLowerCase()]) hdr[HDRKEY[m[1].toLowerCase()]] = m[2].trim(); continue; }
+    if (/^#EXTHTTP:/i.test(l)) { try { const o = JSON.parse(l.slice(9)); for (const k in o) { const x = HDRKEY[k.toLowerCase()]; if (x) hdr[x] = String(o[k]); } } catch (e) {} continue; }
+    if (/^#KODIPROP:.*stream_headers=/i.test(l)) { hdrPairs(l.split(/stream_headers=/i)[1], hdr); continue; }
     if (l.startsWith('#EXTINF')) { const a = k => (l.match(new RegExp(k + '="([^"]*)"')) || [])[1] || ''; meta = { name: l.slice(l.lastIndexOf(',') + 1).trim(), logo: a('tvg-logo'), group: a('group-title') || 'أخرى', id: a('tvg-id').split('@')[0], cc: ((a('tvg-country').match(/^[a-z]{2}$/i) || [])[0] || (a('tvg-id').match(/\.([a-z]{2})(@|$)/i) || [])[1] || '').toLowerCase() }; }
-    else if (!l.startsWith('#') && meta) { out.push({ ...meta, url: l }); meta = null; }
+    else if (!l.startsWith('#') && meta) {
+      let url = l; const h = { ...hdr }; const p = url.indexOf('|'); if (p > 0) { hdrPairs(url.slice(p + 1), h); url = url.slice(0, p); }
+      out.push(h.ua || h.ref || h.org ? { ...meta, url, ...h } : { ...meta, url }); meta = null; hdr = {};
+    }
   }
   return out;
 }
@@ -1571,6 +1581,17 @@ let M3UN = {}, M3UNAME = {}, M3UFILE = {};
 // GitHub (github.com/o/r[/tree/branch/path] or raw.githubusercontent.com/o/r/branch/path/): the folder's files by the
 // date of their last commit; any other web folder (an index page): its .m3u links, the newest by «Last-Modified».
 const isM3uFile = u => /\.m3u8?(\?|#|$)/i.test(u) || /\/hub\/m3u\?/.test(u);
+/** a list's text: asked again once if it fails; when the server still fails, the last copy that worked (kept on the TV) */
+async function m3uText(u, f) {
+  const ok = t => !!t && /#EXTM3U|#EXTINF/i.test(String(t).slice(0, 4000));
+  let t = await getText(f || u);
+  if (!ok(t)) { await new Promise(r => setTimeout(r, 2500)); t = await getText(f || u); }
+  if (ok(t)) { if (t.length < 3.5e6) try { localStorage.setItem('m3uc:' + u, t); localStorage.setItem('m3uct:' + u, String(Date.now())); } catch (e) {} M3UOLD[u] = 0; return t; }
+  let c = null; try { c = localStorage.getItem('m3uc:' + u); } catch (e) {}
+  if (c) { M3UOLD[u] = +(localStorage.getItem('m3uct:' + u) || 1); return c; }
+  return t;
+}
+const M3UOLD = {};   // address → when its kept copy is from (shown when the server failed)
 async function m3uResolve(u) {
   if (isM3uFile(u)) return u;
   let c = null; try { c = JSON.parse(localStorage.getItem('m3ur:' + u) || 'null'); } catch (e) {}
@@ -2165,7 +2186,7 @@ async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
   await pullFavs();
   const mineU = m3uList();
-  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(async u => getText(await m3uResolve(u)))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
+  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(async u => m3uText(u, await m3uResolve(u)))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
   const seen = new Set(), names = new Set(); ILIST = []; ALT = new Map();
   const alt = c => { const k = chKey(c.name); if (!ALT.has(k)) ALT.set(k, []); const a = ALT.get(k); if (!a.includes(c.url) && !/^yt-live:|youtu/.test(c.url)) a.push(c.url); };
   // Free-TV/IPTV: the first source. Its marks (Ⓢ SD, Ⓖ geo-blocked, Ⓨ YouTube) off the names; Arab countries first, in Arabic
@@ -2183,6 +2204,7 @@ async function loadLists() {
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1], arl: 1 } : { ...c, arl: 1 }); }));
   if (LITE) ILIST = ILIST.filter(liteOk);
+  iptvHdrSend(ILIST);
   lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
   setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
@@ -2499,7 +2521,7 @@ async function playChannel(list, i) {
   if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/youtu\.?be|^yt-live:/.test(x.url)), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), epg: epgRows(x).slice(0, 5), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), epg: epgRows(x).slice(0, 5), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
@@ -2890,6 +2912,8 @@ const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|s
 
 /** the lite edition keeps a channel: from the Arabic lists (iptv-org's Arabic / Gulf ones, Free-TV's Arab countries) or Arabic by its name */
 const liteOk = c => !!c && (c.arl || (c.ar != null && c.ar < 99) || isArabChannel(c.name || ''));
+/** 📡 the channels' own headers to the TV (the player and the scan use them) */
+function iptvHdrSend(list) { try { if (!TV.iptvHeaders) return; const o = {}; let n = 0; for (const c of list || []) if (c && c.url && (c.ua || c.ref || c.org)) { o[c.url] = [c.ua || '', c.ref || '', c.org || '']; n++; } if (n) TV.iptvHeaders(JSON.stringify(o)); } catch (e) {} }
 function isArabChannel(name) {
   if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
   // beIN also runs foreign feeds (USA, France, Turkey, Asia...): those are not the Arab channels
@@ -3206,6 +3230,7 @@ function sections() {
     ['📺', 'القنوات والمشغّل', [
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'up4k', l: '🔷 تحسين الصورة إلى 4K (تكبير بالمعالج مع توضيح الحواف — يحتاج جهاز قوي)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
+      { k: 'ua', l: 'هوية المشغّل عند سيرفرات IPTV', o: [['vlc', 'مشغّل IPTV (VLC) — الأكثر قبولاً'], ['app', 'DriveCast TV'], ['browser', 'متصفح']], d: 'vlc' },
       { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: LITE ? 'off' : 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
@@ -3741,8 +3766,9 @@ async function m3uvOpen(u) {
   if (IPANE !== 'm3uvwrap') iPane('m3uvwrap');
   if (!/^https?:\/\/\S{6,}/.test(u)) { say('الرابط لازم يبدأ بـ http'); return; }
   $('#m3uvIn').value = u; say('⏳ أحمّل القائمة…');
-  const t = await getText(u), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url)).map(c => ({ ...c, name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
+  const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url)).map(c => ({ ...c, name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
   if (!l.length) { say(t ? 'هذا الرابط مو قائمة M3U، أو ما فيها قنوات' : 'ما قدرت أفتح الرابط — تأكد منه ومن الإنترنت'); return; }
+  iptvHdrSend(l);
   Object.assign(M3UV, { url: u, all: l, group: 'all', q: '', f: {}, lim: 300 }); $('#m3uvQ').value = ''; window.__mgk = '';
   try { localStorage.setItem('m3uvRecent', JSON.stringify([u, ...m3uvRecent().filter(x => x !== u)].slice(0, 8))); } catch (e) {}
   m3uvSaveUi(); $('#m3uvScan').hidden = false; $('#m3uvBody').hidden = false;
