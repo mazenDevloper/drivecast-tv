@@ -1,0 +1,25 @@
+# RustDesk's own server (open source: rustdesk/rustdesk-server) — the ID server (hbbs) and the relay (hbbr).
+# Run on any Linux machine with Docker that has a public address (a free cloud VM, or a PC at home with the ports forwarded):
+#   docker compose up -d
+# Ports to open: TCP 21115-21119 and UDP 21116.
+# The key the clients need is written to ./data/id_ed25519.pub on the first start (keep ./data: a new key = every client
+# re-entered).
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: hbbs
+    command: hbbs
+    volumes:
+      - ./data:/root
+    network_mode: host
+    depends_on:
+      - hbbr
+    restart: unless-stopped
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: hbbr
+    command: hbbr
+    volumes:
+      - ./data:/root
+    network_mode: host
+    restart: unless-stopped
