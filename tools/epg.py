@@ -224,7 +224,41 @@ def plogos(ids):
     print(f'  {len(todo):6d}  shows asked for their logo ({len(PLOGO)} kept)', flush=True)
     return PLOGO
 
-OWN = ('MBC', 'Oman', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
+# ⚽ Al Kass's eight channels from Shoof Alkass (Al Kass's own guide): Doha's times, and each programme's own white logo
+# (logo_white: white on a transparent background) — the Arabic title of the other guides kept where a programme starts at
+# the same minute (Al Kass names its programmes in English)
+ALKASS = [(w, f'Alkass{w.capitalize()}.qa', [f'Alkass {w.capitalize()}', f'Al Kass {w.capitalize()}', f'Alkass {k}', f'Al Kass {k}', f'الكأس {k}'])
+          for k, w in enumerate(['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'], 1)]
+def alkass(guide, lo, hi):
+    from datetime import datetime, timedelta, timezone
+    import urllib.parse
+    DOH = timezone(timedelta(hours=3))
+    names, n, nl = {}, 0, 0
+    for w, gid, nm in ALKASS:
+        try: a = json.loads(get('https://shoofapi.alkass.net/Mix/tv-guide-web.php?' + urllib.parse.urlencode({'channel_name': w}), 40).read().decode('utf-8'))
+        except Exception as e: print(f'  alkass {gid}: {e}', flush=True); continue
+        old = guide.get(gid, {})
+        mine = {}
+        for x in a if isinstance(a, list) else []:
+            try:
+                st = int(datetime.strptime(x['start_time'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=DOH).timestamp())
+                en = int(datetime.strptime(x['end_time'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=DOH).timestamp())
+            except Exception: continue
+            t = re.sub(r'\s+', ' ', x.get('name') or '').strip()
+            if not t or en <= lo or st >= hi or en <= st: continue
+            o = old.get(st) or next((v for k, v in old.items() if abs(k - st) <= 300), None)
+            if o and AR.search(o[2] or ''): t = o[2]   # the Arabic title, same programme
+            lg = x.get('logo_white') or ''
+            img = x.get('image') or (o[3] if o and len(o) > 3 else '') or ''
+            mine[st] = [st, en, t[:70], img] + ([lg] if lg.startswith('http') else [])
+            nl += 1 if lg else 0
+        if mine:
+            guide[gid] = mine; n += len(mine)
+            for x in nm: names.setdefault(x, gid)
+    print(f'  {n:6d}  Shoof Alkass (Al Kass, {nl} with their logo)', flush=True)
+    return names
+
+OWN = ('MBC', 'Oman', 'Alkass', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
 PRIO_RE = re.compile(r'mbc|oman|abu.?dhabi|ad.?sport|bein|alkass|al.?kass|quran|dubai|sharjah|saudi|ssc|thmanyah', re.I)
 def prio(i): return bool(PRIO_RE.search(i))
 
@@ -268,7 +302,7 @@ def main(out):
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
     names = extra(guide, lo, hi, out)
-    sh = {**shahid(guide, lo, hi), **ayn(guide, lo, hi)}; names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
+    sh = {**shahid(guide, lo, hi), **ayn(guide, lo, hi), **alkass(guide, lo, hi)}; names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
