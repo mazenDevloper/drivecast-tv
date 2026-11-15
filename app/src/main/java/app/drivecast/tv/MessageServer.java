@@ -168,6 +168,12 @@ public class MessageServer extends Service {
         } else if (first.startsWith("POST /ibada")) {   // the phone ticks one of the day's worship items
             String k = body.trim();
             if (k.matches("p[0-4]|am|pm|wird")) main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.onIbada && onIbada('" + k + "')"); });
+        } else if (first.startsWith("POST /voice") || first.startsWith("POST /type")) {   // the phone: search & play / type into the TV's box
+            String t = body.trim(); boolean type = first.startsWith("POST /type");
+            if (!t.isEmpty() && t.length() <= 200) {
+                String js = (type ? "window.typeText && typeText(" : "window.voiceQuery && voiceQuery(") + org.json.JSONObject.quote(t) + ")";
+                main.post(() -> { HomeActivity h = HomeActivity.alive; if (h != null) h.run(js); });
+            }
         } else if (first.startsWith("POST /m3uopen")) {   // the phone opens a channel list on the TV, to browse and filter (not kept)
             String u = body.trim();
             if (u.matches("https?://\\S{6,600}")) {

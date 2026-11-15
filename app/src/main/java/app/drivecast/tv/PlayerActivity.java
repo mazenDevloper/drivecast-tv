@@ -347,7 +347,7 @@ public class PlayerActivity extends Activity {
         if (up4k) try { player.setVideoEffects(Up4K.effects(this)); } catch (Throwable t) { up4k = false; }   // 🔷 sharpened at its own size; scaled only on a 4K output
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
-                if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); fill(); }
+                if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); fill(); h.removeCallbacks(warmNext); h.postDelayed(warmNext, 3000); }
                 if (s == Player.STATE_BUFFERING) { net.removeCallbacks(stall); net.postDelayed(stall, 12000); }
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
             }
@@ -726,7 +726,7 @@ public class PlayerActivity extends Activity {
             menuHead.setText("☰  " + label(ch));
             favs = favSet(); pins = pinned();
             menuRow("fav", favs.contains(key) ? "☆  إزالة من المفضّلة" : "⭐  أضف إلى المفضّلة");
-            menuRow("home", pins.contains(key) ? "🏠  إزالة من الرئيسية" : "🏠  أضف إلى الرئيسية");
+            menuRow("home", onHome(key) ? "🗑  إزالة من الرئيسية" : "🏠  أضف إلى الرئيسية");
             if (HomeActivity.alive != null) menuRow("reorder", "↔  رتّب قنوات الرئيسية");
             if (mts.length() > 0) menuRow("matches", "⚽  المباريات الآن  (" + mts.length() + ")");
             menuRow("guide", "📅  دليل البرامج");
@@ -796,6 +796,11 @@ public class PlayerActivity extends Activity {
         }
         return true;
     }
+    /** is this channel on the home row now (the home page keeps the list in «homekeys»)? */
+    private boolean onHome(String key) {
+        try { org.json.JSONArray a = new org.json.JSONArray(Access.set(this).getString("homekeys", "[]")); for (int k = 0; k < a.length(); k++) if (key.equals(a.optString(k))) return true; } catch (Throwable ignored) { }
+        return pinned().contains(key);
+    }
     private String chJson(int ch) {
         try { return new org.json.JSONObject().put("name", nOf(ch)).put("url", key0(ch)).put("logo", logos != null && ch < logos.length && logos[ch] != null ? logos[ch] : "").put("group", gOf(ch)).toString(); }
         catch (Throwable t) { return "{}"; }
@@ -813,8 +818,8 @@ public class PlayerActivity extends Activity {
             case "matches": menuLv = 1; menuSel = 0; menuFill(); return;
             case "fav": { boolean on = favToggle(ch); menuShow(false); flash(on ? "⭐ أُضيفت إلى المفضّلة" : "أُزيلت من المفضّلة"); return; }
             case "home": {
-                boolean was = pinned().contains(nOf(ch).trim().toLowerCase(Locale.ROOT));
-                if (hm != null) hm.run("window.pinFromPlayer && pinFromPlayer(" + chJson(ch) + ")"); else pinToggle(ch);
+                boolean was = onHome(nOf(ch).trim().toLowerCase(Locale.ROOT));
+                if (hm != null) hm.run("window.homeFromPlayer && homeFromPlayer(" + chJson(ch) + ")"); else pinToggle(ch);
                 menuShow(false); flash(was ? "أُزيلت من الرئيسية" : "🏠 أُضيفت إلى الرئيسية"); return;
             }
             case "reorder": if (hm != null) { hm.run("window.reorderFromPlayer && reorderFromPlayer(" + chJson(ch) + ")"); finish(); } return;
@@ -1167,6 +1172,7 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
+        if (code == KeyEvent.KEYCODE_SEARCH) { HomeActivity.voice(this, 78); return true; }   // 🎙️
         if (listOn && listKey(code, e)) return true;
         if (guideOn && guideKey(code, e)) return true;
         if (menuOn && menuKey(code, e)) return true;
@@ -1226,6 +1232,56 @@ public class PlayerActivity extends Activity {
         if (ok && urls.length > 1) { h.removeCallbacks(hide); hide.run(); listShow(true); return true; }   // OK: the list alone
         if (ok || code == KeyEvent.KEYCODE_INFO) { fill(); showBar(6000); return true; }
         return super.onKeyDown(code, e);
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == 78 && res == RESULT_OK) HomeActivity.voiceResult(data);
+    }
+
+    // ---- ⚡ zapping like a receiver, the light way: 3 s after a channel starts playing, the channels ▲ ▼ and ◀ (the one
+    // before) go to are «warmed» — their address resolved, the connection opened and their list read (a few KB, no picture
+    // decoded), so the next zap skips the slow part. Never a channel on the same server as an Xtream-style account (one
+    // connection: asking for another channel there would cut this one).
+    private static final java.util.Map<String, Long> WARM = new java.util.HashMap<>();
+    private final Runnable warmNext = () -> {
+        if (player == null || urls.length < 2) return;
+        java.util.LinkedHashSet<Integer> ks = new java.util.LinkedHashSet<>();
+        ks.add((i + 1) % urls.length); ks.add((i - 1 + urls.length) % urls.length); if (prevI >= 0 && prevI < urls.length) ks.add(prevI);
+        ks.remove(i);
+        String host = hostOf(urls[i]); boolean xt = xtream(urls[i]);
+        for (int k : ks) {
+            final String u = urls[k];
+            if (u == null || !u.startsWith("http")) continue;
+            if ((xt || xtream(u)) && hostOf(u).equals(host)) continue;
+            Long at = WARM.get(u); if (at != null && System.currentTimeMillis() - at < 60_000) continue;
+            WARM.put(u, System.currentTimeMillis());
+            new Thread(() -> warm(u), "warm").start();
+        }
+    };
+    private static String hostOf(String u) { try { return new java.net.URL(u).getHost(); } catch (Exception e) { return ""; } }
+    private static boolean xtream(String u) { return u != null && u.matches("(?i)https?://[^/]+/(live/)?[^/]+/[^/]+/\\d+(\\.(ts|m3u8))?(\\?.*)?$"); }
+    private static void warm(String u) {
+        try {
+            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+            c.setConnectTimeout(5000); c.setReadTimeout(5000); c.setInstanceFollowRedirects(true);
+            Iptv.apply(c, u);
+            String ct = String.valueOf(c.getContentType()).toLowerCase(Locale.ROOT);
+            if (!(ct.contains("mpegurl") || u.contains(".m3u8"))) { c.disconnect(); return; }   // only a list (never a stream's bytes)
+            byte[] b = new byte[65536]; int n = 0, r;
+            try (java.io.InputStream in = c.getInputStream()) { while (n < b.length && (r = in.read(b, n, b.length - n)) > 0) n += r; }
+            // a master list: its first variant's list too (that server is warmed as well)
+            String body = new String(b, 0, n, "UTF-8");
+            if (body.contains("#EXT-X-STREAM-INF")) {
+                for (String line : body.split("\\r?\\n")) { line = line.trim(); if (!line.isEmpty() && !line.startsWith("#")) {
+                    String v = new java.net.URL(c.getURL(), line).toString();
+                    java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(v).openConnection();
+                    c2.setConnectTimeout(5000); c2.setReadTimeout(5000); Iptv.apply(c2, v);
+                    try (java.io.InputStream in = c2.getInputStream()) { in.read(new byte[16384]); }
+                    break; } }
+            }
+        } catch (Throwable ignored) { }
     }
 
     @Override

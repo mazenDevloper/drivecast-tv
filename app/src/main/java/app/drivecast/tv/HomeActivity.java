@@ -234,6 +234,8 @@ public class HomeActivity extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        // 🎙️ the remote's mic / search key: speech recognition in Arabic
+        if (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH) { if (e.getAction() == KeyEvent.ACTION_UP) voice(this, 77); return true; }
         // the remote's Menu key opens the page's settings
         if (e.getKeyCode() == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_UP) {
             if (web != null) web.evaluateJavascript("window.onTvMenu && onTvMenu()", null);
@@ -242,7 +244,34 @@ public class HomeActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
+    /** 🎙️ Android's speech recognition in Arabic (the TV's own, usually Google's); none on the box → the page says so */
+    static void voice(android.app.Activity a, int code) {
+        try {
+            Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "ar-SA").putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar-SA")
+                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "قل اسم القناة أو المباراة أو البرنامج").putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            a.startActivityForResult(i, code);
+        } catch (Exception e) { HomeActivity h = alive; if (h != null) h.run("window.voiceNone && voiceNone()"); }
+    }
+    /** the words heard → the page's voiceQuery (the best guesses, in order) */
+    static void voiceResult(Intent data) {
+        if (data == null) return;
+        java.util.ArrayList<String> r = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+        if (r == null || r.isEmpty()) return;
+        HomeActivity h = alive; if (h != null) h.run("window.voiceQuery && voiceQuery(" + new JSONArray(r) + ")");
+    }
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == 77 && res == RESULT_OK) voiceResult(data);
+    }
+
     class Bridge {
+        /** 🎙️ the page's mic button */
+        @JavascriptInterface
+        public void voice() { runOnUiThread(() -> HomeActivity.voice(HomeActivity.this, 77)); }
+
         /** the lite edition (Arabic channels only, the radio tab, وضع المسلسلات first) */
         @JavascriptInterface
         public boolean lite() { return BuildConfig.LITE; }

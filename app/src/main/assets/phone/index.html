@@ -116,6 +116,9 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 <section id="w" class="hide">
   <label>عبارة وضع الصورة (تبقى على الشاشة كل مرة، بخط ثمانية)</label>
   <div class="row" style="margin-top:8px"><input id="ph" maxlength="120" placeholder="مثلاً: ﴿ألا بذكر الله تطمئن القلوب﴾" style="flex:3;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px"><button id="phs" style="flex:1">احفظ</button></div>
+  <label>🔎 ابحث أو اكتب في التلفزيون — اضغط 🎙️ في كيبورد الجوال وتكلّم بالعربي</label>
+  <input id="vq" maxlength="200" placeholder="مثلاً: ام بي سي دراما · مباراة الهلال · مسلسل مناعة" style="margin-top:8px;width:100%;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px;box-sizing:border-box">
+  <div class="row" style="margin-top:8px"><button id="vgo" style="flex:1">🔎 ابحث وشغّل</button><button id="vtype" style="flex:1">⌨️ اكتب في الخانة</button></div>
   <label>رسالة سريعة (تطلع وسط الشاشة ٢٠ ثانية)</label>
   <textarea id="t" maxlength="200" placeholder="اكتب هني…" style="margin-top:8px"></textarea><button class="big" id="send">أرسل</button>
   <div class="chips"><button data-msg="العشاء جاهز 🍽️">العشاء جاهز</button><button data-msg="وقت النوم 🌙">وقت النوم</button><button data-msg="صلّوا 🕌">صلّوا</button></div></section>
@@ -183,6 +186,9 @@ try { if (localStorage.sura) $('sura').value = localStorage.sura; } catch (e) {}
 function play() { buzz(); try { localStorage.rec = $('rec').value; localStorage.sura = $('sura').value; } catch (e) {} post('/quran', $('rec').value + ' ' + $('sura').value).then(r => r && ($('s').textContent = '▶ سورة ' + SURAHS[$('sura').value - 1])); }
 $('playq').onclick = play;
 // ---- write
+function vsend(path) { const v = $('vq'); if (!v.value.trim()) return; buzz(); post(path, v.value).then(r => { if (r) { $('s').textContent = path === '/voice' ? '🔎 يدوّر على التلفزيون…' : '⌨️ انكتبت على التلفزيون'; v.value = ''; } }); }
+$('vgo').onclick = () => vsend('/voice'); $('vtype').onclick = () => vsend('/type');
+$('vq').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); vsend('/voice'); } });
 function send() { const t = $('t'); if (!t.value.trim()) return; post('/send', t.value).then(r => { if (r) { $('s').textContent = 'وصلت ✅'; t.value = ''; } }); }
 $('send').onclick = send;
 // ---- draw (normalised points, the TV draws them over everything)

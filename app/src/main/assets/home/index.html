@@ -132,7 +132,9 @@ h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .app.sugg{gap:6px}.app.sugg .sic{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:30px;color:#fff}.app.sugg small{font-size:14px;opacity:.7;padding:0 10px;text-align:center}
 .mtabs{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 22px}.mtabs .chip.on{background:var(--accent);color:#06210f}#mnote{font-size:19px;color:var(--dim);margin-inline-start:auto}
 .epgg{display:flex;flex-direction:column;gap:10px;margin:6px 0 16px}
-.epgr{display:flex;align-items:stretch;gap:8px;height:84px}
+.epgr{display:flex;align-items:stretch;gap:8px;height:84px;content-visibility:auto;contain-intrinsic-size:auto 84px}
+#toast{position:fixed;left:50%;bottom:54px;transform:translate(-50%,30px);opacity:0;z-index:9999;max-width:70vw;background:rgba(10,14,20,.94);color:#fff;font-size:24px;font-weight:600;padding:14px 26px;border-radius:20px;border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 40px rgba(0,0,0,.5);transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1;transform:translate(-50%,0)}
 .epgr .ch{flex:none;width:250px;border-radius:18px;background:rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;padding:0 14px;font-size:20px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .epgr .ch img{width:44px;height:44px;object-fit:contain;flex:none}
 .epgr .tl{flex:1;display:flex;gap:6px;overflow:hidden;position:relative}
@@ -2341,6 +2343,75 @@ document.addEventListener('keydown', e => {
   if (j < 0 || j >= LIVE.length) return;
   [LIVE[i], LIVE[j]] = [LIVE[j], LIVE[i]]; REORD.i = j; liveRefresh(true);
 }, true);
+// ---- 🗑 a channel off the home row (and back: Settings → الشاشة الرئيسية ← «أرجع المحذوفة»; adding it again from the player too)
+const HHIDE = () => { try { return new Set(JSON.parse(S('homehide', '[]')) || []); } catch (e) { return new Set(); } };
+function homeHide(c, off) {
+  const h = HHIDE(), k = favKey(c);
+  if (off === false) h.delete(k); else { h.add(k); if (isPin(c)) togglePin(c); }
+  setPref('homehide', JSON.stringify([...h].slice(-300))); liveUi();
+}
+/** the player's «🏠»: on the home row → off it; not there → back and pinned */
+window.homeFromPlayer = c => { try { const k = favKey(c); if (LIVE.some(x => favKey(x) === k)) homeHide(c); else { homeHide(c, false); if (!isPin(c)) togglePin(c); } iptvUi(); } catch (e) {} };
+let HKEYS = '';
+function homeKeysSave() { const v = JSON.stringify(LIVE.map(favKey)); if (v !== HKEYS) { HKEYS = v; setPref('homekeys', v); } }
+
+// ---- 💬 a short note at the bottom (voice search's answer, a channel taken off…)
+function toast(t, ms) {
+  let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), ms || 3500);
+}
+
+// ---- 🎙️ voice search in Arabic (the remote's mic / 🔍, or typed / spoken on the phone): a match → its channel, a channel →
+// it plays, a programme on now → its channel; anything else → the channels' search with the words
+const VNUM = { 'واحد': '1', 'وحده': '1', 'اثنين': '2', 'اثنان': '2', 'ثنين': '2', 'ثلاثه': '3', 'ثلاث': '3', 'اربعه': '4', 'اربع': '4', 'خمسه': '5', 'خمس': '5', 'سته': '6', 'ست': '6', 'سبعه': '7', 'ثمانيه': '8', 'تسعه': '9', 'عشره': '10' };
+const VFILLW = new Set(['شغل', 'شغلي', 'شغّل', 'افتح', 'ابي', 'ابغى', 'ابغي', 'اريد', 'ودي', 'قناه', 'القناه', 'قنوات', 'مباراه', 'مباريات', 'ماتش', 'مسلسل', 'برنامج', 'على', 'علي', 'في', 'يا', 'حق', 'تبع']);
+const VFILL = /(^|\s)(شغل|شغلي|شغّل|افتح|ابي|ابغى|ابغي|اريد|ودي|لو سمحت|قناه|القناه|قنوات|مباراه|مباريات|ماتش|مسلسل|برنامج|على|علي|في|يا|حق|تبع)(?=\s|$)/g;
+// spoken words → the channels' own (Arabic said, English written): «ام بي سي دراما» = «MBC Drama»; «Two» = «2»
+const VWORD = { 'دراما': 'drama', 'اكشن': 'action', 'ماكس': 'max', 'بوليوود': 'bollywood', 'مصر': 'masr', 'سبورت': 'sports', 'سبورتس': 'sports', 'الرياضيه': 'sports', 'رياضيه': 'sports', 'نيوز': 'news', 'كيدز': 'kids', 'سينما': 'cinema', 'افلام': 'movies', 'العراق': 'iraq', 'بلس': 'plus', 'لايف': 'live', 'فايف': '5', 'ون': '1', 'تو': '2' };
+const ENUM = { one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10' };
+const vkey = n => { const k = channelKey(String(n || '')); return k ? [...new Set(k.split(' ').map(w => ENUM[w] || w))].sort().join(' ') : ''; };
+function voiceText(q) { return arNorm(q).replace(VFILL, ' ').split(' ').map(w => VNUM[w] || w).join(' ').replace(/\s+/g, ' ').trim(); }
+function voiceFind(qs) {
+  const now = Date.now() / 1000, best = { s: 0 };
+  const take = (s, why, go) => { if (s > best.s) Object.assign(best, { s, why, go }); };
+  const pool = []; const seen = new Set();
+  for (const c of [...LIVE, ...PINS, ...MYFAV, ...IFAV, ...(typeof allChannels === 'function' ? allChannels().map(x => x.c || x) : []), ...ILIST]) { if (c && c.name && c.url && !seen.has(favKey(c))) { seen.add(favKey(c)); pool.push(c); } }
+  for (const q0 of qs) {
+    const t = voiceText(q0); if (t.length < 2) continue;
+    const raw = String(q0).split(/\s+/).filter(w => !VFILLW.has(arNorm(w))).map(w => VNUM[arNorm(w)] || VWORD[arNorm(w)] || w).join(' '), tw = t.split(' ');
+    const tks = [...new Set([vkey(t.split(' ').map(w => VWORD[w] || w).join(' ')), vkey(raw)])].filter(k => k && k.split(' ').some(w => !isNum(w)));
+    // ⚽ a team of today's matches
+    (MLIST || []).forEach((m, i) => { for (const n of [m.home?.name, m.away?.name]) { const k = tKey(n); if (k && k.length > 2 && (tKey(t).includes(k) || k.includes(tKey(t)) && tKey(t).length > 3)) take(m.status === 'live' ? 120 : 95, '⚽ ' + m.home?.name + ' × ' + m.away?.name, () => playMatch(i)); } });
+    for (const c of pool) {
+      const ck = vkey(c.name);
+      const named = ck && ck.split(' ').some(w => !isNum(w) && !GENERIC.has(w));
+      if (named && tks.includes(ck)) take(110, '📺 ' + c.name, () => playChannel([c, ...pool.filter(x => x !== c).slice(0, 40)], 0));
+      else if (named && tks.some(tk => { const tw2 = tk.split(' '), cw = ck.split(' '); return cw.every(w => tw2.includes(w)) && cw.length / tw2.length >= 0.75; })) take(78, '📺 ' + c.name, () => playChannel([c], 0));
+      else if (arNorm(c.name).includes(t) && t.length > 2) take(60, '📺 ' + c.name, () => playChannel([c], 0));
+      // 📅 a programme on now (or within 15 min) on this channel
+      const r = epgRows(c)[0];
+      if (r && r[0] < now + 900 && t.length > 2) { const ti = arNorm(r[2]); if (ti.includes(t) || (tw.length > 1 && tw.every(w => ti.includes(w)))) take(r[0] <= now ? 100 : 70, '📅 ' + r[2] + ' · ' + c.name, () => playChannel([c], 0)); }
+    }
+  }
+  return best.s ? best : null;
+}
+window.voiceQuery = list => {
+  const qs = (Array.isArray(list) ? list : [list]).map(x => String(x || '').trim()).filter(Boolean); if (!qs.length) return;
+  const hit = voiceFind(qs);
+  if (hit && hit.s >= 70) { toast('🎙️ «' + qs[0] + '» ← ' + hit.why); return hit.go(); }
+  const t = voiceText(qs[0]);
+  if (t.length > 2) { const now = Date.now() / 1000; let hit2 = null;
+    for (const c of [...LIVE, ...PINS, ...MYFAV, ...IFAV]) for (const r of epgRows(c)) if (r[0] > now && r[0] < now + 20 * 3600 && arNorm(r[2]).includes(t) && (!hit2 || r[0] < hit2[1][0])) hit2 = [c, r];
+    if (hit2) { toast('📅 «' + hit2[1][2] + '» الساعة ' + hm(hit2[1][0]) + ' على ' + hit2[0].name, 7000); return; } }
+  // not sure: the channels' search with the words (everything that has them)
+  toast('🎙️ «' + qs[0] + '» — هذي نتائج البحث');
+  show('iptv'); try { iPane('allwrap'); } catch (e) {}
+  const q = $('#s-isearch'); if (q) { q.value = voiceText(qs[0]) || qs[0]; FILT.q = q.value; iptvUi(); setTimeout(() => { const f = $('#s-ilist .f'); if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); } }, 200); }
+};
+window.voiceNone = () => toast('🎙️ ما فيه خدمة تعرّف على الصوت في هالجهاز — تكلّم من ريموت الجوال: «🔎 ابحث»', 6000);
+/** the phone's «⌨️ اكتب في الخانة»: into the focused text box on the TV, else a search */
+window.typeText = t => { const a = document.activeElement; if (a && /INPUT|TEXTAREA/.test(a.tagName)) { a.value = t; a.dispatchEvent(new Event('input', { bubbles: true })); a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); } else window.voiceQuery(t); };
+
 function liveUi() {
   const usable = c => !/geo-blocked|radio|\bFM\b/i.test(c.name);
   const picks = [];
@@ -2354,6 +2425,8 @@ function liveUi() {
   LIVE = [...pins, ...picks.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...mine.filter(x => !pins.some(p => favKey(p) === favKey(x))), ...IFAV.filter(c => !picks.includes(c) && !mine.some(f => f.name === c.name))];
   const rest = SERIES() ? [...seriesPicks(), ...LIVE] : LIVE, head = [...picksOf(HOME_TOP), ...PINS], seen = new Set();
   LIVE = [...head, ...rest].filter(c => { const k = favKey(c); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
+  { const hid = HHIDE(); if (hid.size) LIVE = LIVE.filter(c => !hid.has(favKey(c))); }
+  homeKeysSave();
   const ord = HORD(); if (ord.length) { const known = LIVE.filter(c => ord.includes(favKey(c))).sort((a, b) => ord.indexOf(favKey(a)) - ord.indexOf(favKey(b))); let k = 0; LIVE = LIVE.map(c => ord.includes(favKey(c)) ? known[k++] : c); }   // a channel the saved order lacks keeps its usual place
   if (SERIES()) nowUi();
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
@@ -3304,6 +3377,7 @@ function sections() {
       { k: 'h-prayer', l: 'كرت الصلاة', o: SHOW, d: 'on' }, { k: 'h-match', l: 'كرت أقرب مباراة', o: SHOW, d: 'on' },
       { k: 'h-quran', l: 'رف القرآن والأذكار', o: SHOW, d: 'on' }, { k: 'h-live', l: 'رف القنوات المباشرة', o: SHOW, d: 'on' },
       { k: 'h-apps', l: 'التطبيقات', o: SHOW, d: 'on' },
+      { k: 'homeunhide', l: '🗑 القنوات المحذوفة من الرئيسية', o: [['', 'خلّها محذوفة'], ['all', '↩ أرجعها كلها']], d: '' },
       { k: 'pos-hero', l: '↕ مكان «الصلاة والمباراة»', o: POS5, d: '' }, { k: 'pos-live', l: '↕ مكان «القنوات المباشرة»', o: POS5, d: '' },
       { k: 'pos-apps', l: '↕ مكان «التطبيقات»', o: POS5, d: '' }, { k: 'pos-quran', l: '↕ مكان «القرآن والأذكار»', o: POS5, d: '' }, { k: 'pos-ibada', l: '↕ مكان «عبادات اليوم»', o: POS5, d: '' },
       { k: 'tab-board', l: 'تبويب «لوحتي» في الأعلى', o: SHOW, d: 'off' }, { k: 'tab-subs', l: 'تبويب «الاشتراكات» في الأعلى', o: SHOW, d: 'off' },
@@ -3409,6 +3483,7 @@ function setClick(b) {
 function applySet(k, v) {
   if (k === 'city') { const c = CITIES.find(x => x[0] === v); if (!c) return; TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); P.city = v; setTimeout(() => { loadPrayers(); if ($('#panel').classList.contains('on') && SEC === 0) setsBody(); }, 1500); return; }
   if (k === 'boardbg') { loadBoard(); BOARD.bg = v; BOARD.v2 = 1; saveBoard(); boardUi(); return; }
+  if (k === 'homeunhide') { if (v === 'all') { setPref('homehide', '[]'); liveUi(); toast('↩ رجعت كل القنوات للرئيسية'); } return; }
   setPref(k, v);
   if (k === 'wall') { try { localStorage.wall = v; } catch (e) {} applyWall(); }
   if (k === 'clock') { tick(); nextUi(); }
@@ -3977,7 +4052,7 @@ function move(dir) {
     const r = best.getBoundingClientRect(), g = gl.getBoundingClientRect(); if (r.top < g.top + 10) gl.scrollTop -= g.top + 10 - r.top; else if (r.bottom > g.bottom - 10) gl.scrollTop += r.bottom - g.bottom + 10; return; }   // only the folders' column moves
   best.scrollIntoView({ block: dir === 'up' || dir === 'down' ? 'center' : 'nearest', inline: 'nearest', behavior: 'auto' });   // at once: the remote never waits for a scroll
 }
-let HOLD = null;
+let HOLD = null, MVF = 0;
 function holdPlay(b) {
   if (b.dataset.mg != null) return M3UV.url && mgroupToggle(M3UV.url, b.dataset.mg);
   if (b.dataset.mi != null) return matchPanel(+b.dataset.mi);
@@ -3997,7 +4072,7 @@ function ctxOpen(b) {
   CTX = { b, c, list, i: +b.dataset.i, match };
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
   const rows = match ? [...(SERIES() ? [['play', '▶︎', 'شغّل MBC 1']] : [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]), ['mode', SERIES() ? '⚽' : '📺', SERIES() ? 'غيّر إلى وضع الرياضة' : 'غيّر إلى وضع المسلسلات']]
-    : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)']] : []), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
+    : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)'], ['hide', '🗑', 'إزالة من الرئيسية']] : [['home', '🏠', 'أضف إلى الرئيسية']]), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
@@ -4066,6 +4141,8 @@ async function ctxDo(k) {
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
   if (k === 'reorder') return reorderStart(x.i);
+  if (k === 'hide') { homeHide(x.c); toast('🗑 «' + x.c.name + '» انشالت من الرئيسية — ترجعها من الإعدادات ← الشاشة الرئيسية'); const b = $(`#s-live [data-i="${Math.min(x.i, LIVE.length - 1)}"]`); if (b) b.focus(); return; }
+  if (k === 'home') { homeHide(x.c, false); if (!isPin(x.c)) togglePin(x.c); toast('🏠 «' + x.c.name + '» صارت في الرئيسية'); return; }
   if (k === 'pin') { togglePin(x.c); iptvUi(); dynUi(); gspUi(true); favUi(); return; }
   if (k === 'fav') { toggleFav(x.c); if (x.b && document.body.contains(x.b)) x.b.classList.toggle('fav', isFav(x.c)); }
 }
@@ -4086,7 +4163,7 @@ document.addEventListener('keydown', e => {
   if (/^[0-9]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '') && numberKey(e.key)) { e.preventDefault(); return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
   if (k && (k === 'left' || k === 'right') && /^(ytQ|s-isearch|m3uvIn|m3uvQ|m3uIn)$/.test(document.activeElement?.id || '') && document.activeElement.value) return;
-  if (k) { e.preventDefault(); move(k); }
+  if (k) { e.preventDefault(); if (e.repeat) { if (MVF) return; MVF = requestAnimationFrame(() => { MVF = 0; }); } move(k); }
   if (document.body.classList.contains('ambient') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ambient(false); }
   if (e.key === 'Escape' || e.key === 'GoBack') { e.preventDefault(); window.onTvBack(); }
 });
