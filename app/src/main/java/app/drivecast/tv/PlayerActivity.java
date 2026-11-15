@@ -753,7 +753,7 @@ public class PlayerActivity extends Activity {
         if (menuSel >= menuRows.size()) menuSel = Math.max(0, menuRows.size() - 1);
         menuCol.removeAllViews();
         for (String[] r : menuRows) {
-            TextView t = text(16, Typeface.DEFAULT, 0xFFFFFFFF); t.setText(r[1]); t.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+            TextView t = text(16, Typeface.DEFAULT, 0xFFFFFFFF); t.setText(r[1]); t.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL); t.setTextDirection(View.TEXT_DIRECTION_RTL);   // Arabic: from the right
             t.setPadding((int) dp(16), (int) dp(11), (int) dp(16), (int) dp(11)); t.setMaxLines(2); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
             t.setSoundEffectsEnabled(false);
             menuCol.addView(t, new LinearLayout.LayoutParams(-1, -2));
