@@ -146,6 +146,32 @@ public class PlayerActivity extends Activity {
     /** 📅 the guide: a channel's first address → its coming programmes [[start s, stop s, title], …] */
     static Map<String, org.json.JSONArray> EPG = new HashMap<>();
     private TextView prog;
+    private LinearLayout nowRow; private ImageView plogo; private View pdone, pleft; private String plogoUrl = "";
+    /** channel k's programme on now: [start, stop, title, picture?, logo?] or null */
+    private org.json.JSONArray nowRowOf(int k) {
+        try {
+            org.json.JSONArray a = EPG.get(key0(k)); if (a == null) return null;
+            long now = System.currentTimeMillis() / 1000;
+            for (int q = 0; q < a.length(); q++) { org.json.JSONArray r = a.getJSONArray(q); if (r.getLong(0) <= now && r.getLong(1) > now) return r; }
+        } catch (Throwable ignored) { }
+        return null;
+    }
+    private void progLogo(String u) {
+        if (u == null) u = "";
+        if (u.equals(plogoUrl)) return; plogoUrl = u;
+        if (u.isEmpty()) { plogo.setImageDrawable(null); plogo.setVisibility(View.GONE); return; }
+        Bitmap c = LOGOS.get(u); if (c != null) { plogo.setImageBitmap(c); plogo.setVisibility(View.VISIBLE); return; }
+        plogo.setVisibility(View.GONE);
+        final String want = u;
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(want).openConnection();
+                con.setConnectTimeout(6000); con.setReadTimeout(8000);
+                Bitmap bm = BitmapFactory.decodeStream(con.getInputStream());
+                if (bm != null) { LOGOS.put(want, bm); runOnUiThread(() -> { if (want.equals(plogoUrl)) { plogo.setImageBitmap(bm); plogo.setVisibility(View.VISIBLE); } }); }
+            } catch (Exception ignored) { }
+        }, "plogo").start();
+    }
     private String key0(int k) { return first.containsKey(k) ? first.get(k) : urls[k]; }
     private static String clock(long s) { java.util.Calendar c = java.util.Calendar.getInstance(); c.setTimeInMillis(s * 1000); int h = c.get(java.util.Calendar.HOUR); return (h == 0 ? 12 : h) + ":" + String.format(Locale.US, "%02d", c.get(java.util.Calendar.MINUTE)); }
     /** {now, next} of channel k ("" where unknown) */
@@ -168,6 +194,16 @@ public class PlayerActivity extends Activity {
         String[] nn = nowNext(i);
         String t = (nn[0].isEmpty() ? "" : "▸ الآن: " + nn[0]) + (nn[1].isEmpty() ? "" : (nn[0].isEmpty() ? "" : "   ·   ") + "بعده " + nn[1]);
         prog.setText(t); prog.setVisibility(t.isEmpty() ? View.GONE : View.VISIBLE);
+        if (nowRow == null) return;
+        org.json.JSONArray r = nowRowOf(i);
+        if (r == null) { nowRow.setVisibility(View.GONE); progLogo(""); return; }
+        try {
+            long now = System.currentTimeMillis() / 1000, st = r.getLong(0), en = r.getLong(1);
+            float f = Math.max(0.02f, Math.min(1f, (now - st) / (float) Math.max(1, en - st)));
+            ((LinearLayout.LayoutParams) pdone.getLayoutParams()).weight = f; ((LinearLayout.LayoutParams) pleft.getLayoutParams()).weight = 1f - f;
+            pdone.requestLayout(); nowRow.setVisibility(View.VISIBLE);
+            progLogo(r.length() > 4 ? r.optString(4, "") : "");
+        } catch (Throwable ignored) { nowRow.setVisibility(View.GONE); }
     }
     /** a channel is playing here now (also in the corner) */
     static boolean playing() { PlayerActivity p = live; try { return p != null && p.player != null && p.player.getPlayWhenReady(); } catch (Throwable t) { return false; } }
@@ -398,6 +434,19 @@ public class PlayerActivity extends Activity {
         group = text(12, med, 0xCCE9EEF2); group.setSingleLine(true);
         prog = text(13, med, 0xFF9FE3B4); prog.setSingleLine(true); prog.setEllipsize(android.text.TextUtils.TruncateAt.END); prog.setVisibility(View.GONE);
         names_.addView(name); names_.addView(group); names_.addView(prog);
+        // the programme on now: its logo (white on transparent) and a thin line of how far it has gone, as a receiver shows
+        nowRow = new LinearLayout(this); nowRow.setGravity(Gravity.CENTER_VERTICAL); nowRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        plogo = new ImageView(this); plogo.setAdjustViewBounds(true); plogo.setScaleType(ImageView.ScaleType.FIT_CENTER); plogo.setMaxWidth((int) dp(110)); plogo.setVisibility(View.GONE);
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(-2, (int) dp(28)); plp.setMarginEnd((int) dp(10));
+        nowRow.addView(plogo, plp);
+        LinearLayout track = new LinearLayout(this); track.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        GradientDrawable tb = new GradientDrawable(); tb.setColor(0x33FFFFFF); tb.setCornerRadius(dp(2)); track.setBackground(tb);
+        pdone = new View(this); GradientDrawable pd = new GradientDrawable(); pd.setColor(0xFF3DDC97); pd.setCornerRadius(dp(2)); pdone.setBackground(pd);
+        pleft = new View(this);
+        track.addView(pdone, new LinearLayout.LayoutParams(0, -1, 0f)); track.addView(pleft, new LinearLayout.LayoutParams(0, -1, 1f));
+        nowRow.addView(track, new LinearLayout.LayoutParams(0, (int) dp(4), 1f));
+        LinearLayout.LayoutParams nrp = new LinearLayout.LayoutParams(-1, -2); nrp.topMargin = (int) dp(6);
+        names_.addView(nowRow, nrp); nowRow.setVisibility(View.GONE);
         top.addView(names_, nl);
         // the signal meter (from the connection's speed against what the stream needs) and the clock
         LinearLayout sig = new LinearLayout(this); sig.setGravity(Gravity.BOTTOM);
@@ -1076,7 +1125,7 @@ public class PlayerActivity extends Activity {
         // zapping: the bar changes at once, the stream opens only once the remote rests (400 ms)
         player.stop();
         final int at = i;
-        net.postDelayed(() -> { if (at != i) return; open(); }, 400);
+        net.postDelayed(() -> { if (at != i) return; open(); }, 250);
     }
 
     private void loadLogo(String u) {
@@ -1126,7 +1175,7 @@ public class PlayerActivity extends Activity {
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
             num.setText(digits + "_"); showBar(2500);
-            h.removeCallbacks(jump); h.postDelayed(jump, 1500); return true;
+            h.removeCallbacks(jump); h.postDelayed(jump, 1200); return true;
         }
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
         if (ok) {   // a short OK on release; held ≈ ½ s: the options
