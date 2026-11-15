@@ -2845,7 +2845,7 @@ async function matchAlerts() {
     const live = list.filter((m, i, a) => m.status === 'live' && a.findIndex(x => mSame(x, m)) === i).sort((a, b) => (b.mine || 0) - (a.mine || 0));
     if (TV.setMatches) try {
       const pm = list.filter((m, i, a) => m.status !== 'finished' && (m.status === 'live' || (m.timestamp - now < 1800 && m.timestamp - now > -9000)) && a.findIndex(x => mSame(x, m)) === i).slice(0, 20);
-      MPL.clear();
+      if (MPL.size > 300) MPL.clear();   // kept between refreshes: the player may ask for a match it listed a moment ago
       TV.setMatches(JSON.stringify(pm.map(m => { const k = tKey(m.home?.name) + '|' + tKey(m.away?.name) + '|' + m.timestamp; MPL.set(k, m);
         const ln = matchLinks(m).filter(x => x.c);
         return { k, t: `${m.mine ? '⭐ ' : ''}${m.home?.name} ${m.status === 'live' ? AR(m.score?.home ?? 0) + '-' + AR(m.score?.away ?? 0) : '×'} ${m.away?.name}${m.status === 'live' && m.elapsed != null ? ' · ' + AR(m.elapsed) + '′' : m.status !== 'live' ? ' · ' + hm(m.timestamp) : ''}`, lg: m.league?.name || '', ch: ln.map(x => ({ n: String(x.want).replace(/^🌍 /, ''), name: x.c.name })) }; })));
