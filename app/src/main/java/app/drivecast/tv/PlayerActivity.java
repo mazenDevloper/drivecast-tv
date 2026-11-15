@@ -121,6 +121,27 @@ public class PlayerActivity extends Activity {
             return !had;
         } catch (Throwable t) { return false; }
     }
+    private java.util.Set<String> favSet() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        try { org.json.JSONArray a = new org.json.JSONArray(Access.set(this).getString("favs", "[]")); for (int k = 0; k < a.length(); k++) out.add(a.getJSONObject(k).optString("name").trim().toLowerCase(Locale.ROOT)); } catch (Throwable ignored) { }
+        return out;
+    }
+    /** ⭐ on / off: shown here at once; the home page saves it with DriveCast (its cloud list), as a star there does */
+    private boolean favToggle(int ch) {
+        try {
+            String nm = names != null && ch < names.length && names[ch] != null ? names[ch] : ""; if (nm.isEmpty()) return false;
+            String key = nm.trim().toLowerCase(Locale.ROOT);
+            org.json.JSONObject c = new org.json.JSONObject().put("name", nm).put("url", key0(ch)).put("logo", logos != null && ch < logos.length && logos[ch] != null ? logos[ch] : "").put("group", gOf(ch));
+            org.json.JSONArray a = new org.json.JSONArray(Access.set(this).getString("favs", "[]")), b = new org.json.JSONArray(); boolean had = false;
+            for (int k = 0; k < a.length(); k++) { org.json.JSONObject o = a.getJSONObject(k); if (o.optString("name").trim().toLowerCase(Locale.ROOT).equals(key)) had = true; else b.put(o); }
+            org.json.JSONArray out = new org.json.JSONArray(); if (!had) out.put(c); for (int k = 0; k < b.length(); k++) out.put(b.get(k));
+            HomeActivity hm = HomeActivity.alive;
+            if (hm != null) hm.run("window.toggleFav && toggleFav(" + c + ")");
+            else Access.set(this).edit().putString("favs", out.toString()).apply();
+            favs = new java.util.HashSet<>(); for (int k = 0; k < out.length(); k++) favs.add(out.getJSONObject(k).optString("name").trim().toLowerCase(Locale.ROOT));
+            return !had;
+        } catch (Throwable t) { return false; }
+    }
     /** 📅 the guide: a channel's first address → its coming programmes [[start s, stop s, title], …] */
     static Map<String, org.json.JSONArray> EPG = new HashMap<>();
     private TextView prog;
@@ -261,7 +282,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root);
+        buildBar(root); buildList(root); buildGuide(root);
         ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
         GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);
@@ -286,7 +307,7 @@ public class PlayerActivity extends Activity {
                 .setMediaSourceFactory(new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http))).build();
         view.setPlayer(player);
         up4k = "on".equals(Access.set(this).getString("up4k", "off"));
-        if (up4k) try { player.setVideoEffects(Up4K.effects()); } catch (Throwable t) { up4k = false; }   // 🔷 GPU scaling to 2160 lines + sharpening
+        if (up4k) try { player.setVideoEffects(Up4K.effects(this)); } catch (Throwable t) { up4k = false; }   // 🔷 sharpened at its own size; scaled only on a 4K output
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
                 if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); fill(); }
@@ -296,8 +317,7 @@ public class PlayerActivity extends Activity {
             @Override public void onPlayerError(PlaybackException e) {
                 // the 4K picture asks the GPU more than some boxes give: an error in the picture's processing → plain picture
                 if (up4k && (e.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED || e.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSOR_INIT_FAILED)) {
-                    up4k = false; try { player.setVideoEffects(new java.util.ArrayList<>()); } catch (Throwable t) {}
-                    android.widget.Toast.makeText(PlayerActivity.this, "تحسين 4K ما يشتغل على هالجهاز — رجعت الصورة العادية", android.widget.Toast.LENGTH_LONG).show();
+                    up4kOff("تحسين الصورة ما يشتغل على هالجهاز — رجعت الصورة العادية", false);
                 }
                 retry();
             }
@@ -308,6 +328,11 @@ public class PlayerActivity extends Activity {
             @Override public void onVideoDecoderInitialized(EventTime t, String d, long a, long b) { decoder = d; fill(); }
             @Override public void onVideoInputFormatChanged(EventTime t, Format f, DecoderReuseEvaluation r) { fill(); }
             @Override public void onBandwidthEstimate(EventTime t, int ms, long bytes, long bps) { fill(); }
+            // 🔷 the box can't keep up with the picture's processing (≥ 30 frames dropped in under 20 s, past the channel's start):
+            // the plain picture, smooth again — and the setting off, so it isn't asked of this box again
+            @Override public void onDroppedVideoFrames(EventTime t, int n, long ms) {
+                if (up4k && n >= 30 && ms > 0 && ms < 20000 && System.currentTimeMillis() - since > 6000) up4kOff("🔷 الجهاز ما لحق على تحسين الصورة — أطفأته لتبقى القنوات سلسة", true);
+            }
         });
         play();
         tick.run();
@@ -317,6 +342,14 @@ public class PlayerActivity extends Activity {
     // ---- the picture's width: 0 smart, 1 as it is (black sides stay), 2 fill the screen (crops)
     private PlayerView view;
     private boolean up4k;
+    private void up4kOff(String why, boolean reopen) {
+        if (!up4k) return; up4k = false;
+        try { Access.set(this).edit().putString("up4k", "off").apply(); } catch (Throwable ignored) { }
+        HomeActivity hm = HomeActivity.alive; if (hm != null) hm.run("try{SET.up4k='off'}catch(e){}");
+        try { player.setVideoEffects(new java.util.ArrayList<>()); } catch (Throwable ignored) { }
+        android.widget.Toast.makeText(this, why, android.widget.Toast.LENGTH_LONG).show();
+        if (reopen) { player.stop(); open(); }
+    }
     private float vw, vh;
     private int fitMode = 0;
     private static final String[] FIT_NAMES = {"عرض ذكي", "الأصلي", "ملء الشاشة"};
@@ -420,7 +453,7 @@ public class PlayerActivity extends Activity {
 
     // ---- OK: the channel list at the side, like a receiver's. ↑↓ choose (held: fast), ◀ ▶ ten at a time, OK plays it
     // (the list stays, OK again on the playing one closes it), BACK closes; it hides by itself after 10 s untouched
-    private FrameLayout listPanel; private android.widget.ScrollView listScroll; private LinearLayout listCol;
+    private FrameLayout listPanel; private android.widget.ListView listLv; private android.widget.BaseAdapter listAd;
     private TextView listHead; private int sel; private boolean listOn;
     private final Runnable listHide = () -> listShow(false);
     private void buildList(FrameLayout root) {
@@ -432,12 +465,22 @@ public class PlayerActivity extends Activity {
         listHead = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         listHead.setGravity(Gravity.END); listHead.setPadding(0, 0, (int) dp(10), (int) dp(12));
         box.addView(listHead);
-        listScroll = new android.widget.ScrollView(this); listScroll.setVerticalScrollBarEnabled(false); listScroll.setFocusable(false);
-        listCol = new LinearLayout(this); listCol.setOrientation(LinearLayout.VERTICAL);
-        listScroll.addView(listCol);
-        box.addView(listScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        listLv = new android.widget.ListView(this);
+        listLv.setDivider(null); listLv.setDividerHeight(0); listLv.setSelector(new android.graphics.drawable.ColorDrawable(0));
+        listLv.setVerticalScrollBarEnabled(false); listLv.setFocusable(false); listLv.setItemsCanFocus(false); listLv.setCacheColorHint(0);
+        listAd = new android.widget.BaseAdapter() {
+            @Override public int getCount() { return lview.length; }
+            @Override public Object getItem(int q) { return lview[q]; }
+            @Override public long getItemId(int q) { return q; }
+            @Override public View getView(int q, View cv, android.view.ViewGroup parent) {
+                LinearLayout r = cv instanceof LinearLayout ? (LinearLayout) cv : listRow();
+                listBind(r, q); return r;
+            }
+        };
+        listLv.setAdapter(listAd);
+        box.addView(listLv, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView tip = text(10.5f, Typeface.DEFAULT, 0x99FFFFFF); tip.setGravity(Gravity.END);
-        tip.setText("↑↓ اختر · ▶ القائمة التالية · ◀ بالحرف · OK شغّل · OK مطوّلاً 📌 ثبّت"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
+        tip.setText("↑↓ اختر · ◀ ▶ القوائم · ◀ مطوّلاً بالحرف · OK شغّل · OK مطوّلاً ⭐ المفضّلة"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
         box.addView(tip);
         listPanel.addView(box, new FrameLayout.LayoutParams(-1, -1));
         root.addView(listPanel, new FrameLayout.LayoutParams((int) dp(400), -1, Gravity.RIGHT));
@@ -445,7 +488,9 @@ public class PlayerActivity extends Activity {
     }
     // the list's lists: «الكل», then each group (country / list) in the order met — ▶ moves to the next one
     private static final String USUAL = "🔥 المعتادة";
-    private java.util.List<String> usualNow = new java.util.ArrayList<>(); private java.util.Set<String> pins = new java.util.HashSet<>();
+    private static final String FAVL = "⭐ المفضّلة";
+    private java.util.List<String> usualNow = new java.util.ArrayList<>(); private java.util.Set<String> pins = new java.util.HashSet<>(), favs = new java.util.HashSet<>();
+    private int lrCode; private boolean lrHeld;   // ◀ / ▶ pressed: a short press acts on release, a held one at once
     private boolean okDown;
     private final java.util.List<String> lists = new java.util.ArrayList<>();
     private int li = 0;                                   // the list shown
@@ -464,61 +509,129 @@ public class PlayerActivity extends Activity {
         lists.clear(); lists.add("الكل");
         for (int k = 0; k < urls.length; k++) { String g = gOf(k); if (!g.isEmpty() && !lists.contains(g)) lists.add(g); }
         if (lists.size() == 2) lists.remove(1);   // one group only: «الكل» is it
-        usualNow = usual(); pins = pinned();
+        usualNow = usual(); pins = pinned(); favs = favSet();
         boolean any = false; for (int k = 0; k < urls.length && !any; k++) any = usualNow.contains(nOf(k));
         if (any && urls.length > 8) lists.add(1, USUAL);
+        boolean fv = false; for (int k = 0; k < urls.length && !fv; k++) fv = favs.contains(nOf(k).trim().toLowerCase(Locale.ROOT));
+        if (fv && urls.length > 1) lists.add(1, FAVL);
     }
     private void listView() {
         java.util.List<Integer> v = new java.util.ArrayList<>();
         String g = lists.get(li);
         if (USUAL.equals(g)) { for (String nm : usualNow) for (int k = 0; k < urls.length; k++) if (nm.equals(nOf(k))) { v.add(k); break; } }
+        else if (FAVL.equals(g)) { for (int k = 0; k < urls.length; k++) if (favs.contains(nOf(k).trim().toLowerCase(Locale.ROOT))) v.add(k); }
         else for (int k = 0; k < urls.length; k++) if (li == 0 || g.equals(gOf(k))) v.add(k);
         lview = new int[v.size()]; for (int k = 0; k < lview.length; k++) lview[k] = v.get(k);
     }
     private int posOf(int ch) { for (int k = 0; k < lview.length; k++) if (lview[k] == ch) return k; return -1; }
-    private void listFill() {
-        listCol.removeAllViews();
-        for (int q = 0; q < lview.length; q++) {
-            int k = lview[q];
-            LinearLayout r = new LinearLayout(this); r.setOrientation(LinearLayout.HORIZONTAL); r.setGravity(Gravity.CENTER_VERTICAL);
-            r.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-            r.setPadding((int) dp(12), (int) dp(9), (int) dp(12), (int) dp(9));
-            TextView n = text(13, Typeface.create("sans-serif-medium", Typeface.BOLD), 0x99FFFFFF);
-            n.setText(String.valueOf(k + 1)); n.setMinWidth((int) dp(40));
-            TextView t = text(15, Typeface.DEFAULT, 0xFFFFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            String fl = fOf(k);
-            String on = nowNext(k)[0].replaceFirst("  \\(باقي.*$", "");
-            t.setText((k == cur ? "▶  " : "") + (pins.contains(nOf(k).trim().toLowerCase(Locale.ROOT)) ? "📌 " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k) + (on.isEmpty() ? "" : "  ·  " + on));
-            t.setPadding((int) dp(8), 0, 0, 0);
-            r.addView(n); r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
-            listCol.addView(r, new LinearLayout.LayoutParams(-1, -2));
-        }
+    private LinearLayout listRow() {
+        LinearLayout r = new LinearLayout(this); r.setOrientation(LinearLayout.HORIZONTAL); r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setLayoutDirection(View.LAYOUT_DIRECTION_RTL); r.setSoundEffectsEnabled(false);
+        r.setPadding((int) dp(12), (int) dp(9), (int) dp(12), (int) dp(9));
+        TextView n = text(13, Typeface.create("sans-serif-medium", Typeface.BOLD), 0x99FFFFFF); n.setMinWidth((int) dp(40));
+        TextView t = text(15, Typeface.DEFAULT, 0xFFFFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setPadding((int) dp(8), 0, 0, 0);
+        r.addView(n); r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        r.setLayoutParams(new android.widget.AbsListView.LayoutParams(-1, -2));
+        return r;
     }
+    private GradientDrawable selBg, curBg;
+    private void listBind(LinearLayout r, int q) {
+        if (q >= lview.length) return;
+        int k = lview[q]; String key = nOf(k).trim().toLowerCase(Locale.ROOT), fl = fOf(k);
+        String on = nowNext(k)[0].replaceFirst("  \\(باقي.*$", "");
+        TextView n = (TextView) r.getChildAt(0), t = (TextView) r.getChildAt(1);
+        n.setText(String.valueOf(k + 1));
+        t.setText((k == cur ? "▶  " : "") + (favs.contains(key) ? "⭐ " : "") + (pins.contains(key) ? "📌 " : "") + (fl.isEmpty() ? "" : fl + "  ") + nOf(k) + (on.isEmpty() ? "" : "  ·  " + on));
+        if (selBg == null) { selBg = new GradientDrawable(); selBg.setColor(0xF2FFFFFF); selBg.setCornerRadius(dp(14)); curBg = new GradientDrawable(); curBg.setColor(0x3334C759); curBg.setCornerRadius(dp(14)); }
+        r.setBackground(q == sel ? selBg.getConstantState().newDrawable() : k == cur ? curBg.getConstantState().newDrawable() : null);
+        t.setTextColor(q == sel ? 0xFF111111 : 0xFFFFFFFF);
+        n.setTextColor(q == sel ? 0xFF555555 : 0x99FFFFFF);
+    }
+    private void listFill() { listAd.notifyDataSetChanged(); }
     private void listMark() {
-        for (int q = 0; q < listCol.getChildCount(); q++) {
-            View r = listCol.getChildAt(q); int k = lview[q];
-            if (q == sel) { GradientDrawable d = new GradientDrawable(); d.setColor(0xF2FFFFFF); d.setCornerRadius(dp(14)); r.setBackground(d); }
-            else if (k == cur) { GradientDrawable d = new GradientDrawable(); d.setColor(0x3334C759); d.setCornerRadius(dp(14)); r.setBackground(d); }
-            else r.setBackground(null);
-            ((TextView) ((LinearLayout) r).getChildAt(1)).setTextColor(q == sel ? 0xFF111111 : 0xFFFFFFFF);
-            ((TextView) ((LinearLayout) r).getChildAt(0)).setTextColor(q == sel ? 0xFF555555 : 0x99FFFFFF);
-        }
+        listAd.notifyDataSetChanged();
         String head = (lists.size() > 1 ? "◀ " + lists.get(li) + " ▶" : "📺 القنوات") + "  ·  " + (lview.length == 0 ? 0 : sel + 1) + " من " + lview.length;
         if (letterOn && !letters.isEmpty()) head = "🔤 الحرف:  " + letters.get(letterAt) + "   ·  ↑↓ غيّر · OK اختر";
         listHead.setText(head);
-        View r = sel < listCol.getChildCount() ? listCol.getChildAt(sel) : null;
-        if (r != null) listScroll.post(() -> listScroll.smoothScrollTo(0, Math.max(0, r.getTop() - listScroll.getHeight() / 2 + r.getHeight() / 2)));
+        // the chosen row in the middle, at once (no smooth scroll: the remote never waits)
+        final int at = sel;
+        Runnable mid = () -> listLv.setSelectionFromTop(at, Math.max(0, listLv.getHeight() / 2 - (int) dp(20)));
+        if (listLv.getHeight() > 0) mid.run(); else listLv.post(mid);
         h.removeCallbacks(listHide); h.postDelayed(listHide, letterOn ? 20000 : 10000);
     }
     private void listShow(boolean on) {
-        listOn = on; letterOn = false; okDown = false;
+        listOn = on; letterOn = false; okDown = false; lrCode = 0;
         if (on) {
             listsBuild(); if (li >= lists.size()) li = 0;
             listView(); if (posOf(Math.max(0, cur)) < 0) { li = 0; listView(); }
             sel = Math.max(0, posOf(Math.max(0, cur)));
-            listFill(); HomeActivity.quiet(listPanel); listPanel.setVisibility(View.VISIBLE); listPanel.setAlpha(0f); listPanel.setTranslationX(dp(60)); listPanel.animate().alpha(1f).translationX(0).setDuration(220); listMark();
+            listFill(); HomeActivity.quiet(listPanel); listPanel.setVisibility(View.VISIBLE); listPanel.setAlpha(0f); listPanel.setTranslationX(dp(40)); listPanel.animate().alpha(1f).translationX(0).setDuration(140); listMark();
         }
         else { h.removeCallbacks(listHide); listPanel.animate().alpha(0f).translationX(dp(60)).setDuration(200).withEndAction(() -> { if (!listOn) listPanel.setVisibility(View.GONE); }); }
+    }
+    // ---- 📅 the guide on the picture: ◀ ▶ walk a channel's programmes (earlier / later), ↑↓ another channel's guide (what
+    // plays goes on playing), OK watches the channel shown, BACK closes; it hides by itself after 10 s untouched
+    private LinearLayout guideBox; private TextView guideHead, guideTitle, guideSub;
+    private boolean guideOn; private int guideCh, guideAt;   // the channel shown, its programme (0 = the one on now)
+    private final Runnable guideHide = () -> guideShow(false);
+    private void buildGuide(FrameLayout root) {
+        guideBox = new LinearLayout(this); guideBox.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable d = new GradientDrawable(); d.setColor(0xEB101216); d.setCornerRadius(dp(22)); d.setStroke((int) dp(1), 0x26FFFFFF);
+        guideBox.setBackground(d); guideBox.setPadding((int) dp(28), (int) dp(16), (int) dp(28), (int) dp(16));
+        guideHead = text(14, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xB3FFFFFF);
+        guideTitle = text(24, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+        guideTitle.setMaxLines(2); guideTitle.setEllipsize(android.text.TextUtils.TruncateAt.END); guideTitle.setPadding(0, (int) dp(8), 0, (int) dp(8));
+        guideSub = text(13, Typeface.DEFAULT, 0xA6FFFFFF); guideSub.setLineSpacing(dp(4), 1f);
+        for (TextView t : new TextView[] { guideHead, guideTitle, guideSub }) { t.setGravity(Gravity.CENTER); guideBox.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams((int) dp(720), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        p.bottomMargin = (int) dp(40);
+        root.addView(guideBox, p); guideBox.setVisibility(View.GONE);
+    }
+    /** channel k's programmes from the one on now: [[start s, stop s, title], …] */
+    private java.util.List<org.json.JSONArray> progs(int k) {
+        java.util.List<org.json.JSONArray> out = new java.util.ArrayList<>();
+        try {
+            org.json.JSONArray a = EPG.get(key0(k)); if (a == null) return out;
+            long now = System.currentTimeMillis() / 1000;
+            for (int q = 0; q < a.length(); q++) { org.json.JSONArray r = a.getJSONArray(q); if (r.getLong(1) > now) out.add(r); }
+        } catch (Throwable ignored) { }
+        return out;
+    }
+    private static String inTime(long sec) { long m = Math.max(1, sec / 60); return m < 60 ? m + " د" : (m / 60) + " س" + (m % 60 > 0 ? " و" + (m % 60) + " د" : ""); }
+    private void guideFill() {
+        java.util.List<org.json.JSONArray> ps = progs(guideCh);
+        if (guideAt >= ps.size()) guideAt = Math.max(0, ps.size() - 1);
+        String fl = fOf(guideCh);
+        guideHead.setText("📅  " + (guideCh == cur ? "▶ " : "") + (fl.isEmpty() ? "" : fl + "  ") + label(guideCh) + "  ·  " + (guideCh + 1));
+        String keys = "◀ ▶ البرامج  ·  ↑↓ القنوات  ·  OK " + (guideCh == cur ? "إغلاق" : "شاهد");
+        if (ps.isEmpty()) { guideTitle.setText("لا يوجد دليل برامج لهذه القناة"); guideSub.setText(keys); }
+        else try {
+            org.json.JSONArray r = ps.get(guideAt); long st = r.getLong(0), en = r.getLong(1), now = System.currentTimeMillis() / 1000;
+            String when = st <= now ? "🔴 الآن · باقي " + inTime(en - now) : guideAt == 1 ? "⏭ التالي · بعد " + inTime(st - now) : "بعد " + inTime(st - now);
+            guideTitle.setText(r.getString(2));
+            guideSub.setText(when + "   ·   " + clock(st) + " – " + clock(en) + "   ·   " + (guideAt + 1) + " من " + ps.size() + "\n" + keys);
+        } catch (Throwable t) { guideTitle.setText("—"); guideSub.setText(keys); }
+        h.removeCallbacks(guideHide); h.postDelayed(guideHide, 10000);
+    }
+    private void guideShow(boolean on) {
+        guideOn = on;
+        if (on) { h.removeCallbacks(hide); hide.run(); guideBox.setVisibility(View.VISIBLE); guideFill(); }
+        else { h.removeCallbacks(guideHide); guideBox.setVisibility(View.GONE); }
+    }
+    private boolean guideKey(int code, KeyEvent e) {
+        int n = urls.length;
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_RIGHT: guideAt++; guideFill(); return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT: if (guideAt > 0) guideAt--; guideFill(); return true;
+            case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_CHANNEL_UP: guideCh = (guideCh + 1) % n; guideAt = 0; guideFill(); return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_CHANNEL_DOWN: guideCh = (guideCh - 1 + n) % n; guideAt = 0; guideFill(); return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
+                if (e.getRepeatCount() > 0) return true;
+                guideShow(false); if (guideCh != cur) { i = guideCh; play(); } return true;
+            case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: case KeyEvent.KEYCODE_GUIDE: guideShow(false); return true;
+        }
+        guideShow(false); return false;   // any other key: the guide goes and the key does its usual work
     }
     /** a name's first letter, for ◀ (the «ال» of Arabic names and «Al »/«The » skipped) */
     private static String first(String n) {
@@ -538,6 +651,13 @@ public class PlayerActivity extends Activity {
                 if (sel < lview.length) { if (lview[sel] == cur) listShow(false); else { i = lview[sel]; listShow(false); play(); fill(); showBar(6000); } }   // chosen: the list goes, the bar shows the channel
                 return true;
             }
+            if (lrCode != 0 && code == lrCode) {
+                boolean held = lrHeld, right = code == KeyEvent.KEYCODE_DPAD_RIGHT; lrCode = 0; lrHeld = false;
+                if (held) return true;
+                if (listOn) { if (!right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
+                else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
+                return true;
+            }
         } catch (Throwable t) { Crash.note(this, "player list: " + t); }
         return super.onKeyUp(code, e);
     }
@@ -546,20 +666,25 @@ public class PlayerActivity extends Activity {
         if (letterOn) {
             switch (code) {
                 case KeyEvent.KEYCODE_DPAD_UP: letterAt = (letterAt - 1 + letters.size()) % letters.size(); letterJump(); return true;
-                case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_DPAD_LEFT: letterAt = (letterAt + 1) % letters.size(); letterJump(); return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_DPAD_LEFT:
+                    if (lrHeld && code == KeyEvent.KEYCODE_DPAD_LEFT && e.getRepeatCount() > 0) return true;   // still the hold that opened it
+                    letterAt = (letterAt + 1) % letters.size(); letterJump(); return true;
                 case KeyEvent.KEYCODE_DPAD_RIGHT: case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE:
                     letterOn = false; listMark(); return true;
             }
             return true;
         }
-        if (n == 0 && code != KeyEvent.KEYCODE_DPAD_RIGHT && code != KeyEvent.KEYCODE_BACK) return true;
+        if (n == 0 && code != KeyEvent.KEYCODE_DPAD_RIGHT && code != KeyEvent.KEYCODE_DPAD_LEFT && code != KeyEvent.KEYCODE_BACK) return true;
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_CHANNEL_UP: sel = (sel - 1 + n) % n; listMark(); return true;
             case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_CHANNEL_DOWN: sel = (sel + 1) % n; listMark(); return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ the next list
-                if (lists.size() < 2) return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ the next list (◀, on release, the one before)
+                if (lists.size() < 2 || e.getRepeatCount() > 0) return true;
                 li = (li + 1) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); return true;
-            case KeyEvent.KEYCODE_DPAD_LEFT: {  // ◀ by letter
+            case KeyEvent.KEYCODE_DPAD_LEFT: {  // ◀ held: by letter
+                if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }
+                if (e.getRepeatCount() != 4 || lrCode != code || n == 0) return true;
+                lrHeld = true;
                 java.util.TreeSet<String> ls = new java.util.TreeSet<>();
                 for (int k : lview) ls.add(first(nOf(k)));
                 letters = new java.util.ArrayList<>(ls); if (letters.isEmpty()) return true;
@@ -567,11 +692,11 @@ public class PlayerActivity extends Activity {
                 letterAt = Math.max(0, letters.indexOf(now)); letterOn = true; listMark(); return true;
             }
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
-                // a short OK plays (on release); held: the channel is pinned to the top of the Channels tab (or taken off)
+                // a short OK plays (on release); held: ⭐ in the favourites (or out of them) — one list with the home page and DriveCast
                 if (e.getRepeatCount() == 0) { okDown = true; return true; }
                 if (okDown && e.getRepeatCount() >= 6) {
-                    okDown = false; boolean on = pinToggle(lview[sel]); pins = pinned(); int keep = sel; listFill(); sel = keep; listMark();
-                    listHead.setText(on ? "📌 ثُبّتت في أعلى تاب القنوات" : "أُزيلت من المثبّتة");
+                    okDown = false; boolean on = favToggle(lview[sel]); int keep = sel; listFill(); sel = keep; listMark();
+                    listHead.setText(on ? "⭐ أُضيفت إلى المفضّلة" : "أُزيلت من المفضّلة");
                 }
                 return true;
             case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: listShow(false); return true;
@@ -606,7 +731,8 @@ public class PlayerActivity extends Activity {
         http.setUserAgent(Iptv.uaFor(urls[i])); http.setDefaultRequestProperties(hd);
         // a live channel plays ~20 s behind its edge (where the CDN allows): room in the buffer for the line's hiccups
         player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
-    private void fill() { try { progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
+    private boolean barDirty;
+    private void fill() { try { if (bar != null && bar.getAlpha() < 0.01f) { barDirty = true; return; } barDirty = false; progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
         if (player == null) return;
         chips.removeAllViews(); chips2.removeAllViews(); row = chips;
@@ -648,7 +774,7 @@ public class PlayerActivity extends Activity {
             chip((sw ? "⚙ فك برمجي · " : "⚡ فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), sw ? 0x33F2994A : 0x2EFFFFFF, 0xCCFFFFFF);
         }
         hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً مشغّل آخر"
-            : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ حجم الصورة  ·  ⏯ إيقاف مؤقت  ·  🔊 صوت آخر");
+            : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ ▶ دليل البرامج  ·  ◀ مطوّلاً القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ مطوّلاً حجم الصورة  ·  🔊 صوت آخر");
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
         int bars = !ready ? 1 : need <= 0 ? (have > 8e6 ? 5 : have > 4e6 ? 4 : have > 2e6 ? 3 : 2) : (int) Math.max(1, Math.min(5, Math.round(have / (double) need * 1.6)));
@@ -747,7 +873,8 @@ public class PlayerActivity extends Activity {
     };
 
     private void showBar(long ms) {
-        bar.animate().cancel(); bar.setAlpha(1f); bar.setTranslationY(0);
+        bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0);
+        if (was && barDirty) fill();
         h.removeCallbacks(hide);
         if (ms > 0) h.postDelayed(hide, ms);
     }
@@ -833,6 +960,7 @@ public class PlayerActivity extends Activity {
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
         if (listOn && listKey(code, e)) return true;
+        if (guideOn && guideKey(code, e)) return true;
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
@@ -856,10 +984,12 @@ public class PlayerActivity extends Activity {
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
             boolean right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
             if (wind) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }
-            if (e.getRepeatCount() > 0) return true;
+            if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }   // short: the guide, on release
+            if (e.getRepeatCount() != 4 || lrCode != code) return true;
+            lrHeld = true;
             if (!right) { recall(); return true; }
             fitMode = (fitMode + 1) % 3; fit();
-            flash("حجم الصورة: " + FIT_NAMES[fitMode] + "  ▶"); return true;
+            flash("حجم الصورة: " + FIT_NAMES[fitMode] + "  ▶ مطوّلاً"); return true;
         }
         // the remote's media keys
         switch (code) {
@@ -873,7 +1003,8 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_LAST_CHANNEL: recall(); return true;
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: case KeyEvent.KEYCODE_PROG_YELLOW: nextAudio(); return true;
             case KeyEvent.KEYCODE_MEDIA_STOP: finish(); return true;
-            case KeyEvent.KEYCODE_GUIDE: case KeyEvent.KEYCODE_MENU: case KeyEvent.KEYCODE_PROG_GREEN: case KeyEvent.KEYCODE_PROG_RED: fill(); showBar(12000); tickerShow(); return true;
+            case KeyEvent.KEYCODE_GUIDE: guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); return true;
+            case KeyEvent.KEYCODE_MENU: case KeyEvent.KEYCODE_PROG_GREEN: case KeyEvent.KEYCODE_PROG_RED: fill(); showBar(12000); tickerShow(); return true;
             default: break;
         }
         if (ok && urls.length > 1) { h.removeCallbacks(hide); hide.run(); listShow(true); return true; }   // OK: the list alone
