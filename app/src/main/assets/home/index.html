@@ -2210,15 +2210,18 @@ const EPGID = { 'الكأس 1': 'AlkassOne.qa', 'الكأس 2': 'AlkassTwo.qa', 
 // a channel's guide: its own id (Free-TV's tvg-id), else the guides' channel of the same name — by its words, so «الكأس 1»,
 // «Al Kass One HD» and «Alkass 1» are one channel (epg.json «n»: the Arab region's guides + the big countries' sports channels)
 let NIDX = null; const NID = new Map();
+const ARABW = /\b(qatar|mena|ksa|saudi|uae|emirates|arabia|arabic|middle ?east|gulf|khaleej|me|ar)\b/gi;
 function epgId(c) {
   if (!c) return '';
-  if (c.id && EPG[c.id]) return c.id;
+  const fut = id => { const r = EPG[id]; return !!(r && r.length && r[r.length - 1][1] > Date.now() / 1000); };
+  if (c.id && fut(c.id)) return c.id;
   if (EPGID[c.name] && EPG[EPGID[c.name]]) return EPGID[c.name];
-  if (!EPGN) return '';
+  if (!EPGN) return c.id && EPG[c.id] ? c.id : '';
   if (NID.has(c.name)) return NID.get(c.name);
-  if (!NIDX) { NIDX = new Map(); for (const [n, id] of Object.entries(EPGN)) { const k = channelKey(n); if (k && !NIDX.has(k)) NIDX.set(k, id); } }
-  const k = channelKey(String(c.name || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '')), ok = k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t));
-  const id = (ok && NIDX.get(k)) || ''; NID.set(c.name, id); return id;
+  if (!NIDX) { NIDX = new Map(); for (const [n, id] of Object.entries(EPGN)) { if (!fut(id)) continue; for (const v of [n, n.replace(ARABW, ' ')]) { const k = channelKey(v); if (k && !NIDX.has(k)) NIDX.set(k, id); } } }
+  const look = n => { const base = String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ''); for (const v of [base, base.replace(ARABW, ' ')]) { const k = channelKey(v); if (k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t)) && NIDX.get(k)) return NIDX.get(k); } return ''; };
+  const id = look(c.name) || (c.en ? look(c.en) : '') || (c.id && EPG[c.id] ? c.id : '');
+  NID.set(c.name, id); return id;
 }
 const epgRows = c => { const now = Date.now() / 1000; return ((c && EPG[epgId(c)]) || []).filter(r => r[1] > now); };
 const hm = t => { const d = new Date(t * 1000); let h = d.getHours() % 12 || 12; return h + ':' + String(d.getMinutes()).padStart(2, '0'); };
@@ -3929,7 +3932,28 @@ function move(dir) {
   }
   const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
   let best = null, bd = Infinity;
-  for (const el of all) {
+  if (!(inPane && scope === document)) {
+    const H = dir === 'left' || dir === 'right', cand = [];
+    for (const el of all) {
+      if (el === cur || el.disabled) continue;   // a disabled button takes no focus
+      const r = el.getBoundingClientRect(); if (!r.width && !r.height) continue;
+      const dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
+      if (dir === 'left' ? dx < -5 : dir === 'right' ? dx > 5 : dir === 'up' ? dy < -5 : dy > 5) cand.push({ el, r, dx, dy });
+    }
+    let pick = null;
+    if (H) {   // the same row: overlapping it by 40 % of the smaller height
+      const row = cand.filter(c => Math.min(c.r.bottom, a.bottom) - Math.max(c.r.top, a.top) >= 0.4 * Math.min(c.r.height, a.height));
+      for (const c of row) if (!pick || Math.abs(c.dx) + Math.abs(c.dy) * 0.5 < Math.abs(pick.dx) + Math.abs(pick.dy) * 0.5) pick = c;
+    } else {   // the levels below / above, nearest first; in each, something under (over) this one, else the next level
+      const gap = c => dir === 'down' ? c.r.top - a.bottom : a.top - c.r.bottom;
+      cand.sort((p, q) => gap(p) - gap(q));
+      const levels = []; for (const c of cand) { const L = levels[levels.length - 1]; if (L && gap(c) - gap(L[0]) <= 20) L.push(c); else levels.push([c]); }
+      const over = c => Math.min(c.r.right, a.right) - Math.max(c.r.left, a.left) > 0, near = L => L.reduce((b, c) => Math.abs(c.dx) < Math.abs(b.dx) ? c : b);
+      for (const L of levels) { const o = L.filter(over); if (o.length) { pick = near(o); break; } }
+      if (!pick && levels.length) pick = near(levels[0]);
+    }
+    best = pick && pick.el;
+  } else for (const el of all) {
     if (el === cur) continue;
     if (inPane && scope === document && !$('#iPanes').contains(el)) continue;   // inside a list: its own cards only
     const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, dx = x - ax, dy = y - ay;
