@@ -2268,6 +2268,7 @@ async function loadLists() {
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1], arl: 1 } : { ...c, arl: 1 }); }));
   if (LITE) ILIST = ILIST.filter(liteOk);
+  LISTSOK = Date.now(); MIDX = null; LIDX = null;
   iptvHdrSend(ILIST);
   lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
   setTimeout(() => { if (!$('#p-iptv').classList.contains('on') && !busyKeys()) { window.__iAt = Date.now(); loadIptv(); } }, 12000);   // ⚡ the channels page drawn ahead, hidden: the first visit is instant
@@ -3141,9 +3142,59 @@ function bestFor(want, pools) {
   }
   return bs > 0 ? best : null;
 }
+// 🔎 a carrier the lists' exact names don't give (bestFor): looked for once more, looser, in every list (the ⭐ one and the
+// others): the carrier's words all in the channel's name, the same numbers, the Arab region's words and «HD / FHD / TV» not
+// counting, a foreign country only for a foreign carrier. Found → kept (localStorage «mfound»: the next times it is there at
+// once); not found → kept as not found («mmiss») until the lists change (a list added or taken off), so it isn't looked for
+// again and again.
+let LISTSOK = 0;
+const LOOSEW = new Set(['hd', 'fhd', 'uhd', 'sd', '4k', 'tv', 'channel', 'live', 'hevc', 'h265', 'backup', 'plus', 'vip', 'raw', 'bk']);
+const looseStrip = n => String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ' ').replace(ARABW, ' ').replace(/\b(fhd|uhd|hd|sd|4k|1080p?|720p?|hevc)\b/gi, ' ');
+let LIDX = null, LIDXK = '';
+function looseIdx(pools) {
+  const k = MIDXK + ':' + pools.length;
+  if (LIDX && k === LIDXK) return LIDX;
+  LIDXK = k; LIDX = { list: [], byUrl: new Map() };
+  for (const c of pools) {
+    if (!c || !c.name || !/^https?:/.test(c.url || '') || /geo-blocked/i.test(c.name)) continue;
+    LIDX.byUrl.set(c.url, c);
+    const ws = vkey(looseStrip(c.name)).split(' ').filter(w => w && !LOOSEW.has(w));
+    if (!ws.length) continue;
+    LIDX.list.push({ c, w: new Set(ws.filter(w => !isNum(w))), n: ws.filter(isNum).sort().join(','), cc: chToks(c.name).cc || ccOf(c) || '' });
+  }
+  return LIDX;
+}
+function looseFor(want, pools) {
+  const t = chToks(want), wcc = t.cc && !ARABCC.has(t.cc) ? t.cc : '';
+  const ws = vkey(looseStrip(want)).split(' ').filter(w => w && !LOOSEW.has(w)), ww = ws.filter(w => !isNum(w)), wn = ws.filter(isNum).sort().join(',');
+  if (!ww.length || ww.every(w => GENERIC.has(w))) return null;   // only generic words («Sport TV 2»): too vague to guess
+  let best = null, bs = 0;
+  for (const x of looseIdx(pools).list) {
+    if (x.n !== wn || !ww.every(w => x.w.has(w))) continue;
+    const extra = [...x.w].filter(w => !ww.includes(w)).length; if (extra > 2) continue;
+    if (wcc ? (x.cc && x.cc !== wcc) : (x.cc && !ARABCC.has(x.cc))) continue;   // a foreign carrier: its country (or none said); else no foreign feed
+    let s = 100 - extra * 15 - (wcc && !x.cc ? 20 : 0) + (x.c.star ? 30 : 0) + (x.c.st === 'ok' || (typeof isOk === 'function' && isOk(x.c)) ? 20 : 0) - (x.c.st === 'bad' || SCAN[x.c.url] === 0 ? 40 : 0);
+    if (s > bs) { bs = s; best = x.c; }
+  }
+  return bs > 0 ? best : null;
+}
+const listsSig = () => m3uList().slice().sort().join('|');
+const jget = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+function carrierFind(want, pools) {
+  const k = vkey(want); if (!k) return null;
+  const F = jget('mfound') || {};
+  if (F[k]) { const c = looseIdx(pools).byUrl.get(F[k]); if (c) return c; delete F[k]; jset('mfound', F); }   // its list changed: looked for again
+  if (!LISTSOK) return null;   // the lists not read yet: nothing decided
+  let M = jget('mmiss'); if (!M || M.sig !== listsSig()) M = { sig: listsSig(), k: [] };
+  if (M.k.includes(k)) return null;   // not in the lists last time, and no list added since
+  const c = looseFor(want, pools);
+  if (c) { F[k] = c.url; jset('mfound', F); } else { M.k.push(k); if (M.k.length > 800) M.k = M.k.slice(-800); jset('mmiss', M); }
+  return c;
+}
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
-  const pools = MPOOLS(), v = mChannels(m).map(want => ({ want, c: bestFor(want, pools) }));
+  const pools = MPOOLS(), v = mChannels(m).map(want => { const c = bestFor(want, pools); if (c) return { want, c }; const f = carrierFind(want, pools); return f ? { want, c: f, found: 1 } : { want, c: null }; });
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
   for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   m.__lk = { t: Date.now(), v }; return v;
