@@ -4008,6 +4008,11 @@ function move(dir) {
   }
   const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
   let best = null, bd = Infinity;
+  // a home card and its ⏮ ⏭ are one block: ▼ from the card goes to its buttons (⏭ first), ▲ from them back to it — by the
+  // page's own structure, whatever the screen positions say (a TV's WebView measured them otherwise and ▼ skipped to the apps)
+  const lcw = scope === document && cur.closest && cur.closest('.lcw');
+  if (lcw && dir === 'down' && cur.dataset.ilist) { const bs = [...lcw.querySelectorAll('.lar')].filter(b => !b.disabled && visible(b)); const b = bs.find(x => x.dataset.lar === '1') || bs[0]; if (b) { b.focus({ preventScroll: true }); b.scrollIntoView({ block: 'nearest', behavior: 'auto' }); return; } }
+  if (lcw && dir === 'up' && cur.classList.contains('lar')) { const c = lcw.querySelector('[data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'nearest', behavior: 'auto' }); return; } }
   if (!(inPane && scope === document)) {
     const H = dir === 'left' || dir === 'right', cand = [];
     for (const el of all) {

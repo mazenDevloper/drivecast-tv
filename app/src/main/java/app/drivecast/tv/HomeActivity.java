@@ -111,6 +111,9 @@ public class HomeActivity extends Activity {
             }
         });
         web.addJavascriptInterface(bridge, "TV");
+        // the page's DevTools only while the TV's own adb debugging is on (whoever has adb has the TV already): to look into a
+        // problem on the TV itself
+        try { android.webkit.WebView.setWebContentsDebuggingEnabled(android.provider.Settings.Global.getInt(getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0) == 1); } catch (Throwable ignored) { }
         web.loadUrl("file:///android_asset/home/index.html");
         setContentView(web);
         web.requestFocus();
