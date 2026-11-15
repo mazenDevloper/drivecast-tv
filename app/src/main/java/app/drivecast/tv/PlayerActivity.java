@@ -896,7 +896,7 @@ public class PlayerActivity extends Activity {
                 li = (li + 1) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); return true;
             case KeyEvent.KEYCODE_DPAD_LEFT: {  // ◀ held: by letter
                 if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }
-                if (e.getRepeatCount() != 4 || lrCode != code || n == 0) return true;
+                if (!(e.getRepeatCount() == 4 || e.isLongPress()) || lrCode != code || lrHeld || n == 0) return true;   // held: by the repeats, or Android's own long press
                 lrHeld = true;
                 java.util.TreeSet<String> ls = new java.util.TreeSet<>();
                 for (int k : lview) ls.add(first(nOf(k)));
@@ -907,7 +907,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 // a short OK plays (on release); held: ⭐ in the favourites (or out of them) — one list with the home page and DriveCast
                 if (e.getRepeatCount() == 0) { okDown = true; return true; }
-                if (okDown && e.getRepeatCount() >= 6) {
+                if (okDown && (e.getRepeatCount() >= 6 || e.isLongPress())) {
                     okDown = false; boolean on = favToggle(lview[sel]); int keep = sel; listFill(); sel = keep; listMark();
                     listHead.setText(on ? "⭐ أُضيفت إلى المفضّلة" : "أُزيلت من المفضّلة");
                 }
@@ -1186,7 +1186,7 @@ public class PlayerActivity extends Activity {
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
         if (ok) {   // a short OK on release; held ≈ ½ s: the options
             if (e.getRepeatCount() == 0) { pOk = true; return true; }
-            if (e.getRepeatCount() == 5 && pOk) { pOk = false; menuShow(true); }
+            if ((e.getRepeatCount() == 5 || e.isLongPress()) && pOk) { pOk = false; menuShow(true); }   // remotes that send Android's long press rather than repeats too
             return true;
         }
         return keyRest(code, e, false);
@@ -1207,7 +1207,7 @@ public class PlayerActivity extends Activity {
             boolean right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
             if (wind) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }
             if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }   // short: the guide, on release
-            if (e.getRepeatCount() != 4 || lrCode != code) return true;
+            if (!(e.getRepeatCount() == 4 || e.isLongPress()) || lrCode != code || lrHeld) return true;
             lrHeld = true;
             if (!right) { recall(); return true; }
             fitMode = (fitMode + 1) % 3; fit();
