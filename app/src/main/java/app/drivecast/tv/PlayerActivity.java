@@ -809,7 +809,14 @@ public class PlayerActivity extends Activity {
         int ch = cur >= 0 ? cur : i; HomeActivity hm = HomeActivity.alive;
         if (k.startsWith("m") && menuLv == 1) { menuM = Integer.parseInt(k.substring(1)); menuLv = 2; menuSel = 0; menuFill(); return; }
         if (k.startsWith("c") && menuLv == 2) {
-            org.json.JSONObject m = mts.optJSONObject(menuM); if (m == null || hm == null) return;
+            org.json.JSONObject m = mts.optJSONObject(menuM); if (m == null) return;
+            // the match's channels the player can open itself (their links came with the list): opened here, the others after them for ▲▼
+            try {
+                org.json.JSONArray mch = m.optJSONArray("ch"), list = new org.json.JSONArray(); int kk = Integer.parseInt(k.substring(1)), at = -1;
+                for (int q = 0; mch != null && q < mch.length(); q++) { org.json.JSONObject x = mch.optJSONObject(q), p = x == null ? null : x.optJSONObject("p"); if (p == null) continue; if (q == kk) at = list.length(); list.put(p); }
+                if (at >= 0) { menuShow(false); startActivity(HomeActivity.playerIntent(this, list, at)); return; }
+            } catch (Throwable t) { Crash.note(this, "match channel: " + t); }
+            if (hm == null) { flash("افتح هالقناة من تاب المباريات"); return; }   // only the home page can open it (its link is found there)
             menuShow(false); flash("⚽ أفتح القناة…");
             hm.run("window.playMatchCh && playMatchCh(" + org.json.JSONObject.quote(m.optString("k")) + "," + k.substring(1) + ")");
             h.postDelayed(this::finish, 1500);   // the new player takes this one's place; if a channel needs the home page's slower work, it shows once this one is gone

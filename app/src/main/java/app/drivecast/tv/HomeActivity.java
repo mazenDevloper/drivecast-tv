@@ -270,6 +270,19 @@ public class HomeActivity extends Activity {
         if (req == 77 && res == RESULT_OK) voiceResult(data);
     }
 
+    /** the player for a list of channels [{url,name,logo,group,cc,ua,ref,org,epg,alts}] — from the page, or from the player itself
+     *  (a match's channels: the player opens them without the home page, which Android may have put away) */
+    static Intent playerIntent(android.content.Context ctx, JSONArray a, int index) throws org.json.JSONException {
+        int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
+        java.util.Map<String, JSONArray> epg = new HashMap<>(); java.util.Map<String, String[]> alts = new HashMap<>();
+        for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc");
+            if (!c.optString("ua").isEmpty() || !c.optString("ref").isEmpty() || !c.optString("org").isEmpty()) Iptv.HDR.put(us[k], new String[]{c.optString("ua"), c.optString("ref"), c.optString("org")});
+            JSONArray e = c.optJSONArray("epg"); if (e != null && e.length() > 0) epg.put(us[k], e);
+            JSONArray al = c.optJSONArray("alts"); if (al != null && al.length() > 0) { String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); alts.put(us[k], x); } }
+        PlayerActivity.EPG = epg; PlayerActivity.ALTS = alts;
+        return new Intent(ctx, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index);
+    }
+
     class Bridge {
         /** 🎙️ the page's mic button */
         @JavascriptInterface
@@ -375,6 +388,9 @@ public class HomeActivity extends Activity {
         /** IPTV with each channel's logo and group too (the player's info bar): [{url,name,logo,group}] */
         @JavascriptInterface
         public void watchFull(String channelsJson, int index) {
+            try { startActivity(playerIntent(HomeActivity.this, new JSONArray(channelsJson), index)); } catch (Exception ignored) { }
+        }
+        private void watchFullOld(String channelsJson, int index) {
             try {
                 JSONArray a = new JSONArray(channelsJson);
                 int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
