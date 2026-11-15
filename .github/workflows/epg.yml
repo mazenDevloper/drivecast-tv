@@ -25,6 +25,6 @@ jobs:
           { sudo apt-get -qq install -y ffmpeg >/dev/null && python3 tools/k4.py out/k4.json; } || echo '::warning::4K list failed'
       - name: Publish
         run: |
-          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json) $(test -f k4.json && echo k4.json) $(test -f tr.json && echo tr.json) $(test -f logos.json && echo logos.json)
+          cd out && git init -q -b epg && git add epg.json $(test -f sports.json && echo sports.json) $(test -f k4.json && echo k4.json) $(test -f tr.json && echo tr.json) $(test -f logos.json && echo logos.json) $(test -f plogo.json && echo plogo.json)
           git -c user.name=guide -c user.email=guide@users.noreply.github.com commit -qm "guide $(date -u +%FT%RZ)"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" epg

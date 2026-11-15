@@ -59,6 +59,7 @@ public class PlayerActivity extends Activity {
     static PlayerActivity live;
     // ---- ⚽ the launcher's live scores (sent by its page every minute): MENU / GUIDE shows them along the bottom for a while
     static volatile String TICKER = "";
+    static volatile String MATCHES = "[]";   // ⚽ the matches on now, with their channels (the home page's)
     private TextView ticker;
     private final Runnable tickerHide = () -> { if (ticker != null) ticker.animate().alpha(0f).setDuration(300).withEndAction(() -> ticker.setVisibility(View.GONE)); };
     private void tickerShow() {
@@ -282,7 +283,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root); buildGuide(root);
+        buildBar(root); buildList(root); buildGuide(root); buildMenu(root);
         ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
         GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);
@@ -633,6 +634,163 @@ public class PlayerActivity extends Activity {
         }
         guideShow(false); return false;   // any other key: the guide goes and the key does its usual work
     }
+    // ---- ☰ the options (OK held on the picture): ⭐ favourite · 🏠 home · ↔ order the home's channels · ⚽ the matches on now
+    // and their channels · 📅 guide · 📺 list · 🔊 sound · 📐 size · ⏮ before · 🔷 picture · 🕐 clock · another player.
+    // ↑↓ choose, OK does it, ◀ / BACK one level back; it hides by itself after 15 s untouched
+    private FrameLayout menuPanel; private android.widget.ScrollView menuScroll; private LinearLayout menuCol; private TextView menuHead;
+    private boolean menuOn, pOk; private int menuLv, menuSel, menuM;
+    private final java.util.List<String[]> menuRows = new java.util.ArrayList<>();
+    private org.json.JSONArray mts = new org.json.JSONArray();
+    private final Runnable menuHide = () -> menuShow(false);
+    private void buildMenu(FrameLayout root) {
+        menuPanel = new FrameLayout(this);
+        LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable d = new GradientDrawable(); d.setColor(0xF2101216); d.setCornerRadius(dp(24)); d.setStroke((int) dp(1), 0x26FFFFFF);
+        box.setBackground(d); box.setPadding((int) dp(18), (int) dp(18), (int) dp(18), (int) dp(14));
+        menuHead = text(16, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+        menuHead.setGravity(Gravity.CENTER); menuHead.setPadding(0, 0, 0, (int) dp(12)); menuHead.setSingleLine(true); menuHead.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        box.addView(menuHead);
+        menuScroll = new android.widget.ScrollView(this); menuScroll.setVerticalScrollBarEnabled(false); menuScroll.setFocusable(false);
+        menuCol = new LinearLayout(this); menuCol.setOrientation(LinearLayout.VERTICAL); menuScroll.addView(menuCol);
+        box.addView(menuScroll, new LinearLayout.LayoutParams(-1, -2));
+        TextView tip = text(11, Typeface.DEFAULT, 0x99FFFFFF); tip.setGravity(Gravity.CENTER); tip.setPadding(0, (int) dp(10), 0, 0);
+        tip.setText("↑↓ اختر  ·  OK أو ◀ ادخل  ·  ▶ أو رجوع للخلف"); box.addView(tip);
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams((int) dp(520), -2, Gravity.CENTER);
+        menuPanel.addView(box, bp);
+        root.addView(menuPanel, new FrameLayout.LayoutParams(-1, -1));
+        menuPanel.setVisibility(View.GONE);
+    }
+    private void menuShow(boolean on) {
+        menuOn = on;
+        if (on) {
+            if (listOn) listShow(false); if (guideOn) guideShow(false);
+            h.removeCallbacks(hide); hide.run();
+            try { mts = new org.json.JSONArray(MATCHES == null ? "[]" : MATCHES); } catch (Throwable t) { mts = new org.json.JSONArray(); }
+            menuLv = 0; menuSel = 0; menuFill(); HomeActivity.quiet(menuPanel); menuPanel.setVisibility(View.VISIBLE);
+        } else { h.removeCallbacks(menuHide); menuPanel.setVisibility(View.GONE); }
+    }
+    private void menuRow(String k, String label) { menuRows.add(new String[] { k, label }); }
+    private void menuFill() {
+        menuRows.clear();
+        int ch = cur >= 0 ? cur : i; String key = nOf(ch).trim().toLowerCase(Locale.ROOT);
+        if (menuLv == 0) {
+            menuHead.setText("☰  " + label(ch));
+            favs = favSet(); pins = pinned();
+            menuRow("fav", favs.contains(key) ? "☆  إزالة من المفضّلة" : "⭐  أضف إلى المفضّلة");
+            menuRow("home", pins.contains(key) ? "🏠  إزالة من الرئيسية" : "🏠  أضف إلى الرئيسية");
+            if (HomeActivity.alive != null) menuRow("reorder", "↔  رتّب قنوات الرئيسية");
+            if (mts.length() > 0) menuRow("matches", "⚽  المباريات الآن  (" + mts.length() + ")");
+            menuRow("guide", "📅  دليل البرامج");
+            if (urls.length > 1) menuRow("list", "📺  قائمة القنوات");
+            if (audioGroups().size() > 1) menuRow("audio", "🔊  صوت آخر  (" + audioGroups().size() + ")");
+            menuRow("fit", "📐  حجم الصورة: " + FIT_NAMES[fitMode]);
+            if (prevI >= 0 && prevI < urls.length && prevI != i) menuRow("recall", "⏮  القناة السابقة: " + label(prevI));
+            menuRow("up4k", "🔷  تحسين الصورة: " + (up4k ? "يعمل" : "مطفأ"));
+            menuRow("clock", "🕐  الساعة: " + (hang != null && hang.getVisibility() == View.VISIBLE ? "ظاهرة" : "مخفية"));
+            menuRow("ext", "📺  افتح في مشغّل آخر");
+        } else if (menuLv == 1) {
+            menuHead.setText("⚽  المباريات الآن");
+            for (int k = 0; k < mts.length(); k++) { org.json.JSONObject m = mts.optJSONObject(k); if (m == null) continue;
+                org.json.JSONArray c = m.optJSONArray("ch"); int n = c == null ? 0 : c.length();
+                menuRow("m" + k, m.optString("t") + (m.optString("lg").isEmpty() ? "" : "\n" + m.optString("lg")) + "  ·  " + (n == 0 ? "ما فيه ناقل في قنواتك" : n + (n == 1 ? " قناة" : " قنوات") + "  ◀")); }
+        } else {
+            org.json.JSONObject m = mts.optJSONObject(menuM); org.json.JSONArray c = m == null ? null : m.optJSONArray("ch");
+            menuHead.setText(m == null ? "⚽" : m.optString("t"));
+            if (c != null) for (int k = 0; k < c.length(); k++) { org.json.JSONObject x = c.optJSONObject(k); if (x == null) continue;
+                String nm = x.optString("name"), w = x.optString("n");
+                menuRow("c" + k, "▶  " + nm + (w.isEmpty() || w.equalsIgnoreCase(nm) ? "" : "   ·  " + w)); }
+            if (menuRows.isEmpty()) menuRow("back", "ما فيه قناة ناقلة في قنواتك  ·  ◀ رجوع");
+        }
+        if (menuSel >= menuRows.size()) menuSel = Math.max(0, menuRows.size() - 1);
+        menuCol.removeAllViews();
+        for (String[] r : menuRows) {
+            TextView t = text(16, Typeface.DEFAULT, 0xFFFFFFFF); t.setText(r[1]); t.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+            t.setPadding((int) dp(16), (int) dp(11), (int) dp(16), (int) dp(11)); t.setMaxLines(2); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            t.setSoundEffectsEnabled(false);
+            menuCol.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        }
+        // a long list: no taller than most of the screen
+        menuScroll.getLayoutParams().height = menuRows.size() > 9 ? (int) (getResources().getDisplayMetrics().heightPixels * 0.62f) : -2;
+        menuScroll.requestLayout();
+        menuMark();
+    }
+    private void menuMark() {
+        for (int q = 0; q < menuCol.getChildCount(); q++) {
+            TextView t = (TextView) menuCol.getChildAt(q);
+            if (q == menuSel) { GradientDrawable d = new GradientDrawable(); d.setColor(0xF2FFFFFF); d.setCornerRadius(dp(14)); t.setBackground(d); t.setTextColor(0xFF111111); }
+            else { t.setBackground(null); t.setTextColor(0xFFFFFFFF); }
+        }
+        View r = menuSel < menuCol.getChildCount() ? menuCol.getChildAt(menuSel) : null;
+        if (r != null) menuScroll.post(() -> menuScroll.scrollTo(0, Math.max(0, r.getTop() - menuScroll.getHeight() / 2 + r.getHeight() / 2)));
+        h.removeCallbacks(menuHide); h.postDelayed(menuHide, 15000);
+    }
+    private boolean menuKey(int code, KeyEvent e) {
+        int n = menuRows.size();
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_UP: if (n > 0) { menuSel = (menuSel - 1 + n) % n; menuMark(); } return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN: if (n > 0) { menuSel = (menuSel + 1) % n; menuMark(); } return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
+                if (e.getRepeatCount() > 0) return true;   // the long press's own OK, still held
+                if (menuSel < n) menuAct(menuRows.get(menuSel)[0]); return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:   // ◀ in (Arabic reads that way): the matches, a match's channels
+                if (e.getRepeatCount() > 0) return true;
+                if (menuSel < n && ((menuLv == 0 && "matches".equals(menuRows.get(menuSel)[0])) || menuLv == 1)) menuAct(menuRows.get(menuSel)[0]);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ back out
+                if (e.getRepeatCount() > 0) return true;
+                if (menuLv == 2) { menuLv = 1; menuSel = menuM; menuFill(); } else if (menuLv == 1) { menuLv = 0; menuSel = 0; menuFill(); }
+                return true;
+            case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE:
+                if (menuLv == 2) { menuLv = 1; menuSel = menuM; menuFill(); } else if (menuLv == 1) { menuLv = 0; menuSel = 0; menuFill(); } else menuShow(false);
+                return true;
+            case KeyEvent.KEYCODE_MENU: menuShow(false); return true;
+        }
+        return true;
+    }
+    private String chJson(int ch) {
+        try { return new org.json.JSONObject().put("name", nOf(ch)).put("url", key0(ch)).put("logo", logos != null && ch < logos.length && logos[ch] != null ? logos[ch] : "").put("group", gOf(ch)).toString(); }
+        catch (Throwable t) { return "{}"; }
+    }
+    private void menuAct(String k) {
+        int ch = cur >= 0 ? cur : i; HomeActivity hm = HomeActivity.alive;
+        if (k.startsWith("m") && menuLv == 1) { menuM = Integer.parseInt(k.substring(1)); menuLv = 2; menuSel = 0; menuFill(); return; }
+        if (k.startsWith("c") && menuLv == 2) {
+            org.json.JSONObject m = mts.optJSONObject(menuM); if (m == null || hm == null) return;
+            menuShow(false); flash("⚽ أفتح القناة…");
+            hm.run("window.playMatchCh && playMatchCh(" + org.json.JSONObject.quote(m.optString("k")) + "," + k.substring(1) + ")"); return;
+        }
+        switch (k) {
+            case "back": menuLv = 1; menuSel = menuM; menuFill(); return;
+            case "matches": menuLv = 1; menuSel = 0; menuFill(); return;
+            case "fav": { boolean on = favToggle(ch); menuShow(false); flash(on ? "⭐ أُضيفت إلى المفضّلة" : "أُزيلت من المفضّلة"); return; }
+            case "home": {
+                boolean was = pinned().contains(nOf(ch).trim().toLowerCase(Locale.ROOT));
+                if (hm != null) hm.run("window.pinFromPlayer && pinFromPlayer(" + chJson(ch) + ")"); else pinToggle(ch);
+                menuShow(false); flash(was ? "أُزيلت من الرئيسية" : "🏠 أُضيفت إلى الرئيسية"); return;
+            }
+            case "reorder": if (hm != null) { hm.run("window.reorderFromPlayer && reorderFromPlayer(" + chJson(ch) + ")"); finish(); } return;
+            case "guide": menuShow(false); guideCh = ch; guideAt = 0; guideShow(true); return;
+            case "list": menuShow(false); listShow(true); return;
+            case "audio": menuShow(false); nextAudio(); return;
+            case "fit": fitMode = (fitMode + 1) % 3; fit(); menuFill(); return;
+            case "recall": menuShow(false); recall(); return;
+            case "up4k":
+                if (up4k) up4kOff("🔷 تحسين الصورة: مطفأ", true);
+                else {
+                    try { player.setVideoEffects(Up4K.effects(this)); up4k = true; Access.set(this).edit().putString("up4k", "on").apply();
+                        if (hm != null) hm.run("try{SET.up4k='on'}catch(e){}"); player.stop(); open(); }
+                    catch (Throwable t) { up4k = false; }
+                }
+                menuFill(); return;
+            case "clock": {
+                if (hang == null) return; boolean show = hang.getVisibility() != View.VISIBLE;
+                hang.setVisibility(show ? View.VISIBLE : View.GONE); Access.set(this).edit().putString("pclock", show ? "on" : "off").apply();
+                if (hm != null) hm.run("try{SET.pclock='" + (show ? "on" : "off") + "'}catch(e){}");
+                menuFill(); return;
+            }
+            case "ext": menuShow(false); openOtherPlayer(); return;
+        }
+    }
     /** a name's first letter, for ◀ (the «ال» of Arabic names and «Al »/«The » skipped) */
     private static String first(String n) {
         String t = n.trim().replaceFirst("^(ال|Al[ -]|El[ -]|The )", "").trim();
@@ -651,6 +809,7 @@ public class PlayerActivity extends Activity {
                 if (sel < lview.length) { if (lview[sel] == cur) listShow(false); else { i = lview[sel]; listShow(false); play(); fill(); showBar(6000); } }   // chosen: the list goes, the bar shows the channel
                 return true;
             }
+            if (pOk && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) { pOk = false; if (!listOn && !menuOn && !guideOn) keyRest(code, e, true); return true; }
             if (lrCode != 0 && code == lrCode) {
                 boolean held = lrHeld, right = code == KeyEvent.KEYCODE_DPAD_RIGHT; lrCode = 0; lrHeld = false;
                 if (held) return true;
@@ -773,8 +932,8 @@ public class PlayerActivity extends Activity {
             boolean sw = decoder.startsWith("OMX.google") || decoder.startsWith("c2.android") || decoder.contains(".sw.");
             chip((sw ? "⚙ فك برمجي · " : "⚡ فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), sw ? 0x33F2994A : 0x2EFFFFFF, 0xCCFFFFFF);
         }
-        hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً مشغّل آخر"
-            : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ ▶ دليل البرامج  ·  ◀ مطوّلاً القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ مطوّلاً حجم الصورة  ·  🔊 صوت آخر");
+        hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً ☰ الخيارات"
+            : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ ▶ دليل البرامج  ·  ◀ مطوّلاً القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ مطوّلاً حجم الصورة  ·  OK مطوّلاً ☰ الخيارات");
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
         int bars = !ready ? 1 : need <= 0 ? (have > 8e6 ? 5 : have > 4e6 ? 4 : have > 2e6 ? 3 : 2) : (int) Math.max(1, Math.min(5, Math.round(have / (double) need * 1.6)));
@@ -961,6 +1120,7 @@ public class PlayerActivity extends Activity {
     private boolean key(int code, KeyEvent e) {
         if (listOn && listKey(code, e)) return true;
         if (guideOn && guideKey(code, e)) return true;
+        if (menuOn && menuKey(code, e)) return true;
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
@@ -969,13 +1129,20 @@ public class PlayerActivity extends Activity {
             h.removeCallbacks(jump); h.postDelayed(jump, 1500); return true;
         }
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
+        if (ok) {   // a short OK on release; held ≈ ½ s: the options
+            if (e.getRepeatCount() == 0) { pOk = true; return true; }
+            if (e.getRepeatCount() == 5 && pOk) { pOk = false; menuShow(true); }
+            return true;
+        }
+        return keyRest(code, e, false);
+    }
+    /** a short OK (on its release), or the keys after OK */
+    private boolean keyRest(int code, KeyEvent e, boolean ok) {
         if (ok && System.currentTimeMillis() < offerUntil) {
             offerUntil = 0; setNote(null);
             HomeActivity hm = HomeActivity.alive; if (hm != null) hm.run("window.playOffer && playOffer()");
             return true;
         }
-        if (ok && e.getRepeatCount() == 8) { openOtherPlayer(); return true; }   // OK held ≈ ½ s: another player
-        if (ok && e.getRepeatCount() > 0) return true;
         if (ok && offered) { openOtherPlayer(); return true; }
         if (ok && !player.getPlayWhenReady()) { playPause(true); return true; }
         boolean wind = canWind();

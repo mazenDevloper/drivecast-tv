@@ -183,11 +183,46 @@ def shahid(guide, lo, hi):
                     if not t or not a or not b or b <= lo or a >= hi: continue
                     img = (it.get('productPoster') or '').replace('{height}', '360').replace('{width}', '640').replace('{croppingPoint}', 'mc')
                     mine[a] = [a, b, t[:70], img]; got += 1
+                    sh = it.get('showId') or it.get('productId')
+                    if sh: SHOWOF[(gid, a)] = str(sh)
         if got:
             guide[gid] = mine; n += got   # MBC's own guide replaces the others' for this channel
             for x in nm: names.setdefault(x, gid)
     print(f'  {n:6d}  Shahid (MBC, in Arabic)', flush=True)
+    # 🏷️ each show's title logo (white on a transparent background, as Shahid shows it), as the row's 5th field
+    logos = plogos({v for v in SHOWOF.values()})
+    k = 0
+    for (gid, a), sh in SHOWOF.items():
+        lg = logos.get(sh)
+        if lg and gid in guide and a in guide[gid]: guide[gid][a] = guide[gid][a][:4] + [lg]; k += 1
+    print(f'  {k:6d}  programmes with their logo ({sum(1 for v in logos.values() if v)} shows)', flush=True)
     return names
+
+# 🏷️ the shows' title logos: Shahid's product page (logoTitleImage), kept in plogo.json so a show is asked once — then the TV
+# downloads each logo once too (the same address every day)
+SHOWOF = {}
+PL_URL = 'https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg/plogo.json'
+PLOGO = {}
+def plogos(ids):
+    from concurrent.futures import ThreadPoolExecutor
+    import urllib.parse
+    global PLOGO
+    try: PLOGO = json.loads(get(PL_URL, 60).read().decode('utf-8'))
+    except Exception: PLOGO = {}
+    todo = [i for i in ids if i not in PLOGO][:400]
+    def one(i):
+        try:
+            q = urllib.parse.quote(json.dumps({'id': i}, separators=(',', ':')))
+            j = json.loads(get(f'https://api2.shahid.net/proxy/v2.1/product/id?request={q}&country=SA', 30).read().decode('utf-8'))
+            u = (j.get('productModel') or {}).get('logoTitleImage') or ''
+            if not u: m = re.search(r'"logoTitleImage"\s*:\s*"([^"]+)"', json.dumps(j)); u = m.group(1) if m else ''
+            return i, (u.split('?')[0] + '?width=360&version=1&type=png') if u.startswith('http') else ''
+        except Exception: return i, None
+    with ThreadPoolExecutor(6) as ex:
+        for i, u in ex.map(one, todo):
+            if u is not None: PLOGO[i] = u
+    print(f'  {len(todo):6d}  shows asked for their logo ({len(PLOGO)} kept)', flush=True)
+    return PLOGO
 
 OWN = ('MBC', 'Oman', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
 PRIO_RE = re.compile(r'mbc|oman|abu.?dhabi|ad.?sport|bein|alkass|al.?kass|quran|dubai|sharjah|saudi|ssc|thmanyah', re.I)
@@ -239,7 +274,11 @@ def main(out):
         rows = [progs[a] for a in sorted(progs)]
         rows = [r for r in rows if r[1] > now - 600][:MAX_PER]
         keep = len(rows) if prio(i) else 6   # the programme's picture: every one on the channels watched most, the next six elsewhere
-        rows = [r if k < keep and len(r) > 3 and r[3] and len(r[3]) < 300 else r[:3] for k, r in enumerate(rows)]
+        def trim(r, pic):
+            p = r[3] if pic and len(r) > 3 and r[3] and len(r[3]) < 300 else ''
+            lg = r[4] if len(r) > 4 and r[4] else ''
+            return r[:3] + ([p, lg] if lg else [p] if p else [])   # [start, stop, title, picture?, title logo?]
+        rows = [trim(r, k < keep) for k, r in enumerate(rows)]
         if rows: c[i] = rows
     # a guide that gives several unrelated channels the same programmes (sat.tv's Quran channels show «بن 10» and «الفخ») is wrong
     # for all of them: a run of the same four titles on 3+ channels drops those channels' guides (MBC's and Oman's own never)
@@ -250,6 +289,8 @@ def main(out):
     for i in junk: c.pop(i, None)
     print(f'🧹 {len(junk)} channels with another channel\'s guide dropped', flush=True)
     translate(c, out)
+    import os
+    json.dump(PLOGO, open(os.path.join(os.path.dirname(out) or '.', 'plogo.json'), 'w', encoding='utf-8'), separators=(',', ':'))
     json.dump({'t': int(now), 'c': c, 'n': {k: v for k, v in names.items() if v in c}}, open(out, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     import os
     print(f'{len(c)} channels have a guide ({seen_files}/{len(sources)} files read) → {os.path.getsize(out) // 1024} KB')

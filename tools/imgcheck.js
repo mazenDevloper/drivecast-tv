@@ -20,7 +20,7 @@ const byHost = new Map();
 for (const rows of Object.values(d.c)) for (const r of rows) {
   if (r.length < 4) continue;
   r[3] = fix(r[3]);
-  if (!r[3]) { r.length = 3; continue; }
+  if (!r[3]) { if (r[4]) r[3] = ''; else r.length = 3; continue; }   // a title logo stays without the picture
   const h = host(r[3]); if (!byHost.has(h)) byHost.set(h, []); byHost.get(h).push(r[3]);
 }
 (async () => {
@@ -41,7 +41,7 @@ for (const rows of Object.values(d.c)) for (const r of rows) {
   }
   await b.close();
   let dropped = 0, kept = 0;
-  for (const rows of Object.values(d.c)) for (const r of rows) if (r.length > 3) { if (bad.has(host(r[3]))) { r.length = 3; dropped++; } else kept++; }
+  for (const rows of Object.values(d.c)) for (const r of rows) if (r.length > 3) { if (r[3] && bad.has(host(r[3]))) { if (r[4]) r[3] = ''; else r.length = 3; dropped++; } else kept++; }
   fs.writeFileSync(file, JSON.stringify(d));
   console.log(`🖼️ ${tried} picture hosts checked in Chromium: ${bad.size} don't load (${[...bad].slice(0, 20).join(', ')}) — ${dropped} pictures dropped, ${kept} kept`);
 })().catch(e => { console.log('::warning::picture check failed: ' + e.message); process.exit(0); });

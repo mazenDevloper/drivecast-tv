@@ -299,6 +299,11 @@ body.nightdim #nightVeil{opacity:.42}
 .ichan.big .pnow small{font-size:19px;font-weight:600;color:#9fe3b4;text-shadow:0 1px 4px #000}
 .ichan.big .pnow b{font-size:32px;font-weight:800;line-height:1.3;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 8px rgba(0,0,0,.75)}
 .ichan.big .pnow b.dim{font-size:22px;font-weight:500;opacity:.8}
+/* 🏷️ the programme's own logo: white on transparent, over the picture; its name stays small under it */
+.ichan.big .plogo{display:block;max-width:62%;max-height:96px;object-fit:contain;object-position:right bottom;margin-bottom:2px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.85))}
+.ichan.big .pnow.haslogo b{font-size:20px!important;font-weight:600;opacity:.92}
+.ichan.big .pnow.rise{animation:prise .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes prise{from{transform:translateY(46px);opacity:0}to{transform:none;opacity:1}}
 .ichan.big .pbar{display:block;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden}
 .ichan.big .pbar i{display:block;height:100%;background:#3ddc97;border-radius:3px}
 .ichan.big .pnx{font-size:26px;display:block;font-weight:600;color:#fff;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(6,10,16,.72);border-radius:10px;padding:4px 10px;margin-top:4px;text-shadow:0 1px 3px #000;max-width:100%;box-sizing:border-box}
@@ -1886,12 +1891,28 @@ function liveHtml(c, i) {
   const nav = all.length > 1 ? `<div class="epgnav"><button class="f lar" data-lar="-1" data-li="${i}"${k0 ? '' : ' disabled'}>⏮ السابق</button><span>${AR(k0 + 1)} / ${AR(all.length)}</span><button class="f lar" data-lar="1" data-li="${i}"${k0 >= all.length - 1 ? ' disabled' : ''}>التالي ⏭</button></div>` : '';
   return `<div class="lcw">` + liveCard(c, i, r, nx, art, pct, k0, now) + nav + `</div>`;
 }
+// the cards whose programme has just changed: it rises into place (once)
+const RISE = new Set(), PNOW = new Map();
+function riseCheck() {
+  const now = Date.now() / 1000; let changed = false; RISE.clear();
+  for (const c of LIVE || []) { const r = epgRows(c)[0], st = r && r[0] <= now ? r[0] : 0, k = favKey(c); if (PNOW.has(k) && PNOW.get(k) !== st && st) { RISE.add(k); changed = true; } PNOW.set(k, st); }
+  return changed;
+}
+// ⬇️ the home channels' programme logos downloaded ahead, once (the browser keeps them): a logo shows the moment its programme starts
+let PLPRE = new Set();
+function plogoPreload() {
+  const now = Date.now() / 1000, urls = [];
+  for (const c of LIVE || []) for (const r of epgRows(c)) if (r[4] && r[0] < now + 20 * 3600 && !PLPRE.has(r[4])) { PLPRE.add(r[4]); urls.push(r[4]); }
+  let k = 0; const one = () => { if (k >= urls.length) return; if (typeof busyKeys === 'function' && busyKeys()) return setTimeout(one, 1500); const im = new Image(); im.decoding = 'async'; im.src = urls[k++]; setTimeout(one, 120); };
+  setTimeout(one, 3000);
+}
+setInterval(() => { try { if (riseCheck()) liveRefresh(); } catch (e) {} }, 30000);
 function liveCard(c, i, r, nx, art, pct, k0, now) {
   const big = !(art && S('hart', 'on') !== 'off') && logoOf(c);
   return `<button class="ichan big f${isFav(c) ? ' fav' : ''}${isPin(c) ? ' pinned' : ''}${scanCls(c)}${art ? ' hasart' : ''}${big ? ' nolart' : ''}" data-ilist="live" data-i="${i}">`
     + (art && S('hart', 'on') !== 'off' ? artImg(art, 'art') : logoOf(c) ? logoImg(c, 'logo-big') : '')
     + `<span class="top">${logoImg(c, '', true)}${pinNo(c) ? `<b class="pno">${pinNo(c)}</b>` : ''}<span class="cn">${flagOf(c) ? `<i class="flg">${flagOf(c)}</i>` : ''}${esc(c.name)}</span></span>`
-    + (r ? `<span class="pnow"><small>${k0 ? `⏭ ${hm(r[0])} – ${hm(r[1])} · بعد ${minutesAr(Math.max(1, Math.round((r[0] - now) / 60)))}` : `▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}`}</small><b dir="auto">${esc(r[2])}</b>${k0 ? '' : `<i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i>`}</span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
+    + (r ? `<span class="pnow${!k0 && RISE.has(favKey(c)) ? ' rise' : ''}">${r[4] ? `<img class="plogo" src="${esc(r[4])}" alt="" decoding="async" onload="this.parentNode.classList.add('haslogo')" onerror="this.remove()">` : ''}<small>${k0 ? `⏭ ${hm(r[0])} – ${hm(r[1])} · بعد ${minutesAr(Math.max(1, Math.round((r[0] - now) / 60)))}` : `▶ الآن · باقي ${minutesAr(Math.max(1, Math.round((r[1] - now) / 60)))}`}</small><b dir="auto">${esc(r[2])}</b>${k0 ? '' : `<i class="pbar"><i style="width:${pct.toFixed(0)}%"></i></i>`}</span>` : `<span class="pnow"><b class="dim">${esc(attrText(c) || 'بث مباشر')}</b></span>`)
     + (nx ? `<span class="pnx" dir="auto"><b class="nxl">التالي ${hm(nx[0])}</b> ${esc(nx[2])}</span>` : '') + `</button>`;
 }
 // 🏷️ the logo library (tools/logos.py → branch «epg» logos.json): a channel's logo found by its name — tv-logos' transparent ones
@@ -2165,7 +2186,7 @@ const EPGURL = 'https://raw.githubusercontent.com/mazenDevloper/drivecast-tv/epg
 let EPG = {}, EPGN = null, epgAt = 0;
 async function loadEpg() {
   if (Date.now() - epgAt < 2 * 3600e3) return; epgAt = Date.now();
-  const d = await getJ(EPGURL); if (d && d.c) { EPG = d.c; EPGN = d.n || null; NIDX = null; NID.clear(); liveRefresh(); if ($('#p-iptv').classList.contains('on')) { iptvUi(); epgUi(); } } else epgAt = 0;
+  const d = await getJ(EPGURL); if (d && d.c) { EPG = d.c; EPGN = d.n || null; NIDX = null; NID.clear(); riseCheck(); RISE.clear(); liveRefresh(); plogoPreload(); if ($('#p-iptv').classList.contains('on')) { iptvUi(); epgUi(); } } else epgAt = 0;
 }
 // 🏟️ the sports guide: which channel carries which match, read from the guides of ~50 countries' sports channels (beIN MENA —
 // TOD's channels and Al Kass —, Abu Dhabi / Dubai, Sky / TNT UK, Sport TV PT…; tools/sports_epg.py → branch «epg» every 4 hours)
@@ -2742,9 +2763,23 @@ async function matchAlerts() {
     }
     // ⚽ the live scores for the player's ticker (MENU): the user's teams first
     const live = list.filter((m, i, a) => m.status === 'live' && a.findIndex(x => mSame(x, m)) === i).sort((a, b) => (b.mine || 0) - (a.mine || 0));
+    if (TV.setMatches) try {
+      const pm = list.filter((m, i, a) => m.status !== 'finished' && (m.status === 'live' || (m.timestamp - now < 1800 && m.timestamp - now > -9000)) && a.findIndex(x => mSame(x, m)) === i).slice(0, 20);
+      MPL.clear();
+      TV.setMatches(JSON.stringify(pm.map(m => { const k = tKey(m.home?.name) + '|' + tKey(m.away?.name) + '|' + m.timestamp; MPL.set(k, m);
+        const ln = matchLinks(m).filter(x => x.c);
+        return { k, t: `${m.mine ? '⭐ ' : ''}${m.home?.name} ${m.status === 'live' ? AR(m.score?.home ?? 0) + '-' + AR(m.score?.away ?? 0) : '×'} ${m.away?.name}${m.status === 'live' && m.elapsed != null ? ' · ' + AR(m.elapsed) + '′' : m.status !== 'live' ? ' · ' + hm(m.timestamp) : ''}`, lg: m.league?.name || '', ch: ln.map(x => ({ n: String(x.want).replace(/^🌍 /, ''), name: x.c.name })) }; })));
+    } catch (e) {}
     if (TV.setTicker) TV.setTicker(live.map(m => `${m.mine ? '⭐ ' : ''}${m.home?.name} ${AR(m.score?.home ?? 0)}-${AR(m.score?.away ?? 0)} ${m.away?.name}${m.elapsed != null ? ' ' + AR(m.elapsed) + '′' : ''}`).join('     ⚽     '));
   } catch (e) {}
 }
+const MPL = new Map();
+/** the player's options: a match's k-th channel (the match's other channels after it, for ▲▼) */
+window.playMatchCh = (key, k) => { const m = MPL.get(key); if (!m) return; const ln = matchLinks(m).filter(x => x.c), c = ln[k] && ln[k].c; if (!c) return; const pool = ln.map(x => x.c).filter((x, i, a) => a.indexOf(x) === i); playChannel([c, ...pool.filter(x => x !== c)], 0); };
+/** the player's options: «رتّب قنوات الرئيسية» — the channel picked up on the home row (put there first if it isn't) */
+window.reorderFromPlayer = c => { try { show('home'); let i = LIVE.findIndex(x => favKey(x) === favKey(c)); if (i < 0) { if (!isPin(c)) togglePin(c); iptvUi(); liveUi(); i = LIVE.findIndex(x => favKey(x) === favKey(c)); }
+  setTimeout(() => { const b = $(`#s-live [data-i="${i}"]`); if (b) { b.focus({ preventScroll: true }); reorderStart(i); } }, 400); } catch (e) {} };
+window.pinFromPlayer = c => { try { togglePin(c); iptvUi(); liveUi(); favUi(); } catch (e) {} };
 window.playOffer = () => { if (OFFERP) { const f = OFFERP; OFFERP = null; return f(); } const m = OFFER; if (!m) return; MLIST = [m]; playMatch(0); };
 setInterval(matchAlerts, 30e3); setTimeout(matchAlerts, 15e3);
 // long press on a match: every carrier (OK plays it when the lists or an app have it) and the scorers / line-ups
@@ -2954,6 +2989,7 @@ function isArabChannel(name) {
   if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
   // beIN also runs foreign feeds (USA, France, Turkey, Asia...): those are not the Arab channels
   if (/\b(usa|us|france|french|fr|turkey|türkiye|turkiye|asia|australia|espa[nñ]ol|canada|uk|english|xtra|connect)\b/i.test(name) && /b[ea]in/i.test(name)) return false;
+  if (/b[ea]in/i.test(name) && /^\s*[\[(|]?\s*(tr|uk|en|fr|us|usa|es|de|it|pt|nl)\s*[\])|:\-]/i.test(name)) return false;   // «TR-beIN…»
   if (channelTokens(name).some(t => ARAB_BRANDS.has(t))) return true;
   return ARAB_NAMES.test(name);
 }
@@ -2970,11 +3006,14 @@ const CCW = { japan: 'jp', norway: 'no', colombia: 'co', romania: 'ro', poland: 
 const CCWRE = new RegExp('\\b(' + Object.keys(CCW).sort((a, b) => b.length - a.length).join('|') + ')\\b', 'gi');
 // words that name a feed, not the channel: «Latin America», «HD», «International», «Arabia»…
 const FILLW = /\b(latin(o|oamerica)?|america|latam|south|norte|north|international|intl|arabia|arabic|en espanol|fhd|uhd|hd|sd|4k|hevc|feed|live)\b/gi;
+// a list's country prefix: «TR-beIN SPORTS 1», «UK: Sky Sports», «|FR| Canal+» («AR:» is Arabic, not Argentina: no country)
+const PFXRE = /^\s*[\[(|]?\s*([a-z]{2,3})\s*[\])|:\-]/i;
+const PFXCC = { tr: 'tr', uk: 'gb', gb: 'gb', en: 'gb', fr: 'fr', us: 'us', usa: 'us', es: 'es', de: 'de', it: 'it', pt: 'pt', nl: 'nl', pl: 'pl', ru: 'ru', br: 'br', in: 'in', om: 'om', sa: 'sa', ksa: 'sa', ae: 'ae', uae: 'ae', qa: 'qa', eg: 'eg', kw: 'kw', bh: 'bh' };
 function chToks(n) {
   let t = TOKC.get(n); if (t) return t;
   const raw = String(n || ''), plain = raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
-    tag = (raw.match(/[\(\[]\s*([A-Za-zÀ-ÿ-]{2,12})\s*[\)\]]/) || [])[1] || (plain.match(CCWRE) || [])[0];
-  t = { w: channelTokens(plain.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(CCWRE, ' ').replace(FILLW, ' ').replace(/[أإآ]/g, 'ا')), cc: (tag && (TAGCC[tag.toLowerCase()] || CCW[tag.toLowerCase()] || (/^[a-z]{2}$/i.test(tag) && !/^(hd|sd|tv|uk|4k)$/i.test(tag) ? tag.toLowerCase() : ''))) || '', app: /\+|\bapp\b|تطبيق|connect|\bgo\b|\bnow\b|play\b|plus/i.test(raw) };
+    tag = (raw.match(/[\(\[]\s*([A-Za-zÀ-ÿ-]{2,12})\s*[\)\]]/) || [])[1] || (plain.match(CCWRE) || [])[0], pfx = (raw.match(PFXRE) || [])[1];
+  t = { w: channelTokens(plain.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').replace(CCWRE, ' ').replace(FILLW, ' ').replace(/[أإآ]/g, 'ا')), cc: (pfx && PFXCC[pfx.toLowerCase()]) || (tag && (TAGCC[tag.toLowerCase()] || CCW[tag.toLowerCase()] || (/^[a-z]{2}$/i.test(tag) && !/^(hd|sd|tv|uk|4k)$/i.test(tag) ? tag.toLowerCase() : ''))) || '', app: /\+|\bapp\b|تطبيق|connect|\bgo\b|\bnow\b|play\b|plus/i.test(raw) };
   TOKC.set(n, t); return t;
 }
 /** is this channel of the lists the broadcaster named? The same words exactly (nothing more, nothing less), the same number,
@@ -3016,6 +3055,8 @@ function bestFor(want, pools) {
     if (!c || !c.name || /geo-blocked/i.test(c.name)) continue;
     let sc = sameChannel(want, c) || (c.en ? sameChannel(want, { ...c, name: c.en }) : 0); if (!sc) continue;
     if (c.star) sc += 60;
+    const ccc = chToks(c.name).cc || ccOf(c) || c.cc || '';
+    if (ccc && !ARABCC.has(ccc) && !chToks(want).cc) sc -= 50;   // an Arab channel first when the carrier is named without a country
     if (c.st === 'ok' || (typeof isOk === 'function' && isOk(c))) sc += 30; else if (c.st === 'bad' || SCAN[c.url] === 0) sc -= 40;
     if (sc > bs) { bs = sc; best = c; }
   }
@@ -4004,15 +4045,16 @@ async function ctxDo(k) {
   if (k === 'fav') { toggleFav(x.c); if (x.b && document.body.contains(x.b)) x.b.classList.toggle('fav', isFav(x.c)); }
 }
 document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && HOLD === 'done') { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the long press's own OK, still held
   if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
   const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
-  HOLD = setTimeout(() => { HOLD = 'done'; holdPlay(b); }, 650);
+  HOLD = setTimeout(() => { HOLD = 'done'; try { holdPlay(b); } catch (er) {} }, 600);
 }, true);
 document.addEventListener('keyup', e => {
   if (e.key !== 'Enter' || !HOLD) return;
-  e.preventDefault();
+  e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD !== 'done') { clearTimeout(HOLD); HOLD = null; document.activeElement?.click(); } else HOLD = null;
 }, true);
 document.addEventListener('keydown', e => {
