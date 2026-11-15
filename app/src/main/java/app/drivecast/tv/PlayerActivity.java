@@ -811,7 +811,9 @@ public class PlayerActivity extends Activity {
         if (k.startsWith("c") && menuLv == 2) {
             org.json.JSONObject m = mts.optJSONObject(menuM); if (m == null || hm == null) return;
             menuShow(false); flash("⚽ أفتح القناة…");
-            hm.run("window.playMatchCh && playMatchCh(" + org.json.JSONObject.quote(m.optString("k")) + "," + k.substring(1) + ")"); return;
+            hm.run("window.playMatchCh && playMatchCh(" + org.json.JSONObject.quote(m.optString("k")) + "," + k.substring(1) + ")");
+            finish();   // the home page's code waits while the player is in front: it goes on (and opens the channel) once the player is gone
+            return;
         }
         switch (k) {
             case "back": menuLv = 1; menuSel = menuM; menuFill(); return;
@@ -1237,7 +1239,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req == 78 && res == RESULT_OK) HomeActivity.voiceResult(data);
+        if (req == 78 && res == RESULT_OK) { HomeActivity.voiceResult(data); finish(); }   // the answer is the home page's (its code waits while the player is in front)
     }
 
     // ---- ⚡ zapping like a receiver, the light way: 3 s after a channel starts playing, the channels ▲ ▼ and ◀ (the one
