@@ -280,7 +280,8 @@ public class HomeActivity extends Activity {
             JSONArray e = c.optJSONArray("epg"); if (e != null && e.length() > 0) epg.put(us[k], e);
             JSONArray al = c.optJSONArray("alts"); if (al != null && al.length() > 0) { String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); alts.put(us[k], x); } }
         PlayerActivity.EPG = epg; PlayerActivity.ALTS = alts;
-        return new Intent(ctx, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index);
+        boolean auto = n > 0 && a.getJSONObject(0).optInt("auto") == 1;
+        return new Intent(ctx, PlayerActivity.class).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index);
     }
 
     class Bridge {
@@ -291,6 +292,9 @@ public class HomeActivity extends Activity {
         /** the lite edition (Arabic channels only, the radio tab, وضع المسلسلات first) */
         @JavascriptInterface
         public boolean lite() { return BuildConfig.LITE; }
+        /** ▶ the player plays YouTube itself (YouTube's own embedded player inside it) */
+        @JavascriptInterface
+        public boolean ytIn() { return true; }
         /** "boot" once, just after the TV started; then "" */
         @JavascriptInterface
         public String wake() { String w = wake; wake = ""; return w; }

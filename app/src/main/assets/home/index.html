@@ -2655,16 +2655,18 @@ async function playChannel(list, i) {
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
   if (radioOn) closePlayer();
-  if (/youtu\.?be/.test(c.url)) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
-  if (S('player', 'in') === 'ext' && TV.external) return TV.external(c.url);   // the settings: always another player
-  const streams = list.filter(x => !/youtu\.?be|^yt-live:/.test(x.url)), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), epg: epgRows(x).slice(0, 5), alts: x === c || streams.length <= 60 ? altsOf(x) : [] }))), Math.max(0, k));
+  const auto = MATCHPLAY; MATCHPLAY = false;
+  const inYt = TV.watchFull && TV.ytIn && TV.ytIn();   // ▶ YouTube inside the player (its official embed) when the app can
+  if (/youtu\.?be/.test(c.url) && !inYt) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
+  if (S('player', 'in') === 'ext' && TV.external && !/youtu\.?be/.test(c.url)) return TV.external(c.url);   // the settings: always another player
+  const streams = list.filter(x => !/^yt-live:|^yt-search:/.test(x.url) && (inYt || !/youtu\.?be/.test(x.url))), k = streams.indexOf(c);
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), epg: epgRows(x).slice(0, 5), alts: x === c || streams.length <= 60 ? altsOf(x) : [], auto: auto ? 1 : 0 }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
 async function playMatchChannel(other) {
   if (NEXTM) { if (!ILIST.length && !IFAV.length) { listsAt = 0; await loadLists(); } const r = matchRoute(NEXTM);
-    if (r && r.c) return other && TV.external ? TV.external((await resolveChannel(r.c)).url) : playChannel(r.pool || [r.c], 0);
+    if (r && r.c) { if (other && TV.external) return TV.external((await resolveChannel(r.c)).url); MATCHPLAY = true; return playChannel(matchPool(NEXTM, r), 0); }
     if (r && r.app) return TV.open(r.app.pkg); }
   const rule = NEXTM && TVRULES.find(r => r[0].test(NEXTM.league?.name || ''));
   if (!rule) return show('matches');
@@ -3264,9 +3266,18 @@ async function mDetails(list) {
   await Promise.all([one(), one(), one(), one()]);
   return todo.length;
 }
+// ⚽ a match played: its carriers first (one that fails → the player tries the next by itself), then the channel of every other
+// live match — ▲▼ in the player go through them all
+function matchPool(m, r) {
+  const tag = x => `⚽ ${x.home?.name || ''} × ${x.away?.name || ''}`;
+  const own = (r.pool || [r.c]).map(c => ({ ...c, group: tag(m) })), seen = new Set(own.map(c => c.url));
+  for (const x of MLIST || []) { if (x === m || x.status !== 'live') continue; const q = matchRoute(x); if (q && q.c && !seen.has(q.c.url)) { seen.add(q.c.url); own.push({ ...q.c, group: tag(x) }); } }
+  return own;
+}
+let MATCHPLAY = false;
 function playMatch(i, other) {
   const m = MLIST[i]; if (!m) return; const r = matchRoute(m);
-  if (r && r.c) { const pool = r.pool || [r.c]; return other && TV.external ? resolveChannel(r.c).then(c => TV.external(c.url)) : playChannel(pool, 0); }
+  if (r && r.c) { if (other && TV.external) return resolveChannel(r.c).then(c => TV.external(c.url)); MATCHPLAY = true; return playChannel(matchPool(m, r), 0); }
   if (r && r.app) return TV.open(r.app.pkg);
   const n = $('#mnote'); if (n) n.textContent = `ما لقيت «${mChannels(m)[0] || 'القناة الناقلة'}» في قنواتك ولا تطبيقها على التلفزيون`;
 }
@@ -4129,12 +4140,16 @@ function ctxOpen(b) {
   if (!c) return;
   CTX = { b, c, list, i: +b.dataset.i, match };
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
-  const rows = match ? [...(SERIES() ? [['play', '▶︎', 'شغّل MBC 1']] : [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]), ['mode', SERIES() ? '⚽' : '📺', SERIES() ? 'غيّر إلى وضع الرياضة' : 'غيّر إلى وضع المسلسلات']]
+  const lives = match && SERIES() ? (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status === 'live').slice(0, 6).map(([m, i]) => ['live' + i, '⚽', `مباشر: ${m.home?.name || ''} × ${m.away?.name || ''}`]) : [];
+  const rows = match ? [...(SERIES() ? [['play', '▶︎', 'شغّل MBC 1'], ...lives] : [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]), ['mode', SERIES() ? '⚽' : '📺', SERIES() ? 'غيّر إلى وضع الرياضة' : 'غيّر إلى وضع المسلسلات']]
     : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)'], ['hide', '🗑', 'إزالة من الرئيسية']] : [['home', '🏠', 'أضف إلى الرئيسية']]), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-14x', NEWS_ROWS = [
+const NEWS = '2026-11-16a', NEWS_ROWS = [
+  ['▶', 'يوتيوب صار يشتغل داخل مشغّل القنوات (بي إن الإخبارية والبث الرسمي)'],
+  ['⚽', 'المباراة: إذا الناقل الأول ما اشتغل ينتقل للتالي لحاله، و ▲▼ تقلّب بين قنوات كل المباريات المباشرة'],
+  ['📺', 'وضع المسلسلات: الضغطة المطوّلة على الكرت تعرض المباريات المباشرة'],
   ['🔷', 'تحسين الصورة إلى 4K: الإعدادات ← الواجهة لهذا الجهاز'],
   ['⚡', 'التنقّل بين التبويبات فوري: القنوات والمباريات ما تنعاد كل مرة'],
   ['⚽', 'افتح رابط M3U: ضغطة مطوّلة على مجلد تخليه مصدر قنوات المباريات (⚽ جنب اسمه)'],
@@ -4193,6 +4208,7 @@ async function ctxDo(k) {
     if (/^mloc\d/.test(k)) return playChannel(x.loc, +k.slice(4));
     return;
   }
+  if (x.match && /^live\d+$/.test(k)) return playMatch(+k.slice(4));
   if (x.match && k === 'mode') { setPref('mode', SERIES() ? 'sport' : 'series'); uiApply(); liveUi(); nextUi(); homeOrder(); return; }
   if (x.match && k === 'play' && SERIES()) { const c = nowChannel(); return c ? playChannel([c, ...LIVE.filter(y => y !== c)], 0) : null; }
   if (x.match) return k === 'play' ? playMatchChannel() : k === 'ext' ? playMatchChannel(true) : show('matches');

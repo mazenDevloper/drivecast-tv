@@ -42,3 +42,20 @@ bash tools/rustdesk/tv-setup.sh 192.168.100.147
 - كلمة مرور دائمة قوية، وفعّل «الاتصال بكلمة المرور فقط».
 - لا تشارك رقم الجهاز وكلمة المرور مع أحد.
 - إذا انقطع بعد إعادة تشغيل التلفزيون: افتح RustDesk مرة على التلفزيون وتأكد أن «التشغيل مع الإقلاع» مفعّل.
+
+## الخادم على جهازك عبر ZeroTier (بدون فتح منافذ في الراوتر)
+كل الأجهزة (الخادم، التلفزيون، الجوال) في نفس شبكة ZeroTier، وعنوان الخادم هو عنوان ZeroTier حقه (مثل `10.99.x.x`).
+
+**إذا طلع «Failed to connect to 10.99.x.x:21118» أو «فشل الاتصال عبر خادم rendezvous»:**
+1. **Docker Desktop (ويندوز/ماك)** ما يدعم `network_mode: host` — المنافذ ما تنفتح أصلاً. شغّل الملف الثاني:
+   `docker compose -f docker-compose.desktop.yml up -d`
+2. **جدار ويندوز**: ويندوز يعتبر شبكة ZeroTier «عامة» ويمنع الدخول. افتح PowerShell كمسؤول:
+   ```powershell
+   New-NetFirewallRule -DisplayName "RustDesk TCP" -Direction Inbound -Protocol TCP -LocalPort 21115-21119 -Action Allow
+   New-NetFirewallRule -DisplayName "RustDesk UDP" -Direction Inbound -Protocol UDP -LocalPort 21116 -Action Allow
+   ```
+3. **في تطبيق RustDesk** (الجوال والتلفزيون): الإعدادات ← الشبكة:
+   - ID server: `10.99.x.x` (بدون منفذ) · Relay: `10.99.x.x` · Key: محتوى `data/id_ed25519.pub`
+   - **أطفئ «Use WebSocket»** — المنفذ 21118 للنسخة اللي تشتغل في المتصفح فقط.
+4. **تأكد إن الجوال يوصل للخادم**: ZeroTier شغّال على الجوال (المفتاح أخضر/برتقالي) وفي central.zerotier.com الثلاثة «Authorized»، وافتح من متصفح الجوال `http://10.99.x.x:21118` — إذا طلع أي رد (حتى خطأ) فالشبكة تمام والمشكلة في الإعدادات.
+5. **الخادم لازم يكون شغّال وما ينام**: لو الكمبيوتر نام أو انقفل، الاتصال يفشل.

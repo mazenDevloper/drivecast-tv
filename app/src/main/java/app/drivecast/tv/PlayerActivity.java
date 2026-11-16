@@ -312,7 +312,7 @@ public class PlayerActivity extends Activity {
         i = in.getIntExtra("i", 0);
         if (urls == null || urls.length == 0) { finish(); return; }
 
-        FrameLayout root = new FrameLayout(this);
+        FrameLayout root = new FrameLayout(this); rootF = root; auto = in.getBooleanExtra("auto", false);
         root.setBackgroundColor(Color.BLACK);
         view = new PlayerView(this);
         view.setUseController(false);
@@ -944,7 +944,51 @@ public class PlayerActivity extends Activity {
 
     /** what is really coming in, as chips */
     private androidx.media3.datasource.DefaultHttpDataSource.Factory http;
+    // ---- ▶ YouTube inside the player: YouTube's own embedded player (its IFrame API) over the video, the remote's keys stay the
+    // player's (▲▼ channels, OK the list); an embed refused (its owner's choice, errors 101 / 150) or silent for 20 s → the next
+    // carrier of a match, else the YouTube app
+    private FrameLayout rootF; private android.webkit.WebView yt; private boolean auto; private String ytNow;
+    private static String ytIdOf(String u) {
+        if (u == null) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:youtube\\.com/(?:watch\\?(?:.*&)?v=|live/|embed/|shorts/)|youtu\\.be/)([A-Za-z0-9_-]{11})").matcher(u);
+        return m.find() ? m.group(1) : null;
+    }
+    private final Runnable ytSilent = () -> ytFail("silent");
+    @android.annotation.SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
+    private void ytPlay(String id) {
+        try { if (player != null) player.stop(); } catch (Throwable ignored) { }
+        if (yt == null) {
+            yt = new android.webkit.WebView(this);
+            yt.setBackgroundColor(0xFF000000); yt.setFocusable(false); yt.setFocusableInTouchMode(false); yt.setSoundEffectsEnabled(false);
+            android.webkit.WebSettings ws = yt.getSettings();
+            ws.setJavaScriptEnabled(true); ws.setDomStorageEnabled(true); ws.setMediaPlaybackRequiresUserGesture(false);
+            yt.addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface public void ok() { runOnUiThread(() -> { h.removeCallbacks(ytSilent); errors = 0; setNote(null); }); }
+                @android.webkit.JavascriptInterface public void err(String c) { runOnUiThread(() -> ytFail(c)); }
+            }, "DC");
+            rootF.addView(yt, 1, new FrameLayout.LayoutParams(-1, -1));
+        }
+        ytNow = id; yt.setVisibility(View.VISIBLE);
+        String html = "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><style>html,body,#p{margin:0;width:100%;height:100%;background:#000;overflow:hidden}</style></head><body><div id=p></div>"
+            + "<script src='https://www.youtube.com/iframe_api'></script><script>function onYouTubeIframeAPIReady(){new YT.Player('p',{width:'100%',height:'100%',videoId:'" + id + "',"
+            + "playerVars:{autoplay:1,controls:0,rel:0,playsinline:1,modestbranding:1,iv_load_policy:3,fs:0,disablekb:1,cc_load_policy:0},"
+            + "events:{onReady:function(e){e.target.unMute();e.target.setVolume(100);e.target.playVideo()},onError:function(e){DC.err(String(e.data))},onStateChange:function(e){if(e.data==1)DC.ok()}}})}</script></body></html>";
+        yt.loadDataWithBaseURL("https://mazendevloper.github.io/drivecast-tv/", html, "text/html", "utf-8", null);
+        h.removeCallbacks(ytSilent); h.postDelayed(ytSilent, 20000);
+    }
+    private void ytHide() {
+        if (yt == null || yt.getVisibility() != View.VISIBLE) return;
+        h.removeCallbacks(ytSilent); ytNow = null;
+        try { yt.loadUrl("about:blank"); } catch (Throwable ignored) { }
+        yt.setVisibility(View.GONE);
+    }
+    private void ytFail(String why) {
+        String id = ytNow; ytHide();
+        if (auto && urls.length > 1) { setNote("بث يوتيوب ما اشتغل — الناقل التالي"); showBar(3000); i = (i + 1) % urls.length; play(); return; }
+        if (id != null) { setNote("يوتيوب ما سمح بتشغيله هنا — أفتحه في تطبيق يوتيوب"); try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/watch?v=" + id))); } catch (Throwable ignored) { } }
+    }
     private void open() { try { if (player == null) return;
+        String yid = ytIdOf(urls[i]); if (yid != null) { ytPlay(yid); return; } ytHide();
         // 📡 as an IPTV player: the channel's own headers from its list (user agent, Referer, Origin), else its site's, else
         // the IPTV player's (setting «ua»)
         java.util.Map<String, String> hd = new java.util.HashMap<>();
@@ -1113,6 +1157,7 @@ public class PlayerActivity extends Activity {
         net.removeCallbacksAndMessages(null);
         errors++;
         if (errors >= 2 && nextSource()) return;
+        if (auto && errors >= 3 && urls.length > 1) { setNote("القناة ما اشتغلت — الناقل التالي"); showBar(3000); i = (i + 1) % urls.length; play(); return; }   // ⚽ a match: the next carrier by itself
         if (errors >= TRIES) { offerOtherPlayer(); return; }
         setNote("إعادة الاتصال… (" + errors + " من " + TRIES + ")");
         showBar(0);
@@ -1300,6 +1345,7 @@ public class PlayerActivity extends Activity {
         if (live == this) live = null;
         net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null);
         Scan.paused = false;
+        try { if (yt != null) { yt.loadUrl("about:blank"); yt.destroy(); yt = null; } } catch (Throwable ignored) { }
         try { if (player != null) { player.release(); } } catch (Throwable ignored) { }
         player = null;
         finish();
