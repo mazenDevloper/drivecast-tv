@@ -43,6 +43,7 @@ public class Reminder extends BroadcastReceiver {
             Adhan.schedule(c);
             MessageServer.start(c);
             Access.keep(c);
+            if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) unstickBoot(c.getApplicationContext());
             return;
         }
         if (!Settings.canDrawOverlays(c)) return;
@@ -90,5 +91,38 @@ public class Reminder extends BroadcastReceiver {
             } catch (Exception ignored) {
             }
         }, SHOWN);
+    }
+
+    // 🎞️ some boxes (TX15) keep the boot animation on screen after the boot is done (it ignores «service.bootanim.exit»):
+    // the home is up behind it, the remote reaches a hidden window. Checked for 3 minutes after the boot; still running →
+    // stopped through the box's own su (where there is one), and the home brought to the front.
+    static void unstickBoot(Context c) {
+        new Thread(() -> {
+            for (int n = 0; n < 18; n++) {
+                try { Thread.sleep(10_000); } catch (InterruptedException e) { return; }
+                if (!"running".equals(sh("getprop init.svc.bootanim"))) return;
+                if (n < 2) continue;   // 30 s: the normal end of the animation
+                for (String cmd : new String[]{"su 0 stop bootanim", "su -c stop bootanim"}) {
+                    try { Runtime.getRuntime().exec(cmd).waitFor(); } catch (Exception e) {}
+                    if (!"running".equals(sh("getprop init.svc.bootanim"))) break;
+                }
+                // the app's own su refused → through its own network debugging (SelfAdb, as the shell), where it was allowed
+                if ("running".equals(sh("getprop init.svc.bootanim")))
+                    try { SelfAdb.shell(c, "su 0 stop bootanim || setprop ctl.stop bootanim", 0, 5000); } catch (Exception e) {}
+                if (!"running".equals(sh("getprop init.svc.bootanim"))) {
+                    try { c.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e) {}
+                    return;
+                }
+            }
+        }).start();
+    }
+
+    private static String sh(String cmd) {
+        try {
+            Process p = Runtime.getRuntime().exec(cmd);
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
+            String l = r.readLine(); p.waitFor();
+            return l == null ? "" : l.trim();
+        } catch (Exception e) { return ""; }
     }
 }
