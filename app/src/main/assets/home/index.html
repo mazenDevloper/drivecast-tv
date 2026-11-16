@@ -731,9 +731,8 @@ function tick() {
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
   $('#date').textContent = d.toLocaleDateString('ar', { weekday: 'long' }) + ' · ' + hijri + ' · ' + d.toLocaleDateString('ar', { day: 'numeric', month: 'long' });
   prayersUi(); dayLine(); applyWall();
-  const KASH = { 'الأحد': 'الأحــــد', 'الاثنين': 'الاثنيــــن', 'الثلاثاء': 'الثلاثــــاء', 'الأربعاء': 'الأربعــــاء', 'الخميس': 'الخميــــس', 'الجمعة': 'الجمعــــة', 'السبت': 'السبــــت' };
   const wd = d.toLocaleDateString('ar', { weekday: 'long' });
-  $('#dayName').textContent = KASH[wd] || wd;
+  $('#dayName').textContent = kash(wd, 7);   // the day drawn out: 7 ـ (the font makes the run one long bow)
   $('#dayHijri').textContent = hijri.replace(/\s*هـ$/, '') + ' هـ';
   $('#dayGreg').textContent = d.toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) + ' م';
   ambWidgets();
@@ -747,7 +746,7 @@ function loadPhrase() {
 }
 function loadFont() {
   let t = ''; try { t = TV.titleFont ? TV.titleFont() : ''; } catch (e) {}
-  if (t) try { const f = new FontFace('ThmanyahTitle', `url(${t})`, { weight: '100 900' }); f.load().then(x => { document.fonts.add(x); document.documentElement.classList.add('tfont'); }).catch(() => {}); } catch (e) {}
+  if (t) try { const f = new FontFace('ThmanyahTitle', `url(${t})`, { weight: '100 900' }); f.load().then(x => { document.fonts.add(x); document.documentElement.classList.add('tfont'); kashTitles(); }).catch(() => {}); } catch (e) {}
   let u = ''; try { u = TV.font ? TV.font() : ''; } catch (e) {}
   if (!u) return;
   try { for (const fam of ['Thmanyah Sans', 'UserFont']) { const f = new FontFace(fam, `url(${u})`); f.load().then(x => document.fonts.add(x)).catch(() => {}); } } catch (e) {}
@@ -3898,6 +3897,27 @@ function kash(w, n) {
   for (let i = ch.length - 1; i > 0; i--) { const a = ch[i - 1], b = ch[i]; if (isL(a) && isL(b) && !KNOJ.has(a) && a !== 'ء') { ch.splice(i, 0, 'ـ'.repeat(n)); return ch.join(''); } }
   return w;
 }
+// ـ the titles: 3 ـ before the LAST letter only, and only when the letter before it joins (never after ا د ذ ر ز و ؤ ء ة ى) —
+// only with the user's title font (its ـ run is one smooth bow); the titles drawn later get it too (one idle pass)
+function kashLast(w, n) {
+  const ch = [...w]; let i = ch.length - 1;
+  while (i > 0 && /[ً-ٰٟ]/.test(ch[i])) i--;          // past the marks on the last letter
+  let j = i - 1; while (j >= 0 && /[ً-ٰٟ]/.test(ch[j])) j--;
+  if (j < 0 || !/[ء-ي]/.test(ch[i]) || !/[ء-ي]/.test(ch[j]) || KNOJ.has(ch[j]) || w.includes('ـ')) return w;
+  ch.splice(j + 1, 0, 'ـ'.repeat(n)); return ch.join('');
+}
+const KT = 'h1,h2,h3,.bhead b';
+function kashTitles() {
+  if (!document.documentElement.classList.contains('tfont')) return;
+  document.querySelectorAll(KT).forEach(el => {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let t;
+    while ((t = w.nextNode())) { const v = t.nodeValue; if (!/[ء-ي]{3}/.test(v) || v.includes('ـ')) continue;
+      const nv = v.replace(/[ء-يً-ٰٟ]{3,}/g, x => kashLast(x, 3)); if (nv !== v) t.nodeValue = nv; }
+  });
+}
+let ktT = 0;
+new MutationObserver(() => { if (ktT) return; ktT = setTimeout(() => { ktT = 0; (window.requestIdleCallback || setTimeout)(kashTitles); }, 400); })
+  .observe(document.documentElement, { childList: true, subtree: true });
 const ASMA = [['الرحمن', 'رحمته وسعت كل شيء'], ['الرحيم', 'يرحم عباده المؤمنين'], ['الملك', 'المالك لكل شيء المتصرّف فيه'], ['القدوس', 'المنزّه عن كل نقص'], ['السلام', 'السالم من كل عيب، ومنه السلامة'], ['المؤمن', 'المصدّق لرسله، والمؤمِّن لعباده من الظلم'], ['المهيمن', 'الرقيب الحافظ لكل شيء'], ['العزيز', 'الغالب الذي لا يُغلب'], ['الجبار', 'الذي يجبر الكسير ويقهر كل شيء'], ['المتكبر', 'المتعالي عن صفات الخلق'],
   ['الخالق', 'الموجِد للأشياء من العدم'], ['البارئ', 'الذي خلق الخلق متمايزين'], ['المصور', 'الذي صوّر كل مخلوق على صورته'], ['الغفار', 'كثير المغفرة لعباده'], ['القهار', 'الذي قهر كل شيء بقدرته'], ['الوهاب', 'كثير العطاء بلا مقابل'], ['الرزاق', 'المتكفّل بأرزاق الخلق'], ['الفتاح', 'الذي يفتح أبواب الرحمة والرزق'], ['العليم', 'المحيط علمه بكل شيء'], ['القابض', 'يقبض الرزق والأرواح بحكمته'],
   ['الباسط', 'يبسط الرزق لمن يشاء'], ['الخافض', 'يخفض من يشاء بعدله'], ['الرافع', 'يرفع من يشاء بفضله'], ['المعز', 'يعز من يشاء'], ['المذل', 'يذل من يشاء بحكمته'], ['السميع', 'يسمع كل صوت'], ['البصير', 'يرى كل شيء'], ['الحكم', 'الحاكم بين عباده بالحق'], ['العدل', 'الذي لا يظلم أحدًا'], ['اللطيف', 'الرفيق بعباده، العالم بدقائق الأمور'],
@@ -3927,7 +3947,7 @@ function spiritUi() {
   const on = S('spirit', 'on') !== 'off'; el.classList.toggle('on', on); if (!on) return;
   spTurn++;
   const showName = spTurn % 2 === 0 || !AYAH;
-  const html = showName ? (() => { const [n, m] = ASMA[dayIdx() % ASMA.length]; return `<small>✨ من أسماء الله الحسنى · اسم اليوم</small><div class="nm">${kash(n, 4)}</div><div class="tf">${esc(m)}</div>`; })()
+  const html = showName ? (() => { const [n, m] = ASMA[dayIdx() % ASMA.length]; return `<small>✨ من أسماء الله الحسنى · اسم اليوم</small><div class="nm">${kash(n, 7)}</div><div class="tf">${esc(m)}</div>`; })()
     : `<small>📖 ${esc(AYAH.sura)} · آية ${AR(AYAH.num)}</small><div class="ay">${esc(AYAH.text)}</div>${AYAH.tf ? `<div class="tf">التفسير الميسّر: ${esc(AYAH.tf.length > 210 ? AYAH.tf.slice(0, 205).replace(/\s+\S*$/, '') + '…' : AYAH.tf)}</div>` : ''}`;
   el.classList.add('fade'); setTimeout(() => { el.innerHTML = html; el.classList.remove('fade'); }, 900);
 }
