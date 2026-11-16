@@ -43,7 +43,7 @@ public class Reminder extends BroadcastReceiver {
             Adhan.schedule(c);
             MessageServer.start(c);
             Access.keep(c);
-            if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) unstickBoot(c.getApplicationContext());
+            if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { unstickBoot(c.getApplicationContext()); remoteUp(c.getApplicationContext()); }
             return;
         }
         if (!Settings.canDrawOverlays(c)) return;
@@ -96,6 +96,25 @@ public class Reminder extends BroadcastReceiver {
     // 🎞️ some boxes (TX15) keep the boot animation on screen after the boot is done (it ignores «service.bootanim.exit»):
     // the home is up behind it, the remote reaches a hidden window. Checked for 3 minutes after the boot; still running →
     // stopped through the box's own su (where there is one), and the home brought to the front.
+    /** 🛰 after a boot: ZeroTier's network back on and RustDesk's screen-sharing service started (with its warning and the
+     *  capture prompt answered) — on Android < 10 the capture permission is lost at each reboot, so the TV vanished from
+     *  RustDesk until someone pressed «بدء الخدمة». The script (assets/remoteup.sh) does nothing when both are already up;
+     *  it runs as the shell through the app's own adb, at 75 s and again at 4 min */
+    static void remoteUp(Context c) {
+        new Thread(() -> {
+            String sc;
+            try (java.io.InputStream in = c.getAssets().open("remoteup.sh")) { sc = new String(readAll(in), "UTF-8"); } catch (Exception e) { return; }
+            for (long wait : new long[]{75_000, 165_000}) {
+                try { Thread.sleep(wait); } catch (InterruptedException e) { return; }
+                try { SelfAdb.shell(c, sc, 0, 120_000); } catch (Exception e) {}
+            }
+        }, "remoteUp").start();
+    }
+    private static byte[] readAll(java.io.InputStream in) throws java.io.IOException {
+        java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(); byte[] b = new byte[4096]; int n;
+        while ((n = in.read(b)) > 0) o.write(b, 0, n); return o.toByteArray();
+    }
+
     static void unstickBoot(Context c) {
         new Thread(() -> {
             for (int n = 0; n < 18; n++) {
