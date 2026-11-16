@@ -62,14 +62,26 @@ public class Update extends BroadcastReceiver {
     interface Progress { void at(String state, int pct); }
 
     /** download the APK and start the install (Android's own confirm screen). Runs on a worker thread. */
-    static void install(Activity a, String url, Progress p) {
+    static void install(Context a, String url, Progress p) {
         try {
             if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
                 p.at("allow", 0);   // the person allows «install unknown apps» for DriveCast TV once
                 a.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 return;
             }
-            File f = new File(a.getCacheDir(), "update.apk");
+            File f = download(a, url, p);
+            p.at("install", 100);
+            commit(a, f);
+        } catch (Exception e) {
+            Crash.note(a, "update: " + e);
+            p.at("error", 0);
+        }
+    }
+
+    /** the APK into the app's own folder on the TV's storage (which the TV's debugging shell can read too) */
+    static File download(Context a, String url, Progress p) throws Exception {
+            File dir = a.getExternalFilesDir(null); if (dir == null) dir = a.getCacheDir();
+            File f = new File(dir, "update.apk");
             HttpURLConnection h = (HttpURLConnection) new URL(url).openConnection();
             h.setInstanceFollowRedirects(true); h.setConnectTimeout(15000); h.setReadTimeout(30000);
             long len = h.getContentLengthLong(), got = 0; int last = -1;
@@ -81,10 +93,15 @@ public class Update extends BroadcastReceiver {
                     if (pct != last && pct % 5 == 0) { last = pct; p.at("down", pct); }
                 }
             }
-            p.at("install", 100);
+            return f;
+    }
+
+    /** Android's installer: on Android 12+ an app updating itself needs no confirm; older ones show the confirm screen */
+    static void commit(Context a, File f) throws Exception {
             PackageInstaller pi = a.getPackageManager().getPackageInstaller();
             PackageInstaller.SessionParams sp = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
             sp.setAppPackageName(a.getPackageName());
+            if (Build.VERSION.SDK_INT >= 31) sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
             int id = pi.createSession(sp);
             try (PackageInstaller.Session s = pi.openSession(id)) {
                 try (InputStream in = new FileInputStream(f); OutputStream out = s.openWrite("app", 0, f.length())) {
@@ -94,10 +111,50 @@ public class Update extends BroadcastReceiver {
                 int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
                 s.commit(PendingIntent.getBroadcast(a, id, done, fl).getIntentSender());
             }
-        } catch (Exception e) {
-            Crash.note(a, "update: " + e);
-            p.at("error", 0);
-        }
+    }
+
+    // ---- ⬆️ «حدّث التلفزيون» from the phone remote (at home or through the hub): nobody needs to be at the TV
+    static volatile String stage = "", note = "";
+    static volatile int pct;
+    private static volatile boolean running;
+
+    /** {stage, pct, have, running, adb, note} for the remote's line */
+    static String status(Context c) {
+        try {
+            return new JSONObject().put("stage", stage).put("pct", pct).put("have", have(c)).put("running", running).put("adb", SelfAdb.last).put("note", note)
+                    .put("lite", BuildConfig.LITE).toString();
+        } catch (Exception e) { return "{}"; }
+    }
+
+    static void auto(Context c) {
+        if (running) return;
+        running = true; note = ""; stage = "check"; pct = 0;
+        new Thread(() -> {
+            try {
+                JSONObject j = new JSONObject(check(c));
+                if (j.has("error")) { stage = "error"; note = j.optString("error"); return; }
+                note = String.valueOf(j.optLong("latest"));
+                if (!j.optBoolean("newer")) { stage = "latest"; pct = 100; return; }
+                File f = download(c, j.optString("url"), (st, n) -> { stage = st; pct = n; });
+                stage = "install"; pct = 100;
+                // 1) the TV's own debugging shell: installs with no screen at all, then brings the home screen back
+                String p = f.getAbsolutePath().replace("'", "");
+                try {
+                    String out = SelfAdb.shell(c, "cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
+                            + "(nohup sh -c 'sleep 1; pm install -r /data/local/tmp/dctv.apk > /data/local/tmp/dctv.log 2>&1; "
+                            + "am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1; rm -f /data/local/tmp/dctv.apk' > /dev/null 2>&1 &); echo started",
+                            60000, 15000);
+                    if (out.contains("started")) { stage = "restart"; return; }
+                    note = out.trim();
+                } catch (Exception e) { Crash.note(c, "update adb: " + e.getMessage()); }
+                // 2) Android's installer (Android 12+: no confirm; older: its confirm screen on the TV)
+                stage = Build.VERSION.SDK_INT >= 31 ? "install" : "confirm";
+                commit(c, f);
+            } catch (Exception e) {
+                stage = "error"; note = String.valueOf(e.getMessage());
+                Crash.note(c, "update auto: " + e);
+            } finally { running = false; }
+        }, "upd-auto").start();
     }
 
     /** Android's answer: its confirm screen to show, or the result */

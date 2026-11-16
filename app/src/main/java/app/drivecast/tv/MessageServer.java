@@ -111,6 +111,8 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
+            else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
+            else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
@@ -160,6 +162,11 @@ public class MessageServer extends Service {
             String[] q = body.trim().split("\\s+");
             String rec = q.length > 1 ? q[0] : "", n = q[q.length - 1];
             if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
+        } else if (first.startsWith("POST /update")) { Update.auto(getApplicationContext()); reply(s.getOutputStream(), "application/json", Update.status(this));
+        } else if (first.startsWith("POST /adbsetup")) {   // ask the TV's debugging once («السماح» on the TV), in the background
+            android.content.Context ctx = getApplicationContext(); SelfAdb.last = "wait";
+            new Thread(() -> SelfAdb.ready(ctx, 90000), "adb-setup").start();
+            reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /phrase")) {   // the line of the photo view, kept on the TV
             String t = body.trim(); if (t.length() > 120) t = t.substring(0, 120);
             getSharedPreferences("ui", MODE_PRIVATE).edit().putString("phrase", t).apply();

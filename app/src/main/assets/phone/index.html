@@ -64,6 +64,9 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
     <button data-k="prev">⏮</button><button data-k="play">⏯</button><button data-k="next">⏭</button>
     <button data-k="ambient">🕌 الصورة</button><button data-k="live">📺 القنوات</button><button data-k="match">⚽ المباراة</button>
   </div>
+  <button class="big" id="upd" style="margin-top:14px">⬆️ حدّث التلفزيون لآخر نسخة</button>
+  <div id="updS" style="text-align:center;margin:8px 0;color:var(--dim);min-height:1.4em"></div>
+  <button id="adbs" style="width:100%;font-size:14px;opacity:.85">🔧 خلّ التحديث بدون موافقة (مرة وحدة وأنت عند التلفزيون)</button>
   <label>خط اليوم في وضع الصورة (مثلاً خط ثمانية): نزّله من موقعه الرسمي في جوالك، ثم اختره هنا يروح للتلفزيون</label>
   <input type="file" id="font" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
 </section>
@@ -167,6 +170,32 @@ setInterval(() => {
   if (out.length) post('/mouse', out.join('\n'));
 }, 45);
 function mouseOn() { post('/mouse-on', '1'); $('s').textContent = 'جاري التشغيل… لو ما اشتغل تنفتح صفحة تسهيل الوصول على التلفزيون'; setTimeout(status, 2500); }
+// ⬆️ the TV updates itself: downloads the newest build from GitHub and installs it (through its own debugging: no confirm)
+const UPDT = { check: 'أشيك على آخر نسخة…', down: 'ينزّل', install: 'يثبّت…', restart: 'ثبّت ✅ — التلفزيون يرجع خلال ثواني…', latest: '✅ التلفزيون على آخر نسخة', confirm: '⚠️ طلعت على التلفزيون شاشة تأكيد — اضغط «🔧 خلّ التحديث بدون موافقة» مرة وحدة وأنت عنده', error: '❌ ما ضبط التحديث', allow: '⚠️ التلفزيون يطلب السماح بتثبيت التطبيقات' };
+let updFrom = 0, updT = null;
+async function updPoll() {
+  clearTimeout(updT); const el = $('updS');
+  try {
+    const j = await (await fetch('/update')).json();
+    if (updFrom && j.have > updFrom) { el.textContent = `✅ التلفزيون رجع على النسخة ${j.have}`; updFrom = 0; return; }
+    if (!updFrom || j.stage !== 'restart') el.textContent = (UPDT[j.stage] || j.stage || '') + (j.stage === 'down' ? ` ${j.pct}٪` : '') + (j.stage === 'latest' && j.note ? ` (${j.have})` : '') + (j.stage === 'error' && j.note ? ` — ${j.note}` : '');
+    if (j.stage === 'restart' && !updFrom) updFrom = j.have;
+    if (j.running || updFrom) updT = setTimeout(updPoll, 2500);
+  } catch (e) { if (updFrom) { el.textContent = '🔄 التلفزيون يعيد التشغيل…'; updT = setTimeout(updPoll, 3000); } }
+}
+$('upd').onclick = async () => { updFrom = 0; $('updS').textContent = UPDT.check; try { await fetch('/update', { method: 'POST', body: '' }); } catch (e) {} updT = setTimeout(updPoll, 1500); };
+$('adbs').onclick = async () => {
+  const el = $('updS'); el.textContent = '…';
+  try { await fetch('/adbsetup', { method: 'POST', body: '' }); } catch (e) { el.textContent = 'التلفزيون مو متصل'; return; }
+  const t0 = Date.now();
+  (async function poll() {
+    let v = ''; try { v = (await (await fetch('/adbsetup')).text()).trim(); } catch (e) {}
+    if (v === 'ok') { el.textContent = '✅ تمام — من الحين التحديث يتثبّت لحاله بدون أي موافقة'; return; }
+    if (v === 'off') { el.textContent = 'شغّل في التلفزيون: الإعدادات ← خيارات المطوّر ← «تصحيح USB» و«التصحيح عبر الشبكة / ADB over network»، ثم جرّب مرة ثانية'; return; }
+    el.textContent = v === 'auth' ? '👀 على التلفزيون: علّم «السماح دائماً من هذا الكمبيوتر» واضغط «سماح»' : '…';
+    if (Date.now() - t0 < 95e3) setTimeout(poll, 2000); else el.textContent = 'ما وصل السماح — جرّب مرة ثانية وأنت عند التلفزيون';
+  })();
+};
 function status() { fetch('/status').then(r => r.json()).then(j => $('mwarn').classList.toggle('hide', !!j.mouse)).catch(() => {}); }
 document.getElementById('mon').onclick = mouseOn;
 // ---- Quran: DriveCast's reciters (through the TV), a surah, played on the TV as sound
