@@ -247,7 +247,7 @@ final class Remote {
     /** everything the web page reads at start, in one answer */
     private static JSONObject snapshot() throws Exception {
         JSONObject o = new JSONObject();
-        for (String k : new String[]{"apps", "prayers", "prefs", "board", "phrase", "font", "mouse", "phoneUrl", "canOverlay"}) {
+        for (String k : new String[]{"apps", "prayers", "prefs", "board", "phrase", "font", "titleFont", "mouse", "phoneUrl", "canOverlay"}) {
             try { o.put(k, call(k, new JSONArray())); } catch (Exception ignored) { }
         }
         o.put("tv", id).put("at", System.currentTimeMillis());

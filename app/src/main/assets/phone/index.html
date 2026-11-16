@@ -192,6 +192,8 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
   <button id="adbs" style="width:100%;font-size:14px;opacity:.85">🔧 خلّ التحديث بدون موافقة (مرة وحدة وأنت عند التلفزيون)</button>
   <label>خط اليوم في وضع الصورة (مثلاً خط ثمانية): نزّله من موقعه الرسمي في جوالك، ثم اختره هنا يروح للتلفزيون</label>
   <input type="file" id="font" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
+  <label>خط العناوين (مثلاً ثمانية Serif Display Black): يطلع عريض ومعه ss01 في عناوين التلفزيون</label>
+  <input type="file" id="tfont" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
 </section>
 
 <p class="s" id="s"></p>
@@ -430,6 +432,12 @@ $('m3uGo').onclick = () => { const u = $('m3u').value.trim(); if (!/^https?:\/\/
 document.querySelectorAll('[data-adhan]').forEach(b => b.onclick = () => { post('/adhan', b.dataset.adhan); $('s').textContent = b.dataset.adhan === 'stop' ? 'وقف' : 'يشتغل على التلفزيون… أول مرة ياخذ ثواني لين ينزل الصوت'; });
 fetch('/phrase').then(r => r.text()).then(t => { $('ph').value = t; }).catch(() => {});
 $('phs').onclick = () => post('/phrase', $('ph').value).then(r => r && ($('s').textContent = $('ph').value.trim() ? 'انحفظت العبارة ✅' : 'انشالت العبارة'));
+$('tfont').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const ext = (f.name.split('.').pop() || 'otf').toLowerCase();
+  $('s').textContent = 'جارٍ إرسال خط العناوين…';
+  fetch('/font?slot=title&ext=' + ext, { method: 'POST', body: f }).then(r => r.text()).then(t => $('s').textContent = t === 'ok' ? 'وصل خط العناوين ✅' : 'الملف فاضي').catch(() => $('s').textContent = 'ما وصل، جرّب مرة ثانية');
+};
 $('font').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const ext = (f.name.split('.').pop() || 'ttf').toLowerCase();

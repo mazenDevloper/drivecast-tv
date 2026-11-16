@@ -87,6 +87,8 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 h2{margin:0 0 4px;font-size:28px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 /* 🅰️ the titles: Thmanyah, bold */
 h1,h2,h3,.bhead b{font-family:"Thmanyah Sans","UserFont","Noto Sans Arabic",sans-serif;font-weight:700}
+/* the titles' own font (Thmanyah Serif Display, sent from the phone), its first stylistic set */
+html.tfont h1,html.tfont h2,html.tfont h3,html.tfont .bhead b,html.tfont .spirit .nm{font-family:"ThmanyahTitle","Thmanyah Sans","UserFont",serif!important;font-weight:900;font-feature-settings:"ss01" 1,"liga" 1,"calt" 1}
 .shelf{display:flex;gap:28px;padding:14px 18px 18px;margin:0 -18px;overflow:hidden}
 .card{flex:none;width:340px;height:190px;border-radius:26px;padding:24px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;border:0;color:var(--ink);text-align:right;font-family:inherit}
 .card b{font-size:34px} .card span{font-size:19px;opacity:.8}
@@ -741,6 +743,8 @@ function loadPhrase() {
   el.style.fontSize = '60px'; requestAnimationFrame(() => { let f = 60; while (el.scrollWidth > el.clientWidth && f > 34) { f -= 4; el.style.fontSize = f + 'px'; } });
 }
 function loadFont() {
+  let t = ''; try { t = TV.titleFont ? TV.titleFont() : ''; } catch (e) {}
+  if (t) try { const f = new FontFace('ThmanyahTitle', `url(${t})`, { weight: '100 900' }); f.load().then(x => { document.fonts.add(x); document.documentElement.classList.add('tfont'); }).catch(() => {}); } catch (e) {}
   let u = ''; try { u = TV.font ? TV.font() : ''; } catch (e) {}
   if (!u) return;
   try { for (const fam of ['Thmanyah Sans', 'UserFont']) { const f = new FontFace(fam, `url(${u})`); f.load().then(x => document.fonts.add(x)).catch(() => {}); } } catch (e) {}

@@ -17,8 +17,8 @@
   fit(); addEventListener('resize', fit);
 
   function fontDb() { return new Promise((res, rej) => { try { const q = indexedDB.open('dctv', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => res(q.result); q.onerror = rej; } catch (e) { rej(e); } }); }
-  async function fontGet() { try { const db = await fontDb(); return await new Promise(r => { const t = db.transaction('kv').objectStore('kv').get('font'); t.onsuccess = () => r(t.result || ''); t.onerror = () => r(''); }); } catch (e) { return ''; } }
-  async function fontPut(v) { try { const db = await fontDb(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, 'font'); } catch (e) {} }
+  async function fontGet(k = 'font') { try { const db = await fontDb(); return await new Promise(r => { const t = db.transaction('kv').objectStore('kv').get(k); t.onsuccess = () => r(t.result || ''); t.onerror = () => r(''); }); } catch (e) { return ''; } }
+  async function fontPut(v, k = 'font') { try { const db = await fontDb(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch (e) {} }
   // ---- the bar: the TV's state, where things play, the remote
   const bar = document.createElement('div');
   bar.setAttribute('dir', 'rtl');
@@ -33,7 +33,8 @@
   document.documentElement.appendChild(bar);
   bar.querySelector('#wFont').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader(); r.onload = () => { S.font = r.result; fontPut(r.result); window.loadFont && loadFont(); toast('🅰️ خط ثمانية صار للعناوين'); }; r.readAsDataURL(f);
+    const title = /serif|display/i.test(f.name);   // Thmanyah Serif Display → the titles; Thmanyah Sans → the text
+    const r = new FileReader(); r.onload = () => { if (title) { S.titleFont = r.result; fontPut(r.result, 'tfont'); } else { S.font = r.result; fontPut(r.result); } window.loadFont && loadFont(); toast(title ? '🅰️ صار خط العناوين (ss01)' : '🅰️ صار خط النصوص'); }; r.readAsDataURL(f);
   };
   let MODE = ls.get('dctv-mode') || (L.paired() ? 'tv' : 'here'), CLOUD = false;
   const paint = () => {
@@ -85,6 +86,7 @@
   S = Object.assign({ apps: '[]', prayers: '', prefs: '{}', board: '', phrase: '', font: '', mouse: '{}', canOverlay: false }, S || {});
   // 🅰️ Thmanyah on the web too: the TV's font kept in this browser (IndexedDB — too big for the snapshot), or one picked here
   if (S.font) fontPut(S.font); else S.font = await fontGet();
+  if (S.titleFont) fontPut(S.titleFont, 'tfont'); else S.titleFont = await fontGet('tfont');
   paint();
   if (ls.get('dctv-justpaired')) { ls.set('dctv-justpaired', ''); toast(L.okd ? '✅ انربط بالتلفزيون' : '✅ انربط — يتصل بالتلفزيون…'); }
   if (L.bad) toast('الربط القديم ما عاد يشتغل — اضغط «🔗 اربط بالتلفزيون» وأنت في البيت');
@@ -272,6 +274,7 @@
     saveBoard: j => { S.board = j; if (L.tv && L.okd) send('saveBoard', [j]); else cloudSave(); },
     phrase: () => S.phrase || '',
     font: () => S.font || '',
+    titleFont: () => S.titleFont || '',
     fetch: (url, cb) => { getAny(url).then(t => { const f = window[cb]; if (f) f(t); }); },
     prefs: () => S.prefs || '{}',
     setPref: (k, v) => { const p = prefs(); p[k] = v; S.prefs = JSON.stringify(p); if (L.tv && L.okd) send('setPref', [k, String(v)]); else cloudSave(); },

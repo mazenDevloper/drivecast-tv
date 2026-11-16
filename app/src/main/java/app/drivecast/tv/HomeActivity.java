@@ -428,9 +428,13 @@ public class HomeActivity extends Activity {
 
         /** the font the user sent from the phone page, as a data URL (empty when none) */
         @JavascriptInterface
-        public String font() {
+        public String font() { return fontFile("font."); }
+        /** the titles' font the user sent (Thmanyah Serif Display…), as a data URL (empty when none) */
+        @JavascriptInterface
+        public String titleFont() { return fontFile("tfont."); }
+        private String fontFile(String pre) {
             for (String e : new String[]{"ttf", "otf", "woff2", "woff"}) {
-                java.io.File f = new java.io.File(getFilesDir(), "font." + e);
+                java.io.File f = new java.io.File(getFilesDir(), pre + e);
                 if (!f.exists()) continue;
                 try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
                     byte[] b = new byte[(int) f.length()]; int got = 0, r;

@@ -137,9 +137,10 @@ public class MessageServer extends Service {
             byte[] f = readBytes(in, head, 4 << 20);
             String ext = first.contains("ext=otf") ? "otf" : first.contains("ext=woff2") ? "woff2" : first.contains("ext=woff") ? "woff" : "ttf";
             boolean ok = f.length > 1000;
+            String pre = first.contains("slot=title") ? "tfont." : "font.";   // the titles' font (e.g. Thmanyah Serif Display) or the text's
             if (ok) {
-                for (String e : new String[]{"ttf", "otf", "woff", "woff2"}) new java.io.File(getFilesDir(), "font." + e).delete();
-                try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "font." + ext))) { o.write(f); }
+                for (String e : new String[]{"ttf", "otf", "woff", "woff2"}) new java.io.File(getFilesDir(), pre + e).delete();
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), pre + ext))) { o.write(f); }
                 main.post(() -> { HomeActivity h = HomeActivity.front; if (h != null) h.run("window.loadFont && loadFont()"); });
             }
             reply(s.getOutputStream(), "text/plain", ok ? "ok" : "empty");
