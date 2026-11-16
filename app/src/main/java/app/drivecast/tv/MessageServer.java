@@ -39,7 +39,7 @@ public class MessageServer extends Service {
     static final long DRAW_IDLE = 15_000;
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private ServerSocket server;
+    private ServerSocket server; private volatile Thread srv;
     private View shown;
     private DrawLayer drawing;
     private final Runnable hideDrawing = this::hideDrawing;
@@ -61,13 +61,16 @@ public class MessageServer extends Service {
                 .setSmallIcon(android.R.drawable.ic_dialog_email)
                 .build();
         startForeground(1, n);
-        new Thread(this::serve, "msg-server").start();
+        srv = new Thread(this::serve, "msg-server"); srv.start();
         Access.watch(this);   // the mouse stays on, even when the TV switches it off
         Remote.start(this);   // the web version: DriveCast TV from anywhere, through DriveCast's hub
     }
 
     @Override
     public int onStartCommand(Intent i, int flags, int id) {
+        // 🩺 the watchdog: every start() (each time the home screen shows) brings the server back if its thread died —
+        // it once stayed down with the service still alive, so the phone remote and the web version's pairing failed
+        if (srv == null || !srv.isAlive()) { srv = new Thread(this::serve, "msg-server"); srv.start(); }
         return START_STICKY;
     }
 
@@ -93,7 +96,7 @@ public class MessageServer extends Service {
                         try (Socket c = s) { c.setSoTimeout(15000); c.setTcpNoDelay(true); handle(c); } catch (Exception ignored) {}
                     });
                 }
-            } catch (Exception e) {
+            } catch (Throwable e) {   // any failure (an Error too) → close and bind again, the thread never ends
                 serving = false;
                 Crash.note(this, "phone server: " + e);
                 try { if (server != null) server.close(); } catch (Exception ignored) {}
