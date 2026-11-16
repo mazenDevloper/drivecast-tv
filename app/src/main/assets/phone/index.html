@@ -71,7 +71,15 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .dpad .u{top:0;left:30%;width:40%;height:30%}.dpad .d{bottom:0;left:30%;width:40%;height:30%}
 .dpad .l{left:0;top:30%;width:30%;height:40%}.dpad .rr{right:0;top:30%;width:30%;height:40%}
 .dpad .ok{left:30%;top:30%;width:40%;height:40%;border-radius:50%;background:var(--acc);font-size:20px;font-weight:800;box-shadow:0 6px 18px rgba(31,157,107,.35)}
-.dpad button.hit{color:#fff;text-shadow:0 0 12px #fff}.dpad .ok.hit{transform:scale(.94)}
+.dpad button.hit{color:#fff;text-shadow:0 0 12px #fff}
+.dpad .ok{z-index:2;will-change:transform}.dpad .ok:not(.hit){transition:transform .22s cubic-bezier(.3,1.6,.5,1)}.dpad .ok.hit{box-shadow:0 0 0 10px rgba(31,157,107,.18),0 6px 18px rgba(31,157,107,.35)}
+/* the long press: a ring fills around the button for 3 seconds */
+@property --p{syntax:'<number>';inherits:false;initial-value:0}
+.nav3 button{position:relative}
+.lp::after,.lpdone::after{content:"";position:absolute;inset:-7px;border-radius:inherit;pointer-events:none;background:conic-gradient(#fff calc(var(--p) * 1%),rgba(255,255,255,.12) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),#000 calc(100% - 5px))}
+.lp::after{animation:lpfill var(--lp,3s) linear forwards}
+.lpdone::after{--p:100;background:#ffd60a}
+@keyframes lpfill{from{--p:0}to{--p:100}}
 .dpad .hint{position:absolute;bottom:-26px;left:0;right:0;text-align:center;font-size:12px;color:var(--dim);pointer-events:none}
 .nav3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(100%,330px);margin-top:16px}
 .nav3 button{height:58px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 15px inherit;font-family:inherit}
@@ -103,7 +111,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
     <button class="u" data-k="up" data-rep>▲</button><button class="d" data-k="down" data-rep>▼</button>
     <button class="rr" data-k="right" data-rep>▶</button><button class="l" data-k="left" data-rep>◀</button>
     <button class="ok" data-k="ok" data-long>OK</button>
-    <div class="hint">اسحب على الدائرة للتنقل · OK مطوّلاً = القائمة</div>
+    <div class="hint">🕹️ حرّك إبهامك مثل الجويستيك · ثبّت OK ٣ ثوانٍ = القائمة</div>
   </div>
   <div class="nav3"><button data-k="back" data-long>↩︎ رجوع</button><button data-k="home">🏠 الرئيسية</button><button data-k="menu">☰ القائمة</button></div>
   <div class="rock">
@@ -214,42 +222,72 @@ function go(t) {
 }
 document.addEventListener('click', e => { const n = e.target.closest('[data-nav]'); if (n) { buzz(); return go(n.dataset.nav); } const m = e.target.closest('[data-more]'); if (m) return go(m.dataset.more); });
 
-// ---- the keys: a tap sends once; ▲▼◀▶ / the volume / the channel repeat while held (faster and faster); OK and «رجوع»
-// held = the long press (OK long = the TV's menu, like its own remote); on the round pad a swipe moves like a touchpad
+// ---- the keys. 🕹️ the round pad is a joystick (the default): put the thumb anywhere on it and push — the knob follows,
+// the further from the middle the faster the arrows repeat, let go and it springs back; a tap = OK. The ▲▼◀▶ at the edge
+// still answer a tap (held = repeat). A long press = 3 seconds held still, a ring filling around the button shows it;
+// at the end a strong buzz and the TV gets the long press (OK long = its menu)
 const sendK = k => post('/key', k);
+const LONGMS = 3000;
 let P = null;
-const dpad = $('dpad');
+const dpad = $('dpad'), knob = dpad.querySelector('.ok');
+function ringStart(b) {
+  b.classList.remove('lp'); void b.offsetWidth; b.style.setProperty('--lp', LONGMS + 'ms');
+  b.classList.add('lp');
+}
+const ringStop = b => b && b.classList.remove('lp');
+function longArm(b, k) {
+  const me = P;
+  me.rs = setTimeout(() => { if (P === me && !me.swipe) ringStart(b); }, 250);   // a quick tap shows no ring
+  me.lt = setTimeout(() => { if (P !== me || me.swipe) return; me.longDone = true; ringStop(b); b.classList.add('lpdone'); setTimeout(() => b.classList.remove('lpdone'), 500);
+    navigator.vibrate && navigator.vibrate([40, 50, 40]); sendK('long ' + k); $('s').textContent = k === 'ok' ? '☰ ضغطة مطوّلة — القائمة على التلفزيون' : 'ضغطة مطوّلة'; }, LONGMS);
+}
+function joyDir(dx, dy, R) {
+  const d = Math.hypot(dx, dy); if (d < R * 0.28) return null;
+  return { k: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'), f: Math.min(1, (d - R * 0.28) / (R * 0.6)) };
+}
+function joyTick() {
+  const me = P; if (!me || !me.joy) return;
+  const j = joyDir(me.dx, me.dy, me.R);
+  if (j) { if (j.k !== me.lastK) { me.lastK = j.k; me.next = 0; } const now = performance.now();
+    if (now >= (me.next || 0)) { sendK(j.k); buzz(); me.sent = true; me.next = now + (me.next ? 420 - 330 * j.f : 380); hitDir(j.k); } }
+  else me.lastK = null;
+  me.raf = requestAnimationFrame(joyTick);
+}
+function hitDir(k) { const b = dpad.querySelector(`[data-k="${k}"]`); if (!b) return; b.classList.add('hit'); clearTimeout(b._h); b._h = setTimeout(() => b.classList.remove('hit'), 140); }
 document.addEventListener('pointerdown', e => {
   const b = e.target.closest('[data-k]'), inPad = !!e.target.closest('#dpad');
   if (!b && !inPad) return;
   if (inPad) { e.preventDefault(); try { dpad.setPointerCapture(e.pointerId); } catch (x) {} }
-  P = { b, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, swipe: false, longDone: false, inPad };
-  if (!b) return;
-  b.classList.add('hit'); buzz();
+  P = { b, sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, swipe: false, longDone: false, inPad };
+  buzz();
+  // the joystick: the knob (OK) or the pad's empty part
+  if (inPad && (!b || b === knob)) {
+    const r = dpad.getBoundingClientRect(); P.R = r.width / 2; P.cx = r.left + P.R; P.cy = r.top + P.R; P.joy = true; P.b = knob;
+    knob.classList.add('hit'); longArm(knob, 'ok'); P.raf = requestAnimationFrame(joyTick); return;
+  }
+  b.classList.add('hit');
   if (b.hasAttribute('data-rep')) {
     sendK(b.dataset.k);
     let gap = 380; const me = P;
-    const loop = () => { if (P !== me || me.swipe) return; sendK(b.dataset.k); buzz(); gap = Math.max(60, gap * 0.78); me.rt = setTimeout(loop, gap); };
+    const loop = () => { if (P !== me) return; sendK(b.dataset.k); buzz(); gap = Math.max(60, gap * 0.78); me.rt = setTimeout(loop, gap); };
     me.rt = setTimeout(loop, gap);
-  } else if (b.hasAttribute('data-long')) {
-    const me = P;
-    me.lt = setTimeout(() => { if (P !== me || me.swipe) return; me.longDone = true; navigator.vibrate && navigator.vibrate([30, 40, 30]); sendK('long ' + b.dataset.k); $('s').textContent = b.dataset.k === 'ok' ? '☰ ضغطة مطوّلة — القائمة على التلفزيون' : 'ضغطة مطوّلة'; }, 550);
-  }
+  } else if (b.hasAttribute('data-long')) longArm(b, b.dataset.k);
 }, { passive: false });
 document.addEventListener('pointermove', e => {
-  if (!P || !P.inPad) return;
-  if (!P.swipe && Math.hypot(e.clientX - P.sx, e.clientY - P.sy) > 24) { P.swipe = true; clearTimeout(P.rt); clearTimeout(P.lt); P.b && P.b.classList.remove('hit'); }
-  if (!P.swipe) return;
-  const dx = e.clientX - P.x, dy = e.clientY - P.y, step = 36;
-  if (Math.abs(dx) >= step && Math.abs(dx) > Math.abs(dy)) { sendK(dx > 0 ? 'right' : 'left'); buzz(); P.x = e.clientX; P.y = e.clientY; }
-  else if (Math.abs(dy) >= step) { sendK(dy > 0 ? 'down' : 'up'); buzz(); P.x = e.clientX; P.y = e.clientY; }
+  if (!P || !P.joy) return;
+  P.dx = e.clientX - P.sx; P.dy = e.clientY - P.sy;
+  const d = Math.hypot(P.dx, P.dy), max = P.R * 0.55, k = d > max ? max / d : 1;
+  knob.style.transform = `translate(${P.dx * k}px,${P.dy * k}px)`;
+  if (!P.swipe && d > P.R * 0.2) { P.swipe = true; clearTimeout(P.lt); clearTimeout(P.rs); ringStop(knob); }
 });
 const lift = () => {
-  if (!P) return; const b = P.b; clearTimeout(P.rt); clearTimeout(P.lt); b && b.classList.remove('hit');
-  if (b && !P.swipe && !b.hasAttribute('data-rep') && !(b.hasAttribute('data-long') && P.longDone)) sendK(b.dataset.k);
-  P = null;
+  if (!P) return; const me = P, b = me.b; P = null;
+  clearTimeout(me.rt); clearTimeout(me.lt); clearTimeout(me.rs); cancelAnimationFrame(me.raf); ringStop(b); b && b.classList.remove('hit');
+  if (me.joy) { knob.style.transform = ''; if (!me.swipe && !me.longDone) sendK('ok'); return; }
+  if (b && !b.hasAttribute('data-rep') && !(b.hasAttribute('data-long') && me.longDone)) sendK(b.dataset.k);
 };
-document.addEventListener('pointerup', lift); document.addEventListener('pointercancel', () => { if (P) { clearTimeout(P.rt); clearTimeout(P.lt); P.b && P.b.classList.remove('hit'); P = null; } });
+document.addEventListener('pointerup', lift);
+document.addEventListener('pointercancel', () => { if (!P) return; const me = P; P = null; clearTimeout(me.rt); clearTimeout(me.lt); clearTimeout(me.rs); cancelAnimationFrame(me.raf); ringStop(me.b); me.b && me.b.classList.remove('hit'); knob.style.transform = ''; });
 document.addEventListener('contextmenu', e => { if (e.target.closest('[data-k],#dpad,#mic')) e.preventDefault(); });
 $('numT').onclick = () => $('nums').classList.toggle('hide');
 
