@@ -88,6 +88,8 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .rk2 button{height:48px;border:0;background:none;color:var(--ink);font-size:24px}.rk2 span{text-align:center;font-size:12px;color:var(--dim);padding:2px 0}
 .rk2 button:active,.nav3 button:active,.media button:active,.quick button:active{background:rgba(255,255,255,.08)}
 .mic{width:min(100%,104px);justify-self:center;aspect-ratio:1;border-radius:50%;border:0;background:linear-gradient(160deg,#25b07c,#147a52);color:#fff;font-size:40px;box-shadow:0 10px 30px rgba(31,157,107,.35)}
+/* older phones (no aspect-ratio / dvh): fixed square sizes */
+@supports not (aspect-ratio:1){.dpad{width:min(76vw,290px);height:min(76vw,290px)}.mic{width:96px;height:96px}}
 .mic.on{animation:pulse 1s infinite}@keyframes pulse{50%{box-shadow:0 0 0 14px rgba(31,157,107,.18)}}
 .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(100%,330px)}.nums button{height:52px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:22px;font-weight:700}
 .tiny{border:0;background:none;color:var(--dim);font:600 13px inherit;font-family:inherit;padding:6px 10px}
