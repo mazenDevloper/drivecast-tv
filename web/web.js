@@ -16,6 +16,9 @@
   };
   fit(); addEventListener('resize', fit);
 
+  function fontDb() { return new Promise((res, rej) => { try { const q = indexedDB.open('dctv', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => res(q.result); q.onerror = rej; } catch (e) { rej(e); } }); }
+  async function fontGet() { try { const db = await fontDb(); return await new Promise(r => { const t = db.transaction('kv').objectStore('kv').get('font'); t.onsuccess = () => r(t.result || ''); t.onerror = () => r(''); }); } catch (e) { return ''; } }
+  async function fontPut(v) { try { const db = await fontDb(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, 'font'); } catch (e) {} }
   // ---- the bar: the TV's state, where things play, the remote
   const bar = document.createElement('div');
   bar.setAttribute('dir', 'rtl');
@@ -25,8 +28,13 @@
     <span style="display:flex;background:rgba(255,255,255,.06);border-radius:999px;padding:3px">
       <button id="wTv" style="${pill}">📺 على التلفزيون</button><button id="wHere" style="${pill}">💻 هنا</button></span>
     <a id="wRemote" href="remote/" style="${pill};text-decoration:none">🎮 الريموت</a>
-    <button id="wPin" style="${pill}" title="رمز التلفزيون">🔑</button>`;
+    <button id="wPin" style="${pill}" title="رمز التلفزيون">🔑</button>
+    <label style="${pill}" title="خط ثمانية للعناوين — اختر ملف الخط من جهازك">🅰️ الخط<input type="file" id="wFont" accept=".ttf,.otf,.woff,.woff2" hidden></label>`;
   document.documentElement.appendChild(bar);
+  bar.querySelector('#wFont').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => { S.font = r.result; fontPut(r.result); window.loadFont && loadFont(); toast('🅰️ خط ثمانية صار للعناوين'); }; r.readAsDataURL(f);
+  };
   let MODE = ls.get('dctv-mode') || (L.paired() ? 'tv' : 'here'), CLOUD = false;
   const paint = () => {
     const live = L.open && L.tv && L.okd;
@@ -75,6 +83,8 @@
     else if (S && L.paired()) toast('التلفزيون مو متصل — أعرض آخر نسخة');
   }
   S = Object.assign({ apps: '[]', prayers: '', prefs: '{}', board: '', phrase: '', font: '', mouse: '{}', canOverlay: false }, S || {});
+  // 🅰️ Thmanyah on the web too: the TV's font kept in this browser (IndexedDB — too big for the snapshot), or one picked here
+  if (S.font) fontPut(S.font); else S.font = await fontGet();
   paint();
   if (ls.get('dctv-justpaired')) { ls.set('dctv-justpaired', ''); toast(L.okd ? '✅ انربط بالتلفزيون' : '✅ انربط — يتصل بالتلفزيون…'); }
   if (L.bad) toast('الربط القديم ما عاد يشتغل — اضغط «🔗 اربط بالتلفزيون» وأنت في البيت');
