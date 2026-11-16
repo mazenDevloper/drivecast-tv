@@ -167,7 +167,7 @@ public class PlayerActivity extends Activity {
             try {
                 java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(want).openConnection();
                 con.setConnectTimeout(6000); con.setReadTimeout(8000);
-                Bitmap bm = BitmapFactory.decodeStream(con.getInputStream());
+                Bitmap bm = small(con.getInputStream(), 256);
                 if (bm != null) { LOGOS.put(want, bm); runOnUiThread(() -> { if (want.equals(plogoUrl)) { plogo.setImageBitmap(bm); plogo.setVisibility(View.VISIBLE); } }); }
             } catch (Exception ignored) { }
         }, "plogo").start();
@@ -295,7 +295,33 @@ public class PlayerActivity extends Activity {
     private ImageView logo;
     private LinearLayout chips, chips2;
     private View[] signal = new View[5];
-    private static final Map<String, Bitmap> LOGOS = new HashMap<>();
+    // ⚡ the logos are kept small (256 px at most) and the cache has a ceiling (8 MB), the oldest leaving first
+    private static final android.util.LruCache<String, Bitmap> LOGOS = new android.util.LruCache<String, Bitmap>(8 << 20) { @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); } };
+    static Bitmap small(java.io.InputStream in, int max) throws java.io.IOException {
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream(); byte[] buf = new byte[16384]; int n;
+        while ((n = in.read(buf)) > 0) bo.write(buf, 0, n); in.close(); byte[] b = bo.toByteArray();
+        BitmapFactory.Options o = new BitmapFactory.Options(); o.inJustDecodeBounds = true; BitmapFactory.decodeByteArray(b, 0, b.length, o);
+        int ss = 1; while (Math.max(o.outWidth, o.outHeight) / (ss * 2) >= max) ss *= 2;
+        o = new BitmapFactory.Options(); o.inSampleSize = ss; Bitmap bm = BitmapFactory.decodeByteArray(b, 0, b.length, o);
+        if (bm == null) return null; int w = bm.getWidth(), h = bm.getHeight(), m = Math.max(w, h);
+        if (m > max) { Bitmap s2 = Bitmap.createScaledBitmap(bm, Math.max(1, w * max / m), Math.max(1, h * max / m), true); if (s2 != bm) bm.recycle(); bm = s2; }
+        return bm;
+    }
+    /** a programme's picture into v (tag = the address wanted, so a late one never lands on another programme) */
+    private void artInto(ImageView v, String u) {
+        if (u == null) u = ""; v.setTag(u);
+        if (u.isEmpty()) { v.setImageDrawable(null); v.setVisibility(View.GONE); return; }
+        Bitmap c = LOGOS.get(u); if (c != null) { v.setImageBitmap(c); v.setVisibility(View.VISIBLE); return; }
+        v.setVisibility(View.GONE); final String want = u;
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(want).openConnection();
+                con.setConnectTimeout(6000); con.setReadTimeout(8000);
+                Bitmap bm = small(con.getInputStream(), 256);
+                if (bm != null) { LOGOS.put(want, bm); runOnUiThread(() -> { if (want.equals(v.getTag())) { v.setImageBitmap(bm); v.setVisibility(View.VISIBLE); } }); }
+            } catch (Exception ignored) { }
+        }, "art").start();
+    }
 
     private float dp(float v) { return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()); }
 
@@ -622,7 +648,7 @@ public class PlayerActivity extends Activity {
     }
     // ---- 📅 the guide on the picture: ◀ ▶ walk a channel's programmes (earlier / later), ↑↓ another channel's guide (what
     // plays goes on playing), OK watches the channel shown, BACK closes; it hides by itself after 10 s untouched
-    private LinearLayout guideBox; private TextView guideHead, guideTitle, guideSub;
+    private LinearLayout guideBox; private ImageView guideArt; private TextView guideHead, guideTitle, guideSub;
     private boolean guideOn; private int guideCh, guideAt;   // the channel shown, its programme (0 = the one on now)
     private final Runnable guideHide = () -> guideShow(false);
     private void buildGuide(FrameLayout root) {
@@ -633,7 +659,11 @@ public class PlayerActivity extends Activity {
         guideTitle = text(24, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         guideTitle.setMaxLines(2); guideTitle.setEllipsize(android.text.TextUtils.TruncateAt.END); guideTitle.setPadding(0, (int) dp(8), 0, (int) dp(8));
         guideSub = text(13, Typeface.DEFAULT, 0xA6FFFFFF); guideSub.setLineSpacing(dp(4), 1f);
-        for (TextView t : new TextView[] { guideHead, guideTitle, guideSub }) { t.setGravity(Gravity.CENTER); guideBox.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
+        // the programme's / series' logo above its name, as it changes with ◀ ▶ and ↑↓
+        guideArt = new ImageView(this); guideArt.setAdjustViewBounds(true); guideArt.setScaleType(ImageView.ScaleType.FIT_CENTER); guideArt.setVisibility(View.GONE);
+        LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(-2, (int) dp(64)); gap.gravity = Gravity.CENTER_HORIZONTAL; gap.topMargin = (int) dp(4); gap.bottomMargin = (int) dp(4);
+        guideHead.setGravity(Gravity.CENTER); guideBox.addView(guideHead, new LinearLayout.LayoutParams(-1, -2)); guideBox.addView(guideArt, gap);
+        for (TextView t : new TextView[] { guideTitle, guideSub }) { t.setGravity(Gravity.CENTER); guideBox.addView(t, new LinearLayout.LayoutParams(-1, -2)); }
         FrameLayout.LayoutParams p = new FrameLayout.LayoutParams((int) dp(720), -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         p.bottomMargin = (int) dp(40);
         root.addView(guideBox, p); guideBox.setVisibility(View.GONE);
@@ -655,13 +685,15 @@ public class PlayerActivity extends Activity {
         String fl = fOf(guideCh);
         guideHead.setText("📅  " + (guideCh == cur ? "▶ " : "") + (fl.isEmpty() ? "" : fl + "  ") + label(guideCh) + "  ·  " + (guideCh + 1));
         String keys = "◀ ▶ البرامج  ·  ↑↓ القنوات  ·  OK " + (guideCh == cur ? "إغلاق" : "شاهد");
-        if (ps.isEmpty()) { guideTitle.setText("لا يوجد دليل برامج لهذه القناة"); guideSub.setText(keys); }
+        if (ps.isEmpty()) { artInto(guideArt, ""); guideTitle.setText("لا يوجد دليل برامج لهذه القناة"); guideSub.setText(keys); }
         else try {
             org.json.JSONArray r = ps.get(guideAt); long st = r.getLong(0), en = r.getLong(1), now = System.currentTimeMillis() / 1000;
             String when = st <= now ? "🔴 الآن · باقي " + inTime(en - now) : guideAt == 1 ? "⏭ التالي · بعد " + inTime(st - now) : "بعد " + inTime(st - now);
+            String art = r.optString(4, ""); if (art.isEmpty() || "null".equals(art)) art = r.optString(3, ""); if ("null".equals(art)) art = "";
+            artInto(guideArt, art);
             guideTitle.setText(r.getString(2));
             guideSub.setText(when + "   ·   " + clock(st) + " – " + clock(en) + "   ·   " + (guideAt + 1) + " من " + ps.size() + "\n" + keys);
-        } catch (Throwable t) { guideTitle.setText("—"); guideSub.setText(keys); }
+        } catch (Throwable t) { artInto(guideArt, ""); guideTitle.setText("—"); guideSub.setText(keys); }
         h.removeCallbacks(guideHide); h.postDelayed(guideHide, 10000);
     }
     private void guideShow(boolean on) {
@@ -1198,7 +1230,7 @@ public class PlayerActivity extends Activity {
             try {
                 java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
                 con.setConnectTimeout(6000); con.setReadTimeout(8000);
-                Bitmap bm = BitmapFactory.decodeStream(con.getInputStream());
+                Bitmap bm = small(con.getInputStream(), 256);
                 if (bm != null) { LOGOS.put(u, bm); runOnUiThread(() -> { if (at == i) logo.setImageBitmap(bm); }); }
             } catch (Exception ignored) { }
         }, "logo").start();

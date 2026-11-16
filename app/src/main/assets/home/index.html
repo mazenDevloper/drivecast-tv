@@ -536,6 +536,9 @@ html.fxlite .glass,html.fxlite .ytbar,html.fxlite .snd,html.fxlite .ambNote{back
 html.fxlite .f,html.fxlite .ichan,html.fxlite .card{box-shadow:none!important;transition-duration:0s!important}
 html.fxlite #wallBack,html.fxlite #rkCloud,html.fxlite #rkCloud2,html.fxlite #rkRain,html.fxlite #rkHaze{display:none!important}
 html.fxlite .wall,html.fxlite .wl{transition:none!important}
+/* ⚡ the photo screen at the adhan / a big verse: the picture stands still (no breathing, no birds, no sky motion) — only fades */
+body.ambient.iqbig .wall,body.ambient.adhan .wall{animation:none!important;will-change:auto}
+body.ambient.iqbig :is(#birds,#rkCloud,#rkCloud2,#rkRain,.met),body.ambient.adhan :is(#birds,#rkCloud,#rkCloud2,#rkRain,.met),html.fxlite #birds{display:none!important}
 html.fxlite #fring{box-shadow:none;transition-duration:.07s}
 </style>
 </head>
