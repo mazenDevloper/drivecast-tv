@@ -601,7 +601,7 @@ html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!importan
       <div class="ibrowse"><div class="glist" id="m3uvGroups"></div><div class="grid ch" id="m3uvList"></div></div></div></div>
   </div></section>
   <section class="page" id="p-matches"><div class="scroll" id="matchScroll">
-    <div class="mtabs" id="mtabs"><button class="chip f on" data-mt="all">⚽ كل مباريات اليوم</button><button class="chip f" data-mt="live">🔴 مباشر الآن</button><button class="chip f" data-mt="mine">⭐ فرقي</button><button class="chip f" data-mt="tom">📅 بكرة</button><span id="mnote"></span></div>
+    <div class="mtabs" id="mtabs"><button class="chip f on" data-mt="all">⚽ كل مباريات اليوم</button><button class="chip f" data-mt="live">🔴 مباشر الآن</button><button class="chip f" data-mt="mine">⭐ فرقي</button><button class="chip f" data-mt="yday">⏪ أمس</button><button class="chip f" data-mt="tom">📅 بكرة</button><span id="mnote"></span></div>
     <div id="s-matches"></div>
   </div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -2768,8 +2768,8 @@ async function mFetch(k) {
   else {
     // winwin.com first: every match of the day in Arabic, with the channels that carry it worldwide (names + logos);
     // DriveCast's own list when it does not answer
-    d = await winwinDay(k === 'tom' ? 1 : 0);
-    if (!d || !d.matches.length) d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
+    d = await winwinDay(k === 'tom' ? 1 : k === 'yday' ? -1 : 0);
+    if ((!d || !d.matches.length) && k !== 'yday') d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
   }
   if (d && d.matches) mCache[k] = { at: Date.now(), d };
   return d || (mCache[k] && mCache[k].d);
@@ -2780,13 +2780,13 @@ async function loadMatches() {
   if (LITE && SERIES()) return;   // 🪶 lite: no matches tab in وضع المسلسلات
   const box = $('#s-matches'); if (!box.children.length) box.innerHTML = '<div class="empty">أجيب مباريات اليوم…</div>';
   try {
-    const [all, mine] = await Promise.all([mFetch(MTAB === 'tom' ? 'tom' : 'all'), mFetch('mine'), loadSpg()]);
+    const [all, mine] = await Promise.all([mFetch(MTAB === 'tom' || MTAB === 'yday' ? MTAB : 'all'), mFetch('mine'), loadSpg()]);
     MINE = new Set(((mine && mine.matches) || []).flatMap(m => [m.home?.name, m.away?.name].map(x => String(x || '').toLowerCase())));
     TODAYM = (mine && mine.matches) || []; if ($('#p-iptv').classList.contains('on')) big5Ui();
     const mm = (mine && mine.matches) || [];
     let ms = ((all && all.matches) || []).slice();
     for (const m of ms) { const y = mm.find(y => mSame(m, y)); if (y) { m.mine = 1; if (String(y.id).startsWith('365')) m.id365 = y; } }   // the user's teams, marked on the day's list
-    if (MTAB !== 'tom') for (const m of mm) if (!ms.some(x => mSame(x, m))) ms.push(m);
+    if (MTAB !== 'tom' && MTAB !== 'yday') for (const m of mm) if (!ms.some(x => mSame(x, m))) ms.push(m);
     if (MTAB === 'live') ms = ms.filter(m => m.status === 'live');
     if (MTAB === 'mine') ms = ms.filter(m => m.mine);
     const isMine = m => !!m.mine;
@@ -2803,13 +2803,13 @@ async function loadMatches() {
     const card = (m, i) => {
       const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
         const big = live || fin ? `${AR(sc.home ?? 0)} - ${AR(sc.away ?? 0)}` : (m.omanTime || '');
-        const sub = live ? `● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : 'عُمان') + ' ' + (m.omanTime || '');
+        const sub = live ? `● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : MTAB === 'yday' ? 'أمس' : 'عُمان') + ' ' + (m.omanTime || '');
         const go = matchRoute(m), lk = matchLinks(m), chs = mChannels(m).slice(0, 3);
         const tm = t => `<div class="tm"><img src="${esc(t?.logo || '')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(t?.name || '')}</span></div>`;
         return `<button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
           <div class="lg">${m.league?.logo ? `<img src="${esc(m.league.logo)}" alt="" onerror="this.remove()">` : '🏆'}<span>${esc(m.league?.name || '')}</span><b>${live ? '● مباشر' : fin ? 'انتهت' : isMine(m) ? '⭐ فريقك' : 'قريباً'}</b></div>
           <div class="row">${tm(m.home)}<div class="mid"><span class="big">${big}</span><small>${sub}</small></div>${tm(m.away)}</div>
-          <div class="chs">${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(x.c.name)}${x.c.star ? ' ⭐' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(x.want)}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(c)}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>`;
+          <div class="chs">${fin ? '<span class="go hl">🎬 ملخص الأهداف</span>' : ''}${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(x.c.name)}${x.c.star ? ' ⭐' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(x.want)}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(c)}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>`;
       };
     box.innerHTML = groups.map(g => `<div class="mhour ${g.k === 'live' ? 'live' : g.k === 'fin' ? 'fin' : ''}"><div class="mh"><b>${g.k === 'live' ? '🔴 الآن' : g.k === 'fin' ? 'انتهت' : hourAr(+g.k.slice(1))}</b><i></i>${g.k !== 'live' && g.k !== 'fin' && +g.k.slice(1) === nowH ? '<em>هذي الساعة</em>' : ''}<small>${AR(g.items.length)} مباراة</small></div><div class="mgrid">${g.items.map(([m, i]) => card(m, i)).join('')}</div></div>`).join('') || `<div class="empty">${MTAB === 'live' ? 'ما فيه مباراة مباشرة الحين' : MTAB === 'mine' ? 'ما فيه مباريات لفرقك اليوم' : 'ما لقيت مباريات'}</div>`;
     const n = $('#mnote'); if (n) n.textContent = MLIST.length ? `${AR(MLIST.length)} مباراة · OK يشغّل القناة الناقلة` : '';
@@ -2817,7 +2817,7 @@ async function loadMatches() {
     if (!loadMatches.busy && MLIST.some(m => !MDET.has(m.id))) { loadMatches.busy = 1; try { if (!ILIST.length) { listsAt = 0; await loadLists(); } if (await mDetails(MLIST)) await loadMatches(); } finally { loadMatches.busy = 0; } }
   } catch (e) { box.innerHTML = '<div class="empty">لا اتصال بالإنترنت</div>'; }
 }
-setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'tom' && !busyKeys()) loadMatches(); }, 60e3);
+setInterval(() => { if ($('#p-matches').classList.contains('on') && MTAB !== 'tom' && MTAB !== 'yday' && !busyKeys()) loadMatches(); }, 60e3);
 // ⏰ a match of the user's teams starts in 5 minutes: an alert over everything (the photo view, the launcher, a playing channel)
 let OFFER = null;
 async function matchAlerts() {
@@ -2872,7 +2872,7 @@ async function matchPanel(i) {
   const chs = mChannels(m), loc = localChannels(m);
   const rows = matchLinks(m).map(x => ({ n: x.want, c: x.c }));
   const html = rows.map((r, k) => `<button class="f" data-ctx="mch${k}"><i>${m.chl && m.chl[r.n] ? `<img src="${esc(m.chl[r.n])}" alt="" style="height:22px;max-width:70px;background:#fff;border-radius:4px;padding:1px 3px">` : '📺'}</i>${esc(r.n)}${r.c ? ` · ▶ ${esc(r.c.name)}${r.c.star ? ' ⭐' : ''}` : ' · مو في قنواتك'}</button>`).join('')
-    + loc.slice(0, 6).map((c, k) => `<button class="f" data-ctx="mloc${k}"><i>🌍</i>${esc(c.name)}${c.st === 'ok' || GSP.includes(c) ? ' 🟢' : ''}</button>`).join('');
+    + (m.status === 'finished' ? '<button class="f" data-ctx="mgoals"><i>🎬</i>ملخص الأهداف من يوتيوب</button>' : '') + loc.slice(0, 6).map((c, k) => `<button class="f" data-ctx="mloc${k}"><i>🌍</i>${esc(c.name)}${c.st === 'ok' || GSP.includes(c) ? ' 🟢' : ''}</button>`).join('');
   $('#ctxBody').innerHTML = (html || '<div class="empty">ما فيه قنوات معروفة لهالمباراة</div>') + '<div id="mDet" class="empty" style="font-size:20px;text-align:right">…</div>';
   CTX.rows = rows; CTX.loc = loc;
   $('#ctx').classList.add('on'); $('#ctxBody .f')?.focus();
@@ -3276,10 +3276,28 @@ function matchPool(m, r) {
 }
 let MATCHPLAY = false;
 function playMatch(i, other) {
-  const m = MLIST[i]; if (!m) return; const r = matchRoute(m);
+  const m = MLIST[i]; if (!m) return; if (m.status === 'finished' && !other) return goals(m); const r = matchRoute(m);
   if (r && r.c) { if (other && TV.external) return resolveChannel(r.c).then(c => TV.external(c.url)); MATCHPLAY = true; return playChannel(matchPool(m, r), 0); }
   if (r && r.app) return TV.open(r.app.pkg);
   const n = $('#mnote'); if (n) n.textContent = `ما لقيت «${mChannels(m)[0] || 'القناة الناقلة'}» في قنواتك ولا تطبيقها على التلفزيون`;
+}
+
+// 🎬 «ملخص الأهداف»: YouTube's best summary of a finished match, played in the channels' player (the other answers in its side list)
+async function goals(m) {
+  const h = m.home?.name || '', a = m.away?.name || '', q = `ملخص مباراة ${h} و ${a}`;
+  const n = $('#mnote'); if (n) n.textContent = '🔎 أدوّر ملخص الأهداف…';
+  let vids = ytParse(await getText('https://www.youtube.com/results?hl=ar&gl=OM&search_query=' + encodeURIComponent(q)));
+  if (!vids.length) { const j = await getJ('https://studio.c-p.workers.dev/yt/find?q=' + encodeURIComponent(q)); vids = arr(j?.items).map(v => ({ id: v.id, title: v.title, ch: v.channel || '', len: v.len ? `${Math.floor(v.len / 60)}:${v.len % 60}` : '' })); }
+  const secs = t => String(t || '').split(':').reduce((x, y) => x * 60 + (+y || 0), 0);
+  const both = v => tSame(v.title, h) + tSame(v.title, a) + (tKey(v.title).includes(tKey(h).slice(0, 4)) ? 1 : 0) + (tKey(v.title).includes(tKey(a).slice(0, 4)) ? 1 : 0);
+  // a real summary: both teams in the title, «ملخص/أهداف», 2 to 25 minutes, not a full match nor a live stream
+  const score = v => both(v) * 3 + (/ملخص|اهداف|أهداف|highlights|goals/i.test(v.title) ? 3 : 0) + (secs(v.len) >= 120 && secs(v.len) <= 1500 ? 2 : -4) - (/كاملة|full match|بث مباشر|live/i.test(v.title) ? 4 : 0);
+  vids = vids.filter(v => v.len).map(v => ({ v, s: score(v) })).sort((x, y) => y.s - x.s).map(x => x.v).slice(0, 8);
+  if (n) n.textContent = vids.length ? '' : 'ما لقيت ملخص لهالمباراة بعد';
+  if (!vids.length) return ytQuery(q);
+  const list = vids.map(v => ({ name: v.title, url: 'https://www.youtube.com/watch?v=' + v.id, group: `🎬 ملخص ${h} × ${a}`, logo: `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg` }));
+  if (TV.watchFull && TV.ytIn && TV.ytIn()) return playChannel(list, 0);
+  lastSet({ k: 'yt', id: vids[0].id, t: vids[0].title }); return TV.youtube(vids[0].id);
 }
 
 // ---- pages and settings
@@ -4146,7 +4164,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-16a', NEWS_ROWS = [
+const NEWS = '2026-11-16b', NEWS_ROWS = [
+  ['⏪', 'المباريات: تبويب «أمس» بنتائج مباريات أمس'],
+  ['🎬', 'ملخص الأهداف: OK على أي مباراة انتهت يشغّل ملخصها من يوتيوب داخل المشغّل'],
   ['▶', 'يوتيوب صار يشتغل داخل مشغّل القنوات (بي إن الإخبارية والبث الرسمي)'],
   ['⚽', 'المباراة: إذا الناقل الأول ما اشتغل ينتقل للتالي لحاله، و ▲▼ تقلّب بين قنوات كل المباريات المباشرة'],
   ['📺', 'وضع المسلسلات: الضغطة المطوّلة على الكرت تعرض المباريات المباشرة'],
@@ -4204,6 +4224,7 @@ async function ctxDo(k) {
   if (x.offerp) { if (k === 'oplay' && OFFERP) { const f = OFFERP; OFFERP = null; f(); } return; }
   if (x.offer) { if (k === 'oplay') { MLIST = [x.offer]; playMatch(0); } return; }
   if (x.mpanel) {
+    if (k === 'mgoals') return goals(x.mpanel);
     if (/^mch\d/.test(k)) { const r = x.rows[+k.slice(3)]; if (r && r.c) return playChannel([r.c], 0); const route = matchRoute(x.mpanel); if (route && route.app) return TV.open(route.app.pkg); return; }
     if (/^mloc\d/.test(k)) return playChannel(x.loc, +k.slice(4));
     return;
