@@ -2054,7 +2054,22 @@ function iptvUi() {
   pool = pool.map((c, i) => [IGROUP === 'all' ? catOf(c) : 0, isOk(c) ? 0 : 1, i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map(x => x[3]);
   const shown = pool.slice(0, 300);
   window.__shown = shown;
-  $('#s-ilist').innerHTML = shown.map((c, i) => ichHtml(c, i, 'shown')).join('') || `<div class="empty">${FILT.q.trim() ? 'ما لقيت قناة بهذا الاسم' : ALL.length ? 'ما فيه قنوات بهذا الفلتر' : 'جارٍ التحميل…'}</div>`;
+  chunkList($('#s-ilist'), shown, (c, i) => ichHtml(c, i, 'shown'), `<div class="empty">${FILT.q.trim() ? 'ما لقيت قناة بهذا الاسم' : ALL.length ? 'ما فيه قنوات بهذا الفلتر' : 'جارٍ التحميل…'}</div>`);
+}
+/** ⚡ a long list drawn a screenful at a time: the first 36 cards, then 36 more each time the focus (or the scroll) comes near the
+ *  end — «كل القنوات» used to put up to 300 cards (and the other rows more) on the page at once, ~11 000 elements, and the TV froze */
+function chunkList(box, items, mk, empty = '', step = 36) {
+  if (!box) return;
+  box._items = items; box._mk = mk; box._n = Math.min(step, items.length); box._step = step;
+  box.innerHTML = items.slice(0, box._n).map(mk).join('') || empty;
+  if (!box._chunked) {
+    box._chunked = true;
+    const more = () => { if (box._n >= box._items.length) return; const from = box._n; box._n = Math.min(box._n + box._step, box._items.length);
+      box.insertAdjacentHTML('beforeend', box._items.slice(from, box._n).map((c, j) => box._mk(c, from + j)).join('')); };
+    box.addEventListener('focusin', e => { const f = e.target.closest('[data-i]'); if (f && +f.dataset.i >= box._n - 8) more(); });
+    const io = new IntersectionObserver(es => es.forEach(x => x.isIntersecting && more()), { rootMargin: '600px' });
+    box._sent = document.createElement('i'); box._sent.style.cssText = 'display:block;width:1px;height:1px'; box.after(box._sent); io.observe(box._sent);
+  }
 }
 // ⚡ sports channels whose links change. For each channel every known address is gathered — its broadcaster's own stream on each
 // of its servers (Al Kass: alkassdigital.net; Dubai / Abu Dhabi: their mangomolo servers), plus whatever the maintained public
@@ -2625,8 +2640,7 @@ function big5Ui() {
   $('#s-b5').innerHTML = B5LIST.map((c, i) => ichHtml(c, i, 'b5')).join('')
     + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
     || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم ولا تطبيقها على التلفزيون</div>`;
-  $('#s-b5f').innerHTML = B5F.slice(0, 150).map((c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f')).join('')
-    || `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`;
+  chunkList($('#s-b5f'), B5F.slice(0, 150), (c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f'), `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`);
 }
 async function loadIptv() {
   pinUi(); favUi(); big5Ui(); loadSports().then(() => loadDyn()); loadYtLive(); dynUi();
