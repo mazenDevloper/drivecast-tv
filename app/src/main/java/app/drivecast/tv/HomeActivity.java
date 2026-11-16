@@ -96,6 +96,12 @@ public class HomeActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
         web.setBackgroundColor(0xFF0A0E13);
+        // ⚡ the home answers the remote first: drawn on the GPU, its renderer kept at the top priority (not dropped to save
+        // memory while it is in front), the parts just off the screen drawn ahead so a move never waits for them
+        web.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+        if (android.os.Build.VERSION.SDK_INT >= 23) s.setOffscreenPreRaster(true);
+        if (android.os.Build.VERSION.SDK_INT >= 26) { web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false); s.setSafeBrowsingEnabled(false); }
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail d) {
