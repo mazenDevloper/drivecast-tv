@@ -114,6 +114,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
             else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
+            else if (first.startsWith("GET /apps")) reply(s.getOutputStream(), "application/json", appsJson());   // the phone's apps tab
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
             else if (first.startsWith("GET /adhan-log")) { android.content.SharedPreferences ap = getSharedPreferences("pset", MODE_PRIVATE); reply(s.getOutputStream(), "text/plain", "next " + ap.getString("next", "-") + "\n" + ap.getString("log", "")); }   // the adhan's last events (the test)
@@ -201,6 +202,9 @@ public class MessageServer extends Service {
             if (w.equals("stop")) main.post(Adhan::stop);
             else if (w.startsWith("alarm")) Adhan.test(this, 15, 25);   // the test: the real alarm, then the iqamah
             else new Thread(() -> { Adhan.sounds(this); main.post(() -> Adhan.fire(this, 3, true, w.equals("iqama"))); }, "adhan-try").start();
+        } else if (first.startsWith("POST /open")) {   // the phone's apps tab: open one on the TV
+            String pkg = body.trim();
+            main.post(() -> openApp(pkg));
         } else if (first.startsWith("POST /key")) {
             String k = body.trim();
             main.post(() -> key(k));
@@ -317,8 +321,24 @@ public class MessageServer extends Service {
                 try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
                 return;
         }
+        // «long ok», «long left»…: a long press, like holding the button of the TV's own remote
+        boolean longp = k.startsWith("long ");
+        String kk = longp ? k.substring(5) : k;
+        if (kk.equals("voice")) { HomeActivity hv = HomeActivity.front; if (hv != null) HomeActivity.voice(hv, 77); else if (PlayerActivity.live != null) HomeActivity.voice(PlayerActivity.live, 78); return; }
+        if (kk.equals("chup") || kk.equals("chdown")) kk = kk.equals("chup") ? "up" : "down";
+        int code = keyCode(kk);
+        // the channels' player in front: the key handed to it as a real key (its long OK opens its menu, ◀▶ its guide)
+        PlayerActivity pl = PlayerActivity.live;
+        if (pl != null && pl.hasWindowFocus() && code != 0) { press(pl, code, longp); return; }
         HomeActivity h = HomeActivity.front;
-        if (h != null) { h.remote(k); return; }
+        if (h != null) { h.remote(longp ? (kk.equals("ok") ? "hold" : kk) : kk); return; }
+        // another app in front (YouTube, Shahid…): through the TV's own network debugging, where it was allowed once
+        if (code != 0) {
+            final int c = code; final boolean lp = longp;
+            new Thread(() -> { try { SelfAdb.shell(this, "input keyevent " + (lp ? "--longpress " : "") + c, 0, 3000); } catch (Exception e) {
+                MouseService m2 = MouseService.on; if (m2 != null && c == android.view.KeyEvent.KEYCODE_BACK) main.post(() -> m2.command("b")); } }, "key").start();
+            return;
+        }
         MouseService m = MouseService.on;
         if (m != null && k.equals("back")) { m.command("b"); return; }
         // another app is open: the shortcuts first bring the home screen back
@@ -326,6 +346,61 @@ public class MessageServer extends Service {
             try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
             main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.remote(k); }, 900);
         }
+    }
+
+    private static int keyCode(String k) {
+        switch (k) {
+            case "up": return android.view.KeyEvent.KEYCODE_DPAD_UP;
+            case "down": return android.view.KeyEvent.KEYCODE_DPAD_DOWN;
+            case "left": return android.view.KeyEvent.KEYCODE_DPAD_LEFT;
+            case "right": return android.view.KeyEvent.KEYCODE_DPAD_RIGHT;
+            case "ok": return android.view.KeyEvent.KEYCODE_DPAD_CENTER;
+            case "back": return android.view.KeyEvent.KEYCODE_BACK;
+            case "menu": return android.view.KeyEvent.KEYCODE_MENU;
+            case "info": return android.view.KeyEvent.KEYCODE_INFO;
+            case "guide": return android.view.KeyEvent.KEYCODE_GUIDE;
+        }
+        if (k.matches("[0-9]")) return android.view.KeyEvent.KEYCODE_0 + (k.charAt(0) - '0');
+        return 0;
+    }
+
+    /** a key pressed in an activity of ours; a long press = held down (the repeats, then the long-press flag) */
+    private void press(android.app.Activity a, int code, boolean longp) {
+        long t = android.os.SystemClock.uptimeMillis();
+        a.dispatchKeyEvent(new android.view.KeyEvent(t, t, android.view.KeyEvent.ACTION_DOWN, code, 0));
+        if (!longp) { a.dispatchKeyEvent(new android.view.KeyEvent(t, t + 60, android.view.KeyEvent.ACTION_UP, code, 0)); return; }
+        main.postDelayed(() -> {
+            long n = android.os.SystemClock.uptimeMillis();
+            a.dispatchKeyEvent(new android.view.KeyEvent(t, n, android.view.KeyEvent.ACTION_DOWN, code, 1, 0, android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, android.view.KeyEvent.FLAG_LONG_PRESS));
+            main.postDelayed(() -> a.dispatchKeyEvent(new android.view.KeyEvent(t, android.os.SystemClock.uptimeMillis(), android.view.KeyEvent.ACTION_UP, code, 0, 0, android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, android.view.KeyEvent.FLAG_CANCELED_LONG_PRESS)), 80);
+        }, 550);
+    }
+
+    /** the TV's apps for the phone: the label, a small icon (the TV banner when it has one) */
+    private String appsJson() {
+        android.content.pm.PackageManager pm = getPackageManager();
+        org.json.JSONArray out = new org.json.JSONArray();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String cat : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
+            for (android.content.pm.ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(cat), 0)) {
+                String pkg = r.activityInfo.packageName;
+                if (pkg.equals(getPackageName()) || !seen.add(pkg)) continue;
+                try {
+                    android.content.pm.ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
+                    android.graphics.drawable.Drawable d = ai.loadBanner(pm); boolean banner = d != null;
+                    if (d == null) d = ai.loadIcon(pm);
+                    out.put(new org.json.JSONObject().put("pkg", pkg).put("label", String.valueOf(ai.loadLabel(pm))).put("art", HomeActivity.png(d, banner ? 192 : 96, banner ? 108 : 96)).put("banner", banner));
+                } catch (Exception ignored) { }
+            }
+        }
+        return out.toString();
+    }
+
+    private void openApp(String pkg) {
+        android.content.pm.PackageManager pm = getPackageManager();
+        Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
+        if (i == null) i = pm.getLaunchIntentForPackage(pkg);
+        if (i != null) try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
     }
 
     /** bring the home screen to the front, then run a line of its page */

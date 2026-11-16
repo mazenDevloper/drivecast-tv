@@ -611,7 +611,7 @@ public class HomeActivity extends Activity {
         }
     }
 
-    private static String png(Drawable d, int w, int h) {
+    static String png(Drawable d, int w, int h) {
         Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);
         d.setBounds(0, 0, w, h);

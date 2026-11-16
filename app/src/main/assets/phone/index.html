@@ -52,24 +52,73 @@ input.in,textarea.in{width:100%;border-radius:16px;border:1px solid var(--line);
 .bgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}.bgs button{height:52px;border-radius:14px;border:2px solid transparent;font:600 13px inherit;font-family:inherit;color:#2f2b3a}.bgs button.on{border-color:#fff}
 p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 .warn{background:#2a2414;border:1px solid #5a4a20;color:#f2d98a;border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.6;margin-bottom:10px}
+/* 🎮 the remote, laid out for one thumb: what you press all the time low and in the middle (the round pad, back / home,
+   the volume, the mic), what you press now and then higher up; the tabs at the bottom where the thumb already is */
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(11,20,17,.96);border-top:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.nav button{border:0;background:none;color:var(--dim);font:600 12px inherit;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:16px}
+.nav button i{font-style:normal;font-size:23px;line-height:1}
+.nav button.on{color:var(--ink);background:rgba(255,255,255,.07)}
+.sub{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:4px;border-radius:20px;background:var(--card);margin-bottom:14px}
+.sub button{border:0;background:none;color:var(--dim);font:600 13px inherit;font-family:inherit;padding:9px 0;border-radius:999px}.sub button.on{background:var(--ink);color:#0b1411}
+#r{display:flex;flex-direction:column;align-items:center;gap:14px;min-height:calc(100vh - 170px);justify-content:flex-end}
+.quick{display:flex;gap:8px;width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.quick::-webkit-scrollbar{display:none}
+.quick button{flex:none;height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--dim);font:600 14px inherit;font-family:inherit}
+.media{direction:ltr;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:min(100%,330px)}
+.media button{height:50px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:20px}
+.dpad{position:relative;width:min(78vw,300px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 40%,#1b2c25,#111c18);border:1px solid var(--line);box-shadow:inset 0 2px 0 rgba(255,255,255,.05),0 16px 40px rgba(0,0,0,.35);touch-action:none;user-select:none;-webkit-user-select:none}
+.dpad button{position:absolute;border:0;background:none;color:var(--ink);font-size:26px;display:flex;align-items:center;justify-content:center}
+.dpad .u{top:0;left:30%;width:40%;height:30%}.dpad .d{bottom:0;left:30%;width:40%;height:30%}
+.dpad .l{left:0;top:30%;width:30%;height:40%}.dpad .rr{right:0;top:30%;width:30%;height:40%}
+.dpad .ok{left:30%;top:30%;width:40%;height:40%;border-radius:50%;background:var(--acc);font-size:20px;font-weight:800;box-shadow:0 6px 18px rgba(31,157,107,.35)}
+.dpad button.hit{color:#fff;text-shadow:0 0 12px #fff}.dpad .ok.hit{transform:scale(.94)}
+.dpad .hint{position:absolute;bottom:-26px;left:0;right:0;text-align:center;font-size:12px;color:var(--dim);pointer-events:none}
+.nav3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(100%,330px);margin-top:16px}
+.nav3 button{height:58px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 15px inherit;font-family:inherit}
+.rock{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:14px;width:min(100%,330px);align-items:center}
+.rk2{display:flex;flex-direction:column;border-radius:30px;border:1px solid var(--line);background:var(--card);overflow:hidden}
+.rk2 button{height:60px;border:0;background:none;color:var(--ink);font-size:24px}.rk2 span{text-align:center;font-size:12px;color:var(--dim);padding:2px 0}
+.rk2 button:active,.nav3 button:active,.media button:active,.quick button:active{background:rgba(255,255,255,.08)}
+.mic{width:100%;aspect-ratio:1;border-radius:50%;border:0;background:linear-gradient(160deg,#25b07c,#147a52);color:#fff;font-size:40px;box-shadow:0 10px 30px rgba(31,157,107,.35)}
+.mic.on{animation:pulse 1s infinite}@keyframes pulse{50%{box-shadow:0 0 0 14px rgba(31,157,107,.18)}}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(100%,330px)}.nums button{height:52px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:22px;font-weight:700}
+.tiny{border:0;background:none;color:var(--dim);font:600 13px inherit;font-family:inherit;padding:6px 10px}
+.kb{display:flex;flex-direction:column;gap:10px}
+.kb input{width:100%;height:64px;border-radius:22px;border:2px solid var(--acc);background:var(--card);color:var(--ink);font:500 20px inherit;font-family:inherit;padding:0 18px}
+.kb .row button{height:58px}
+.apps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.apps button{border:1px solid var(--line);background:var(--card);border-radius:20px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--ink);font:600 13px inherit;font-family:inherit;min-height:112px}
+.apps img{width:56px;height:56px;object-fit:contain;border-radius:14px}.apps img.bn{width:100%;height:56px;object-fit:cover;border-radius:12px}
+.apps span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
+.apps button:active{transform:scale(.96)}
 </style></head><body><div class="c">
 <h1>📺 التلفزيون <small id="st">متصل</small></h1>
-<div class="tabs"><button data-t="r" class="on">🎮 ريموت</button><button data-t="m">🖱️ ماوس</button><button data-t="q">📖 القرآن</button><button data-t="z">📿 الأذكار</button><button data-t="b">📌 اللوحة</button><button data-t="w">✍️ اكتب</button><button data-t="d">🎨 ارسم</button></div>
+<div class="tabs hide"><button data-t="r" class="on"></button></div>
 
 <section id="r">
-  <div class="pad"><i></i><button data-k="up">▲</button><i></i><button data-k="right">▶</button><button class="ok" data-k="ok">OK</button><button data-k="left">◀</button><i></i><button data-k="down">▼</button><i></i></div>
-  <div class="g">
-    <button data-k="back">↩︎ رجوع</button><button data-k="home">🏠 الرئيسية</button><button data-k="menu">⚙️ الإعدادات</button>
-    <button data-k="voldown">🔉 −</button><button data-k="mute">🔇 كتم</button><button data-k="volup">🔊 +</button>
-    <button data-k="prev">⏮</button><button data-k="play">⏯</button><button data-k="next">⏭</button>
-    <button data-k="ambient">🕌 الصورة</button><button data-k="live">📺 القنوات</button><button data-k="match">⚽ المباراة</button>
+  <div class="quick"><button data-k="live">📺 القنوات</button><button data-k="match">⚽ المباراة الآن</button><button data-k="quran">📖 القرآن</button><button data-k="ambient">🕌 وضع الصورة</button><button data-k="board">📌 اللوحة</button><button class="tiny" id="numT">١٢٣</button></div>
+  <div class="nums hide" id="nums"><button data-k="1">١</button><button data-k="2">٢</button><button data-k="3">٣</button><button data-k="4">٤</button><button data-k="5">٥</button><button data-k="6">٦</button><button data-k="7">٧</button><button data-k="8">٨</button><button data-k="9">٩</button><i></i><button data-k="0">٠</button><i></i></div>
+  <div class="media"><button data-k="prev">⏮</button><button data-k="play">⏯</button><button data-k="next">⏭</button></div>
+  <div class="dpad" id="dpad">
+    <button class="u" data-k="up" data-rep>▲</button><button class="d" data-k="down" data-rep>▼</button>
+    <button class="rr" data-k="right" data-rep>▶</button><button class="l" data-k="left" data-rep>◀</button>
+    <button class="ok" data-k="ok" data-long>OK</button>
+    <div class="hint">اسحب على الدائرة للتنقل · OK مطوّلاً = القائمة</div>
   </div>
-  <button class="big" id="upd" style="margin-top:14px">⬆️ حدّث التلفزيون لآخر نسخة</button>
-  <div id="updS" style="text-align:center;margin:8px 0;color:var(--dim);min-height:1.4em"></div>
-  <button id="adbs" style="width:100%;font-size:14px;opacity:.85">🔧 خلّ التحديث بدون موافقة (مرة وحدة وأنت عند التلفزيون)</button>
-  <label>خط اليوم في وضع الصورة (مثلاً خط ثمانية): نزّله من موقعه الرسمي في جوالك، ثم اختره هنا يروح للتلفزيون</label>
-  <input type="file" id="font" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
+  <div class="nav3"><button data-k="back" data-long>↩︎ رجوع</button><button data-k="home">🏠 الرئيسية</button><button data-k="menu">☰ القائمة</button></div>
+  <div class="rock">
+    <div class="rk2"><button data-k="volup" data-rep>＋</button><span id="muteB" data-k="mute">🔇 الصوت</span><button data-k="voldown" data-rep>−</button></div>
+    <button class="mic" id="mic">🎙️</button>
+    <div class="rk2"><button data-k="chup" data-rep>⌃</button><span>القناة</span><button data-k="chdown" data-rep>⌄</button></div>
+  </div>
 </section>
+
+<section id="a" class="hide">
+  <div class="row" style="margin:0 0 12px"><button data-k="home">🏠 الرئيسية</button><button id="appsR">↻ حدّث القائمة</button></div>
+  <div class="apps" id="apps"><p class="s">جارٍ التحميل…</p></div>
+</section>
+
+<div class="sub hide" id="subnav"></div>
 
 <section id="m" class="hide">
   <div class="warn hide" id="mwarn">الماوس يحتاج تفعيل مرة وحدة على التلفزيون: الإعدادات ← إمكانية الوصول ← <b>DriveCast TV ماوس</b> ← تشغيل. (أو خلّ كلود يفعّله وقت التثبيت)<div class="row"><button id="mon">🖱️ شغّل الماوس</button></div></div>
@@ -117,33 +166,125 @@ p.s{color:var(--dim);text-align:center;min-height:1.4em;font-size:14px}
 </section>
 
 <section id="w" class="hide">
+  <div class="kb">  <label style="margin-top:0">🔎 اكتب أو اضغط 🎙️ في كيبورد الجوال وتكلّم بالعربي</label>
+  <input id="vq" maxlength="200" placeholder="مثلاً: ام بي سي دراما · مباراة الهلال · مسلسل مناعة" style="margin-top:8px;width:100%;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px;box-sizing:border-box">
+  <div class="row" style="margin-top:8px"><button id="vgo" style="flex:1">🔎 ابحث وشغّل</button><button id="vtype" style="flex:1">⌨️ اكتب في الخانة</button></div></div>
+
   <label>عبارة وضع الصورة (تبقى على الشاشة كل مرة، بخط ثمانية)</label>
   <div class="row" style="margin-top:8px"><input id="ph" maxlength="120" placeholder="مثلاً: ﴿ألا بذكر الله تطمئن القلوب﴾" style="flex:3;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px"><button id="phs" style="flex:1">احفظ</button></div>
-  <label>🔎 ابحث أو اكتب في التلفزيون — اضغط 🎙️ في كيبورد الجوال وتكلّم بالعربي</label>
-  <input id="vq" maxlength="200" placeholder="مثلاً: ام بي سي دراما · مباراة الهلال · مسلسل مناعة" style="margin-top:8px;width:100%;height:54px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 17px inherit;font-family:inherit;padding:0 14px;box-sizing:border-box">
-  <div class="row" style="margin-top:8px"><button id="vgo" style="flex:1">🔎 ابحث وشغّل</button><button id="vtype" style="flex:1">⌨️ اكتب في الخانة</button></div>
+
   <label>رسالة سريعة (تطلع وسط الشاشة ٢٠ ثانية)</label>
   <textarea id="t" maxlength="200" placeholder="اكتب هني…" style="margin-top:8px"></textarea><button class="big" id="send">أرسل</button>
   <div class="chips"><button data-msg="العشاء جاهز 🍽️">العشاء جاهز</button><button data-msg="وقت النوم 🌙">وقت النوم</button><button data-msg="صلّوا 🕌">صلّوا</button></div></section>
 
 <section id="d" class="hide"><canvas id="cv"></canvas><div class="row" id="colors"></div><div class="row"><button id="clr">امسح</button></div></section>
+<section id="sx" class="hide">
+  <button class="big" id="upd" style="margin-top:14px">⬆️ حدّث التلفزيون لآخر نسخة</button>
+  <div id="updS" style="text-align:center;margin:8px 0;color:var(--dim);min-height:1.4em"></div>
+  <button id="adbs" style="width:100%;font-size:14px;opacity:.85">🔧 خلّ التحديث بدون موافقة (مرة وحدة وأنت عند التلفزيون)</button>
+  <label>خط اليوم في وضع الصورة (مثلاً خط ثمانية): نزّله من موقعه الرسمي في جوالك، ثم اختره هنا يروح للتلفزيون</label>
+  <input type="file" id="font" accept=".ttf,.otf,.woff,.woff2" style="margin-top:8px;color:var(--dim)">
+</section>
+
 <p class="s" id="s"></p>
 </div>
 <script>
 const $ = i => document.getElementById(i), SURAHS = ["الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس", "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه", "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم", "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر", "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق", "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة", "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج", "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس", "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد", "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات", "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر", "المسد", "الإخلاص", "الفلق", "الناس"];
 const post = (u, b) => fetch(u, { method: 'POST', body: b }).then(r => { $('st').textContent = 'متصل'; return r; }).catch(() => { $('st').textContent = 'غير متصل'; $('s').textContent = 'ما وصلت، تأكد إنك على نفس الواي فاي'; });
 const buzz = () => navigator.vibrate && navigator.vibrate(10);
-// tabs
-let cur = 'r';
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  cur = b.dataset.t; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['r', 'm', 'q', 'z', 'b', 'w', 'd'].forEach(t => $(t).classList.toggle('hide', t !== cur));
-  if (cur === 'd') fit(); if (cur === 'q') reciters(); if (cur === 'z') azkar(); if (cur === 'b') boardLoad(); if (cur === 'm') status();
-  try { localStorage.tab = cur; } catch (e) {}
+// ---- the tabs: at the bottom (the thumb's place); «المزيد» holds what is used now and then
+const NAV = [['r', '🎮', 'ريموت'], ['a', '🧩', 'التطبيقات'], ['w', '⌨️', 'اكتب وتكلّم'], ['m', '🖱️', 'ماوس'], ['x', '☰', 'المزيد']];
+const MORE = [['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
+const ALLS = ['r', 'a', 'w', 'm', 'q', 'z', 'b', 'd', 'sx'];
+let cur = 'r', moreAt = 'q';
+document.body.insertAdjacentHTML('beforeend', `<nav class="nav" id="nav">${NAV.map(([t, i, l]) => `<button data-nav="${t}"><i>${i}</i>${l}</button>`).join('')}</nav>`);
+$('subnav').innerHTML = MORE.map(([t, l]) => `<button data-more="${t}">${l}</button>`).join('');
+function go(t) {
+  if (t === 'x') t = moreAt;
+  const more = MORE.some(m => m[0] === t); if (more) moreAt = t;
+  cur = t;
+  ALLS.forEach(s => $(s).classList.toggle('hide', s !== t));
+  $('subnav').classList.toggle('hide', !more);
+  document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === (more ? 'x' : t)));
+  document.querySelectorAll('[data-more]').forEach(b => b.classList.toggle('on', b.dataset.more === t));
+  if (t === 'd') fit(); if (t === 'q') reciters(); if (t === 'z') azkar(); if (t === 'b') boardLoad(); if (t === 'm') status(); if (t === 'a') apps();
+  if (t === 'w') setTimeout(() => $('vq').focus(), 50);
+  scrollTo(0, 0);
+  try { localStorage.tab = t; } catch (e) {}
+}
+document.addEventListener('click', e => { const n = e.target.closest('[data-nav]'); if (n) { buzz(); return go(n.dataset.nav); } const m = e.target.closest('[data-more]'); if (m) return go(m.dataset.more); });
+
+// ---- the keys: a tap sends once; ▲▼◀▶ / the volume / the channel repeat while held (faster and faster); OK and «رجوع»
+// held = the long press (OK long = the TV's menu, like its own remote); on the round pad a swipe moves like a touchpad
+const sendK = k => post('/key', k);
+let P = null;
+const dpad = $('dpad');
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-k]'), inPad = !!e.target.closest('#dpad');
+  if (!b && !inPad) return;
+  if (inPad) { e.preventDefault(); try { dpad.setPointerCapture(e.pointerId); } catch (x) {} }
+  P = { b, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, swipe: false, longDone: false, inPad };
+  if (!b) return;
+  b.classList.add('hit'); buzz();
+  if (b.hasAttribute('data-rep')) {
+    sendK(b.dataset.k);
+    let gap = 380; const me = P;
+    const loop = () => { if (P !== me || me.swipe) return; sendK(b.dataset.k); buzz(); gap = Math.max(60, gap * 0.78); me.rt = setTimeout(loop, gap); };
+    me.rt = setTimeout(loop, gap);
+  } else if (b.hasAttribute('data-long')) {
+    const me = P;
+    me.lt = setTimeout(() => { if (P !== me || me.swipe) return; me.longDone = true; navigator.vibrate && navigator.vibrate([30, 40, 30]); sendK('long ' + b.dataset.k); $('s').textContent = b.dataset.k === 'ok' ? '☰ ضغطة مطوّلة — القائمة على التلفزيون' : 'ضغطة مطوّلة'; }, 550);
+  }
+}, { passive: false });
+document.addEventListener('pointermove', e => {
+  if (!P || !P.inPad) return;
+  if (!P.swipe && Math.hypot(e.clientX - P.sx, e.clientY - P.sy) > 24) { P.swipe = true; clearTimeout(P.rt); clearTimeout(P.lt); P.b && P.b.classList.remove('hit'); }
+  if (!P.swipe) return;
+  const dx = e.clientX - P.x, dy = e.clientY - P.y, step = 36;
+  if (Math.abs(dx) >= step && Math.abs(dx) > Math.abs(dy)) { sendK(dx > 0 ? 'right' : 'left'); buzz(); P.x = e.clientX; P.y = e.clientY; }
+  else if (Math.abs(dy) >= step) { sendK(dy > 0 ? 'down' : 'up'); buzz(); P.x = e.clientX; P.y = e.clientY; }
 });
+const lift = () => {
+  if (!P) return; const b = P.b; clearTimeout(P.rt); clearTimeout(P.lt); b && b.classList.remove('hit');
+  if (b && !P.swipe && !b.hasAttribute('data-rep') && !(b.hasAttribute('data-long') && P.longDone)) sendK(b.dataset.k);
+  P = null;
+};
+document.addEventListener('pointerup', lift); document.addEventListener('pointercancel', () => { if (P) { clearTimeout(P.rt); clearTimeout(P.lt); P.b && P.b.classList.remove('hit'); P = null; } });
+document.addEventListener('contextmenu', e => { if (e.target.closest('[data-k],#dpad,#mic')) e.preventDefault(); });
+$('numT').onclick = () => $('nums').classList.toggle('hide');
+
+// ---- 🎙️ the mic: a tap = speak to the phone (its own recognition when the page may use it, else the phone keyboard's mic
+// in «اكتب وتكلّم»); held = the TV's own voice search
+const mic = $('mic'); let micT = null, micLong = false;
+mic.addEventListener('pointerdown', e => { e.preventDefault(); buzz(); micLong = false; micT = setTimeout(() => { micLong = true; navigator.vibrate && navigator.vibrate([30, 40, 30]); sendK('voice'); $('s').textContent = '🎙️ تكلّم عند التلفزيون'; }, 600); });
+mic.addEventListener('pointerup', () => { clearTimeout(micT); if (!micLong) speak(); });
+function speak() {
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R || !window.isSecureContext) { go('w'); $('s').textContent = '🎙️ اضغط زر المايك في كيبورد جوالك وتكلّم، ثم «ابحث وشغّل»'; return; }
+  try {
+    const r = new R(); r.lang = 'ar-SA'; r.interimResults = false; mic.classList.add('on'); $('s').textContent = '🎙️ تكلّم…';
+    r.onresult = ev => { const t = ev.results[0][0].transcript; $('s').textContent = '🔎 «' + t + '»'; post('/voice', t); };
+    r.onend = () => mic.classList.remove('on'); r.onerror = () => { mic.classList.remove('on'); go('w'); };
+    r.start();
+  } catch (x) { go('w'); }
+}
+
+// ---- 🧩 the TV's apps: tap = open it on the TV
+let APPS = null;
+async function apps(force) {
+  if (!APPS && !force) { try { APPS = JSON.parse(localStorage.apps || 'null'); } catch (e) {} if (APPS) appsUi(); }
+  if (APPS && !force) return;
+  try { APPS = await (await fetch('/apps')).json(); try { localStorage.apps = JSON.stringify(APPS); } catch (e) {} appsUi(); } catch (e) { if (!APPS) $('apps').innerHTML = '<p class="s">ما وصلت للتلفزيون</p>'; }
+}
+function appsUi() {
+  const L = (APPS || []).slice().sort((a, b) => (b.banner - a.banner) || a.label.localeCompare(b.label, 'ar'));
+  $('apps').innerHTML = L.map(a => `<button data-pkg="${a.pkg}"><img class="${a.banner ? 'bn' : ''}" src="${a.art}" alt=""><span>${a.label.replace(/</g, '&lt;')}</span></button>`).join('') || '<p class="s">ما فيه تطبيقات</p>';
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-pkg]'); if (!b) return; buzz(); post('/open', b.dataset.pkg); $('s').textContent = '🧩 ينفتح «' + b.textContent + '» على التلفزيون'; });
+$('appsR').onclick = () => apps(true);
+
 document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.k) { buzz(); post('/key', b.dataset.k); }
   if (b.dataset.m) { buzz(); post('/mouse', b.dataset.m); }
   if (b.dataset.sq) { $('sura').value = b.dataset.sq; play(); }
   if (b.dataset.msg) { $('t').value = b.dataset.msg; send(); }
@@ -340,5 +481,5 @@ $('badd').onclick = async () => {
   await boardSave('انضاف للوحة ✅'); $('btx').value = ''; if (btype === 'drawing') bfit();
 };
 btypeUi();
-try { const t = localStorage.tab; if (t) document.querySelector(`.tabs [data-t="${t}"]`).click(); } catch (e) {}
+try { const t = localStorage.tab; go(ALLS.includes(t) ? t : 'r'); } catch (e) { go('r'); }
 </script></body></html>

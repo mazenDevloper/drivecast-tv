@@ -3768,6 +3768,7 @@ window.onRemote = k => {
   const dir = { up: 'up', down: 'down', left: 'left', right: 'right' }[k];
   if (dir) return move(dir);
   if (k === 'ok') { if (document.body.classList.contains('ambient')) return ambient(false); return document.activeElement?.click(); }
+  if (k === 'hold') { const b = document.activeElement; if (b && b.dataset && S('hold', 'menu') !== 'off') { try { holdPlay(b); } catch (e) {} } return; }   // the phone remote's long OK
   if (k === 'back') return window.onTvBack();
   if (k === 'menu') return window.onTvMenu();
   if (k === 'ambient') return ambient(!document.body.classList.contains('ambient'));
