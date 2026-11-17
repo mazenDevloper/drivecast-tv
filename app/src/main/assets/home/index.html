@@ -1780,6 +1780,8 @@ try { REMS = JSON.parse(localStorage.getItem('epgrem') || '[]') || []; } catch (
 const remSave = () => { try { localStorage.setItem('epgrem', JSON.stringify(REMS.filter(r => r.at * 1000 > Date.now() - 600e3))); } catch (e) {} };
 function epgUi() {
   const box = $('#s-epg'); if (!box) return;
+  // ⚡ the guide grid (~3 500 elements) only while its pane is open; drawn again when it opens (iPane)
+  if (!$('#epgwrap')?.classList.contains('on') || !$('#p-iptv')?.classList.contains('on')) { if (box.firstChild) box.innerHTML = ''; return; }
   if (!Object.keys(EPG || {}).length) { box.innerHTML = '<div class="empty">أجيب الدليل…</div>'; return; }
   const seen = new Set(), pools = [...PINS, ...MOST, ...MYFAV, ...IFAV, ...DYNCH, ...ILIST.filter(c => isOk(c)), ...ILIST];
   EPGL = [];
@@ -2702,9 +2704,10 @@ function big5Ui() {
   const apps = APPS.filter(a => rules.some(r => r[2].test(a.label) || r[2].test(a.pkg) || a.label.includes(r[3].split(' ')[0])));
   const who = [...new Set(rules.map(r => r[3]))].join(' · ');
   B5LIST = B5LIST.slice(0, 60).concat(B5F.map(c => ({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }))).slice(0, 260); B5F = [];   // the region's carriers, then room for the foreign ones
-  $('#s-b5').innerHTML = B5LIST.map((c, i) => ichHtml(c, i, 'b5')).join('')
-    + apps.map(a => `<button class="ichan f" data-pkg="${esc(a.pkg)}"><img src="${esc(a.art)}" alt=""><span>تطبيق ${esc(a.label)}</span></button>`).join('')
-    || `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم ولا تطبيقها على التلفزيون</div>`;
+  // ⚡ a screenful at a time (was every league channel at once, ~1 200 elements)
+  chunkList($('#s-b5'), [...B5LIST.map((c, i) => ({ c, i })), ...apps.map(a => ({ a }))],
+    x => x.c ? ichHtml(x.c, x.i, 'b5') : `<button class="ichan f" data-pkg="${esc(x.a.pkg)}"><img src="${esc(x.a.art)}" alt=""><span>تطبيق ${esc(x.a.label)}</span></button>`,
+    `<div class="empty">تنقلها: ${esc(who)} — ما لقيت بثها في القوائم ولا تطبيقها على التلفزيون</div>`);
   chunkList($('#s-b5f'), B5F.slice(0, 150), (c, i) => ichHtml({ ...c, name: c.name.replace(/ \[[^\]]*\]/g, '') + (c.cc ? ' · ' + c.cc.toUpperCase() : '') }, i, 'b5f'), `<div class="empty">${SPORTS ? 'ما فيه قنوات أجنبية مفتوحة لها الحين' : 'أجلب القنوات الأجنبية…'}</div>`);
 }
 async function loadIptv() {
@@ -3917,6 +3920,7 @@ function foldCounts() {
 }
 function foldToggle(id, open) {
   if (id === 'epgwrap') setTimeout(epgUi, 0);
+  else if (was === 'epgwrap') $('#s-epg').innerHTML = '';   // ⚡ leaving the guide frees its grid
   const w = $('#' + id); if (!w) return;
   const on = open ?? w.classList.contains('closed'); w.classList.toggle('closed', !on);
   OPEN[id] = on; try { localStorage.setItem('folds', JSON.stringify(OPEN)); } catch (e) {}
