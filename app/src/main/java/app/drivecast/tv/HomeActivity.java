@@ -513,6 +513,8 @@ public class HomeActivity extends Activity {
 
         /** the last problem the app met (Crash.java), for the settings */
         @JavascriptInterface
+        public void jsError(String m) { if (m != null && !m.isEmpty()) Crash.note(HomeActivity.this, "page: " + m.substring(0, Math.min(400, m.length()))); }
+        @JavascriptInterface
         public String lastProblem() { String c = Crash.read(HomeActivity.this); int n = c.indexOf('\n'); return n < 0 ? c : c.substring(0, Math.min(n, 220)); }
 
         @JavascriptInterface

@@ -674,6 +674,11 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
 <script src="wall/rk-masks.js"></script>
 <script src="wall/rk-faces.js"></script>
 <script>
+// 🧯 a page error is kept with the TV's problems (Crash.java), which go to DriveCast's server on their own — at most 10 a session
+(() => { let n = 0; const send = m => { try { if (n++ < 10 && window.TV && TV.jsError) TV.jsError(String(m).slice(0, 400)); } catch (e) {} };
+  addEventListener('error', e => send((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')));
+  addEventListener('unhandledrejection', e => send('promise: ' + (e.reason && (e.reason.message || e.reason) || '')));
+})();
 // ⚡ the timers: one rule for all of them — nothing runs while the page is hidden (the player in front), and a refresh that
 // comes while the remote is being used waits for a quiet moment (the browser's idle time), so a move never shares its frame
 (() => {
@@ -4269,6 +4274,9 @@ function move(dir) {
       const dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
       if (dir === 'left' ? dx < -5 : dir === 'right' ? dx > 5 : dir === 'up' ? dy < -5 : dy > 5) cand.push({ el, r, dx, dy });
     }
+    // ▲ from a page into the top bar lands on that page's own tab (not the nearest one, or the clock)
+    if (dir === 'up' && scope === document && !cur.closest('#tabs') && cand.length) { const tb = $('#tabs').getBoundingClientRect().bottom + 8;
+      if (cand.every(c => c.r.bottom <= tb)) { const t = $('.tab.on'); if (t && visible(t)) return t.focus(); } }
     let pick = null;
     if (H) {   // the same row: overlapping it by 40 % of the smaller height
       const row = cand.filter(c => Math.min(c.r.bottom, a.bottom) - Math.max(c.r.top, a.top) >= 0.4 * Math.min(c.r.height, a.height));
