@@ -936,9 +936,9 @@ public class PlayerActivity extends Activity {
             case "back": menuLv = 1; menuSel = menuM; menuFill(); return;
             case "matches": menuLv = 1; menuSel = 0; menuFill(); return;
             case "mpin": {   // ⚽ this channel joins every match's carriers (right after the match's own), and plays when none is found
-                String k = nOf(ch).trim().toLowerCase(Locale.ROOT); boolean on = !mpinHas(k);
+                String mk = nOf(ch).trim().toLowerCase(Locale.ROOT); boolean on = !mpinHas(mk);
                 java.util.Set<String> s2 = new java.util.HashSet<>(Access.set(this).getStringSet("mpins", new java.util.HashSet<>()));
-                if (on) s2.add(k); else s2.remove(k); Access.set(this).edit().putStringSet("mpins", s2).apply();
+                if (on) s2.add(mk); else s2.remove(mk); Access.set(this).edit().putStringSet("mpins", s2).apply();
                 HomeActivity hm2 = HomeActivity.alive; if (hm2 != null) hm2.run("window.mpinFromPlayer && mpinFromPlayer(" + chJson(ch) + "," + on + ")");
                 menuShow(false); flash(on ? "⚽ ثُبّتت للمباريات — تطلع مع ناقلي كل مباراة" : "أُلغي تثبيتها للمباريات"); return;
             }
