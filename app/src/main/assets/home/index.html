@@ -262,6 +262,8 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 body.nightdim #nightVeil{opacity:.42}
 #offline{position:fixed;top:18px;left:50%;transform:translate(-50%,-220px);visibility:hidden;z-index:9001;padding:12px 26px;border-radius:999px;background:rgba(255,69,58,.92);color:#fff;font-size:22px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
 body:not(.dev) .dev{display:none!important}
+#typeHint{position:fixed;bottom:48px;left:50%;transform:translate(-50%,20px);opacity:0;transition:.25s;background:rgba(20,22,28,.92);color:#fff;font-size:24px;padding:12px 26px;border-radius:999px;z-index:99999;pointer-events:none}#typeHint.on{opacity:1;transform:translate(-50%,0)}
+input[readonly]:not([type=time]){caret-color:transparent}
 #offline.on{transform:translate(-50%,0);visibility:visible}
 #offline.back{background:rgba(52,199,89,.92)}
 #p-iptv .fold>h2{cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 22px;margin:10px 0;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);font-size:30px;outline:none}
@@ -676,6 +678,27 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
 <script src="wall/rk-masks.js"></script>
 <script src="wall/rk-faces.js"></script>
 <script>
+// ⌨️ a text field is only selected when the focus reaches it (no keyboard popping up while moving with the arrows);
+// OK twice (or a double tap) opens it for writing, leaving it closes it again. The phone remote's typing still fills it.
+(() => {
+  const FIELD = 'input:not([type=time]):not([type=checkbox]):not([type=range]),textarea';
+  const lock = el => { if (el && el.matches && el.matches(FIELD) && !el.dataset.typing) { el.readOnly = true; el.inputMode = 'none'; } };
+  const open = el => { el.dataset.typing = '1'; el.readOnly = false; el.inputMode = el.type === 'url' ? 'url' : 'search'; el._opening = 1; el.blur(); setTimeout(() => { el._opening = 0; el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {} }, 30); hint(el, ''); };
+  const hint = (el, t) => { let h = document.getElementById('typeHint'); if (!h) { h = document.createElement('div'); h.id = 'typeHint'; document.body.appendChild(h); }
+    h.textContent = t; h.classList.toggle('on', !!t); clearTimeout(h._t); if (t) h._t = setTimeout(() => h.classList.remove('on'), 1800); };
+  let lastOk = 0, lastEl = null;
+  addEventListener('DOMContentLoaded', () => document.querySelectorAll(FIELD).forEach(lock));
+  addEventListener('focusin', e => lock(e.target), true);
+  addEventListener('focusout', e => { const el = e.target; if (el && el.dataset && el.dataset.typing && !el._opening && el.matches(FIELD)) { delete el.dataset.typing; lock(el); } }, true);
+  addEventListener('keydown', e => {
+    const el = document.activeElement;
+    if (!e.isTrusted || !el || !el.matches || !el.matches(FIELD) || el.dataset.typing || !/^(Enter|NumpadEnter)$/.test(e.key)) return;   // the phone remote's typing (typeText) still submits
+    e.preventDefault(); e.stopImmediatePropagation();
+    const now = Date.now();
+    if (lastEl === el && now - lastOk < 600) { lastOk = 0; open(el); } else { lastOk = now; lastEl = el; hint(el, 'اضغط OK مرة ثانية للكتابة'); }
+  }, true);
+  addEventListener('dblclick', e => { const el = e.target; if (el && el.matches && el.matches(FIELD) && !el.dataset.typing) open(el); }, true);
+})();
 // 🧯 a page error is kept with the TV's problems (Crash.java), which go to DriveCast's server on their own — at most 10 a session
 (() => { let n = 0; const send = m => { try { if (n++ < 10 && window.TV && TV.jsError) TV.jsError(String(m).slice(0, 400)); } catch (e) {} };
   addEventListener('error', e => send((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')));
@@ -2464,9 +2487,19 @@ function picksOf(res) {
 }
 const seriesPicks = () => picksOf(SERIES_PICKS);
 // the home's channels always start with these four, then the pinned ones in the order they were pinned, then the rest
-const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^(Oman Sports?( TV)?\b|عُ?مان الرياضية)/i, /^MBC ?4\b/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|القرآن الكريم)/i];
+// the home's channels, in this order: MBC 1, Oman Sport, MBC 4, Oman TV Live, beIN SPORTS 1·2·3 and Live Event, MBC's other
+// channels, Dubai Media's, Abu Dhabi's, then beIN SPORTS News (each found in the lists by its name, one that works first)
+const BEIN_N = n => new RegExp(`^(bein ?sports?|بي ?إن ?سبورت) ?${n}(?!\\d)(?!.*(english|\\ben\\b|eng\\b|fran|\\bfr\\b|usa|turk|\\btr\\b|max|xtra|premium|news|إخبار))`, 'i');
+const BEIN_EVENT = /bein.*live ?event|live ?event.*bein|بي ?إن.*(لايف|الحدث)/i;
+const BEIN_RES = [BEIN_N(1), BEIN_N(2), BEIN_N(3), BEIN_EVENT];
+const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^(Oman Sports?( TV)?\b|عُ?مان الرياضية)/i, /^MBC ?4\b/i, /^Oman TV (Mubashir|Mubasher|Live)/i,
+  BEIN_N(1), BEIN_N(2), BEIN_N(3), BEIN_EVENT,
+  /^MBC ?2\b/i, /^MBC ?3\b/i, /^MBC ?5\b/i, /^MBC Drama\b(?!.*\+)/i, /^MBC Action/i, /^MBC Max/i, /^MBC Masr\b(?! ?2| ?drama)/i, /^MBC Masr ?2/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC Bollywood/i, /^MBC Wanas/i,
+  /^Dubai TV\b/i, /^Sama Dubai/i, /^Dubai One/i, /^Dubai Sports?( ?1)?\b(?! ?[2-9])/i, /^Dubai Sports? ?2/i, /^Dubai Sports? ?3/i, /^Dubai Racing/i, /^Dubai Zaman/i, /^Noor Dubai/i,
+  /^Abu ?Dhabi\b(?!.*(sport|emarat|emirat))/i, /^(Abu ?Dhabi )?(Al ?Emarat|Emarat TV)/i, /^Abu ?Dhabi Sports?( ?1)?\b(?! ?[2-9])/i, /^Abu ?Dhabi Sports? ?2/i, /^Yas\b/i, /^Majid\b/i,
+  /^(bein ?sports? ?news|بي ?إن ?سبورت الإخبارية)/i];
 // ↔ the home's channels in the user's own order: «رتّب» (long press on a channel) → ◀ ▶ move it, OK (or back) keeps the order
-const HORD = () => { try { return JSON.parse(localStorage.getItem('homeorder') || '[]'); } catch (e) { return []; } };
+const HORD = () => { try { return JSON.parse(localStorage.getItem('homeorder2') || '[]'); } catch (e) { return []; } };
 let REORD = null;
 function reorderStart(i) {
   REORD = { i }; document.body.classList.add('reorder');
@@ -2475,7 +2508,7 @@ function reorderStart(i) {
 }
 function reorderEnd() {
   REORD = null; document.body.classList.remove('reorder');
-  try { localStorage.setItem('homeorder', JSON.stringify(LIVE.map(favKey))); } catch (e) {}
+  try { localStorage.setItem('homeorder2', JSON.stringify(LIVE.map(favKey))); } catch (e) {}
   const say = $('#liveNote'); if (say) say.textContent = '';
   liveRefresh(true);
 }
@@ -2576,7 +2609,10 @@ function liveUi() {
   homeKeysSave();
   const ord = HORD(); if (ord.length) { const known = LIVE.filter(c => ord.includes(favKey(c))).sort((a, b) => ord.indexOf(favKey(a)) - ord.indexOf(favKey(b))); let k = 0; LIVE = LIVE.map(c => ord.includes(favKey(c)) ? known[k++] : c); }   // a channel the saved order lacks keeps its usual place
   if (SERIES()) nowUi();
+  const was = document.activeElement, keepI = was && was.closest && was.closest('#s-live') ? was.dataset.i : null;
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
+  if (keepI != null) { const b = $(`#s-live [data-i="${keepI}"]`) || $('#s-live .ichan'); if (b) b.focus({ preventScroll: true }); }
+  else if (window.__first && !LASTKEY && LIVE.length && $('#p-home').classList.contains('on') && (was === document.body || (was && was.matches && was.matches('.tab.on')))) window.__first = 0;   // nothing pressed yet: the first channel again
   if (!window.__first && LIVE.length && $('#p-home').classList.contains('on') && !LASTKEY) { window.__first = 1; const f = $('#s-live .ichan'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ block: 'center', inline: 'nearest' }); } }   // the first selection: the home's first channel
 }
 // ⚽ the five big leagues: who shows them in the region (the same rights as the match card), today's matches of each
@@ -3345,6 +3381,9 @@ function matchLinks(m) {
   const pools = MPOOLS(), v = mChannels(m).map(want => { const c = bestFor(want, pools); if (c) return { want, c }; const f = carrierFind(want, pools); return f ? { want, c: f, found: 1 } : { want, c: null }; });
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
   for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
+  // ⭐ among a match's own carriers, beIN SPORTS 1, 2, 3 and Live Event come first (the order of the rest stays)
+  const pr = x => { const n = x.c ? x.c.name : x.want, i = BEIN_RES.findIndex(r => r.test(n)); return i >= 0 ? i : 9; };
+  v.sort((a, b) => (a.c ? 0 : 1) - (b.c ? 0 : 1) || pr(a) - pr(b));
   m.__lk = { t: Date.now(), v }; return v;
 }
 // 🌍 no named carrier found in the lists: the sports channels of the two sides' own countries, read from the lists as they are
@@ -4370,7 +4409,10 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-17b', NEWS_ROWS = [
+const NEWS = '2026-11-17c', NEWS_ROWS = [
+  ['📺', 'قنوات الرئيسية بالترتيب: MBC 1، عُمان الرياضية، MBC 4، عُمان مباشر، beIN 1·2·3 وLive Event، باقي MBC، دبي، أبوظبي، ثم beIN الإخبارية'],
+  ['⌨️', 'خانات الكتابة ما تفتح الكيبورد وأنت تتنقّل: اضغط OK مرتين للكتابة'],
+  ['⚽', 'في المباريات: beIN 1 و2 و3 وLive Event أولاً بين قنوات المباراة'],
   ['📱', 'ربط الجوال بمسحة: الإعدادات ← الويب، امسح الرمز بكاميرا الجوال وأنت على واي فاي البيت'],
   ['📤', 'كمّل على التلفزيون: من DriveCast أو مدار اضغط «كمّل على جهاز ثاني»، والتلفزيون يسألك ويشغّله'],
   ['✨', 'واجهة أنظف: أدوات الفحص والتجربة صارت في «وضع المطوّر» (الإعدادات ← الجهاز)، وكرت المباراة يختفي إذا ما فيه شي يعرضه'],
