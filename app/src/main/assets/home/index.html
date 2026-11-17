@@ -2488,12 +2488,13 @@ function picksOf(res) {
 const seriesPicks = () => picksOf(SERIES_PICKS);
 // the home's channels always start with these four, then the pinned ones in the order they were pinned, then the rest
 // the home's channels, in this order: MBC 1, Oman Sport, MBC 4, Oman TV Live, beIN SPORTS 1·2·3 and Live Event, MBC's other
-// channels, Dubai Media's, Abu Dhabi's, then beIN SPORTS News (each found in the lists by its name, one that works first)
+// Quran, MBC's other channels, Dubai Media's, Abu Dhabi's, then beIN SPORTS News (each found in the lists by its name, one that
+// works first); played from the home, the player's list goes on with every other channel of every playlist
 const BEIN_N = n => new RegExp(`^(bein ?sports?|بي ?إن ?سبورت) ?${n}(?!\\d)(?!.*(english|\\ben\\b|eng\\b|fran|\\bfr\\b|usa|turk|\\btr\\b|max|xtra|premium|news|إخبار))`, 'i');
 const BEIN_EVENT = /bein.*live ?event|live ?event.*bein|بي ?إن.*(لايف|الحدث)/i;
 const BEIN_RES = [BEIN_N(1), BEIN_N(2), BEIN_N(3), BEIN_EVENT];
 const HOME_TOP = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^(Oman Sports?( TV)?\b|عُ?مان الرياضية)/i, /^MBC ?4\b/i, /^Oman TV (Mubashir|Mubasher|Live)/i,
-  BEIN_N(1), BEIN_N(2), BEIN_N(3), BEIN_EVENT,
+  BEIN_N(1), BEIN_N(2), BEIN_N(3), BEIN_EVENT, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|القرآن الكريم)/i,
   /^MBC ?2\b/i, /^MBC ?3\b/i, /^MBC ?5\b/i, /^MBC Drama\b(?!.*\+)/i, /^MBC Action/i, /^MBC Max/i, /^MBC Masr\b(?! ?2| ?drama)/i, /^MBC Masr ?2/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC Bollywood/i, /^MBC Wanas/i,
   /^Dubai TV\b/i, /^Sama Dubai/i, /^Dubai One/i, /^Dubai Sports?( ?1)?\b(?! ?[2-9])/i, /^Dubai Sports? ?2/i, /^Dubai Sports? ?3/i, /^Dubai Racing/i, /^Dubai Zaman/i, /^Noor Dubai/i,
   /^Abu ?Dhabi\b(?!.*(sport|emarat|emirat))/i, /^(Abu ?Dhabi )?(Al ?Emarat|Emarat TV)/i, /^Abu ?Dhabi Sports?( ?1)?\b(?! ?[2-9])/i, /^Abu ?Dhabi Sports? ?2/i, /^Yas\b/i, /^Majid\b/i,
@@ -2818,6 +2819,7 @@ async function resolveChannel(c) {
   return fresh ? { ...c, url: fresh.url, logo: c.logo || fresh.logo } : c;
 }
 async function playChannel(list, i) {
+  const fromHome = list === LIVE;
   if (list && list[i] && list[i].dyn) {
     const r = await dynResolve(list[i]);
     if (r && r.app) return r.app.go();
@@ -2834,6 +2836,11 @@ async function playChannel(list, i) {
     list = list.filter((x, k) => k === i || !/^yt-live:/.test(x.url)); i = list.indexOf(chosen);
   }
   if (list) { const c0 = list[i]; list = list.filter((x, k) => k === i || !/^(dyn|yt-search):/.test(x.url)); i = list.indexOf(c0); }   // no unresolved card in the player's ↑↓
+  // 🏠 from the home: its channels first (the group «الرئيسية»), then every other channel of every playlist — ▶ in the player
+  // picks a group, ▶ again a playlist
+  if (fromHome && list) { const c0 = list[i], seen = new Set(list.map(x => x.url));
+    const rest = [...STARL, ...ILIST].filter(x => x && /^https?:/.test(x.url) && !seen.has(x.url) && !/geo-blocked|radio|\bFM\b/i.test(x.name) && (seen.add(x.url), true));
+    list = [...list.map(x => ({ ...x, group: '🏠 الرئيسية', pl: x.pl || 'الرئيسية' })), ...rest]; i = list.findIndex(x => x.url === c0.url); }
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
   if (radioOn) closePlayer();
