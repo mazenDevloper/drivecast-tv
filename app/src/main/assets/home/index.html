@@ -3463,9 +3463,13 @@ async function mDetails(list) {
 }
 // ⚽ a match played: its carriers first (one that fails → the player tries the next by itself), then the channel of every other
 // live match — ▲▼ in the player go through them all
+// ⚽ the channels pinned for matches (player menu «⚽ ثبّت للمباريات»): with every match, right after its own carriers
+const MPINS = () => { try { return JSON.parse(localStorage.mpins || '[]'); } catch (e) { return []; } };
+window.mpinFromPlayer = (c, on) => { const k = favKey(c), l = MPINS().filter(x => favKey(x) !== k); if (on) l.unshift({ name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' }); try { localStorage.mpins = JSON.stringify(l.slice(0, 12)); } catch (e) {} };
 function matchPool(m, r) {
   const tag = x => `⚽ ${x.home?.name || ''} × ${x.away?.name || ''}`;
   const own = (r.pool || [r.c]).map(c => ({ ...c, group: tag(m) })), seen = new Set(own.map(c => c.url));
+  for (const c of MPINS()) if (c.url && !seen.has(c.url)) { seen.add(c.url); own.push({ ...c, group: '⚽ مثبّتة للمباريات' }); }
   for (const x of MLIST || []) { if (x === m || x.status !== 'live') continue; const q = matchRoute(x); if (q && q.c && !seen.has(q.c.url)) { seen.add(q.c.url); own.push({ ...q.c, group: tag(x) }); } }
   return own;
 }
@@ -3474,6 +3478,7 @@ function playMatch(i, other) {
   const m = MLIST[i]; if (!m) return; if (m.status === 'finished' && !other) return goals(m); const r = matchRoute(m);
   if (r && r.c) { if (other && TV.external) return resolveChannel(r.c).then(c => TV.external(c.url)); MATCHPLAY = true; return playChannel(matchPool(m, r), 0); }
   if (r && r.app) return TV.open(r.app.pkg);
+  if (MPINS().length) { MATCHPLAY = true; return playChannel(MPINS().map(c => ({ ...c, group: '⚽ مثبّتة للمباريات' })), 0); }   // no carrier found: the pinned ones
   const n = $('#mnote'); if (n) n.textContent = `ما لقيت «${mChannels(m)[0] || 'القناة الناقلة'}» في قنواتك ولا تطبيقها على التلفزيون`;
 }
 

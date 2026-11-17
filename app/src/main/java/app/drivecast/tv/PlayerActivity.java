@@ -128,6 +128,7 @@ public class PlayerActivity extends Activity {
         return out;
     }
     /** ⭐ on / off: shown here at once; the home page saves it with DriveCast (its cloud list), as a star there does */
+    private boolean mpinHas(String key) { return Access.set(this).getStringSet("mpins", new java.util.HashSet<>()).contains(key); }
     private boolean favToggle(int ch) {
         try {
             String nm = names != null && ch < names.length && names[ch] != null ? names[ch] : ""; if (nm.isEmpty()) return false;
@@ -835,6 +836,7 @@ public class PlayerActivity extends Activity {
             favs = favSet(); pins = pinned();
             menuRow("fav", favs.contains(key) ? "☆  إزالة من المفضّلة" : "⭐  أضف إلى المفضّلة");
             menuRow("home", onHome(key) ? "🗑  إزالة من الرئيسية" : "🏠  أضف إلى الرئيسية");
+            menuRow("mpin", mpinHas(key) ? "⚽  إلغاء تثبيتها للمباريات" : "⚽  ثبّت للمباريات");
             if (HomeActivity.alive != null) menuRow("reorder", "↔  رتّب قنوات الرئيسية");
             if (mts.length() > 0) menuRow("matches", "⚽  المباريات الآن  (" + mts.length() + ")");
             menuRow("guide", "📅  دليل البرامج");
@@ -933,6 +935,13 @@ public class PlayerActivity extends Activity {
         switch (k) {
             case "back": menuLv = 1; menuSel = menuM; menuFill(); return;
             case "matches": menuLv = 1; menuSel = 0; menuFill(); return;
+            case "mpin": {   // ⚽ this channel joins every match's carriers (right after the match's own), and plays when none is found
+                String k = nOf(ch).trim().toLowerCase(Locale.ROOT); boolean on = !mpinHas(k);
+                java.util.Set<String> s2 = new java.util.HashSet<>(Access.set(this).getStringSet("mpins", new java.util.HashSet<>()));
+                if (on) s2.add(k); else s2.remove(k); Access.set(this).edit().putStringSet("mpins", s2).apply();
+                HomeActivity hm2 = HomeActivity.alive; if (hm2 != null) hm2.run("window.mpinFromPlayer && mpinFromPlayer(" + chJson(ch) + "," + on + ")");
+                menuShow(false); flash(on ? "⚽ ثُبّتت للمباريات — تطلع مع ناقلي كل مباراة" : "أُلغي تثبيتها للمباريات"); return;
+            }
             case "fav": { boolean on = favToggle(ch); menuShow(false); flash(on ? "⭐ أُضيفت إلى المفضّلة" : "أُزيلت من المفضّلة"); return; }
             case "home": {
                 boolean was = onHome(nOf(ch).trim().toLowerCase(Locale.ROOT));
