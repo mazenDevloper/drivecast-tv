@@ -71,6 +71,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .ichan{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,22,30,.86);border-color:rgba(255,255,255,.14)}
 .tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
 .heroRow{display:flex;gap:28px;align-items:stretch}
+.qrrow{align-items:center}.qrbox{width:220px;height:220px;flex:none;background:#fff;border-radius:18px;padding:6px}.qrbox svg{width:100%;height:100%;display:block}
 .heroRow.nom #nextm{display:none}.heroRow.nom .hero{width:auto;flex:1}
 .hero{display:flex;flex-direction:column;gap:12px;width:1040px;flex:none;padding:22px 32px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
 .hero .l{flex:1;display:flex;flex-direction:column;gap:8px}
@@ -1799,6 +1800,22 @@ setInterval(() => {
   }
 }, 30e3);
 let OFFERP = null;
+// 📤 «كمّل على التلفزيون»: what DriveCast or Madar sends from the hub (Remote.java) — the TV asks, OK plays it here
+window.hubOffer = (it, from) => {
+  if (!it) return;
+  const title = String(it.title || it.name || '').slice(0, 80), who = String(from || '').split(' · ')[0] || 'جهازك';
+  let c = null;
+  if (it.kind === 'yt' && /^[\w-]{11}$/.test(it.id || '')) c = { name: title || 'يوتيوب', url: 'https://www.youtube.com/watch?v=' + it.id + (it.t > 5 ? '&t=' + Math.round(it.t) : ''), logo: it.thumb || '' };
+  else if (/^https?:\/\//.test(it.url || '')) c = { name: title || 'قناة', url: it.url, logo: it.thumb || '' };
+  if (!c) return;
+  const t = `📤 ${who} يرسل: ${c.name}`;
+  OFFERP = () => playChannel([c], 0);
+  if (TV.playerAlert && TV.playerAlert(t)) return;
+  if (document.body.classList.contains('ambient')) ambient(false);
+  CTX = { offerp: 1, b: document.activeElement }; $('#ctxName').textContent = t; $('#ctxLogo').src = c.logo || '';
+  $('#ctxBody').innerHTML = `<button class="f" data-ctx="oplay"><i>▶︎</i>شغّله هنا</button><button class="f" data-ctx="later"><i>✕</i>لا</button>`;
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+};
 function favUi() {
   loadFavs();
   $('#s-myfav').innerHTML = MYFAV.map((c, i) => ichHtml(c, i, 'my')).join('') || '<div class="empty">اضغط مطوّلاً على أي قناة ← ⭐ أضف للمفضّلة</div>';
@@ -3647,6 +3664,7 @@ function allSections() {
     ['🌐', 'الويب', (() => { let w = {}; try { w = JSON.parse(TV.webInfo ? TV.webInfo() : '{}'); } catch (e) {} return [
       { i: 'الحالة', t: S('web', 'on') === 'off' ? 'مطفّي' : w.online ? '✅ التلفزيون متصل — تقدر تتحكم فيه من أي مكان' : '… يتصل' },
       { i: 'الرابط', t: (w.url || '').replace('https://', '') },
+      ...(TV.phoneUrl() ? [{ qr: TV.phoneUrl().replace(/\/?$/, '') + '/pair?back=' + encodeURIComponent('https://mazendevloper.github.io/drivecast-tv/remote/'), l: '📱 امسحه بكاميرا الجوال وأنت على واي فاي البيت: ينربط الريموت مرة وحدة ويشتغل بعدها من أي مكان' }] : []),
       { i: 'عنوان التلفزيون (للربط)', t: (TV.phoneUrl() || '').replace('http://', '').replace(':8080', '') || 'يتصل بالواي فاي…' },
       { k: 'web', l: 'التحكم من الويب', o: ON, d: 'on' },
       { a: '', o: [['newpin', '🔒 فكّ ربط كل المتصفحات']] },
@@ -3672,6 +3690,7 @@ function allSections() {
   ];
 }
 function rowHtml(r) {
+  if (r.qr) return `<div class="srow qrrow"><span>${r.l}</span><div class="qrbox" data-qr="${esc(r.qr)}"></div></div>`;
   if (r.i) return `<div class="srow"><span>${r.i}</span><em>${esc(r.t)}</em></div>`;
   if (r.a !== undefined) return `<div class="srow"><span>${r.a}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f" data-sact="${v}">${l}</button>`).join('')}</div></div>`;
   const cur = String(r.v ?? S(r.k, r.d));
@@ -3679,7 +3698,14 @@ function rowHtml(r) {
     return `<div class="srow"><span>${r.l}</span><div class="sopt num">${b(-5, '−٥')}${b(-1, '−١')}<b>${AR(cur)} د</b>${b(1, '+١')}${b(5, '+٥')}</div></div>`; }
   return `<div class="srow ${r.o.length > 4 ? 'wide' : ''}"><span>${r.l}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f ${cur === String(v) ? 'on' : ''}" data-set="${r.k}" data-v="${esc(v)}">${l}</button>`).join('')}</div></div>`;
 }
-function setsBody() { $('#sbody').innerHTML = sections()[SEC][2].filter(r => !r.when || r.when()).map(rowHtml).join(''); }
+function setsBody() { $('#sbody').innerHTML = sections()[SEC][2].filter(r => !r.when || r.when()).map(rowHtml).join(''); qrFill(); }
+// 📱 a QR code drawn on the TV (qr.js: qrcode-generator, MIT), loaded the first time one is shown
+function qrFill() {
+  const boxes = [...document.querySelectorAll('.qrbox[data-qr]')]; if (!boxes.length) return;
+  const draw = () => boxes.forEach(b => { try { const q = qrcode(0, 'M'); q.addData(b.dataset.qr); q.make(); b.innerHTML = q.createSvgTag({ cellSize: 6, margin: 3, scalable: true }); } catch (e) {} });
+  if (window.qrcode) return draw();
+  const sc = document.createElement('script'); sc.src = 'qr.js'; sc.onload = draw; document.head.appendChild(sc);
+}
 function setsUi() {
   $('#snav').innerHTML = sections().map((x, i) => `<button class="f ${i === SEC ? 'on' : ''}" data-sec="${i}"><i>${x[0]}</i>${x[1]}</button>`).join('');
   setsBody(); $(`#snav [data-sec="${SEC}"]`)?.focus();
@@ -4339,7 +4365,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-17a', NEWS_ROWS = [
+const NEWS = '2026-11-17b', NEWS_ROWS = [
+  ['📱', 'ربط الجوال بمسحة: الإعدادات ← الويب، امسح الرمز بكاميرا الجوال وأنت على واي فاي البيت'],
+  ['📤', 'كمّل على التلفزيون: من DriveCast أو مدار اضغط «كمّل على جهاز ثاني»، والتلفزيون يسألك ويشغّله'],
   ['✨', 'واجهة أنظف: أدوات الفحص والتجربة صارت في «وضع المطوّر» (الإعدادات ← الجهاز)، وكرت المباراة يختفي إذا ما فيه شي يعرضه'],
   ['✏️', 'دليل البرامج: ✏️ على أي قناة (أو ضغطة مطوّلة ← «اربط دليل البرامج») تختار له الدليل الصحيح من أقرب الأسماء — بنفس الرقم والدولة'],
   ['📅', 'الدليل يلقى قنوات أكثر بنفسه: MBC وعُمان وأبوظبي ودبي وبي إن (بي إن 1 ما ياخذ دليل 2 أو 3)'],

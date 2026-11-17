@@ -35,7 +35,7 @@ final class Remote {
     private static WebSocket ws;
     private static String id;
     private static int backoff = 2, wrong;
-    private static long lockedUntil;
+    private static long lockedUntil, lastOffer;
     private static final Handler h = new Handler(Looper.getMainLooper());
     private static final OkHttpClient http = new OkHttpClient.Builder().pingInterval(40, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build();
 
@@ -176,6 +176,15 @@ final class Remote {
             return;
         }
         if ("dctv-changed".equals(d.optString("type")) && id.equals(d.optString("tv"))) { cloudGet(); return; }
+        // «كمّل على التلفزيون»: DriveCast or Madar sends what is playing (a YouTube video, a channel); the TV asks first (OK
+        // plays it, like AirPlay from a device it doesn't know) — nothing plays on its own from the hub
+        if ("msg".equals(d.optString("type")) && (m = d.optJSONObject("msg")) != null && "open".equals(m.optString("type")) && m.optJSONObject("item") != null) {
+            long now = System.currentTimeMillis(); if (now - lastOffer < 4000) return; lastOffer = now;
+            String from = d.optJSONObject("from") != null ? d.optJSONObject("from").optString("name") : "";
+            String js = "window.hubOffer && hubOffer(" + m.optJSONObject("item") + "," + JSONObject.quote(from) + ")";
+            h.post(() -> { HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.evaluateJavascript(js, null); });
+            return;
+        }
         if (!"msg".equals(d.optString("type")) || (m = d.optJSONObject("msg")) == null || !"dctv".equals(m.optString("type"))) return;
         String to = d.optJSONObject("from") != null ? d.optJSONObject("from").optString("id") : "";
         if (to.isEmpty()) return;

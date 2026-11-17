@@ -38,7 +38,7 @@ import java.util.Set;
  * the city, the phone page's address. Pressing Home always comes back here.
  */
 public class HomeActivity extends Activity {
-    private WebView web;
+    WebView web;   // Remote: «كمّل على التلفزيون» asks through the page
     /** the home screen while it is in front (the phone remote drives it); null when another app is open */
     static volatile HomeActivity front;
     /** the home screen while it exists at all (the web version calls its bridge even when a film is in front) */
