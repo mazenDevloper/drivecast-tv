@@ -61,7 +61,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .tab{white-space:nowrap;padding:12px 22px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
-.tab[data-n]::before{content:attr(data-n);display:inline-block;min-width:24px;margin-inline-end:8px;font-size:16px;font-weight:700;opacity:.45;font-variant-numeric:tabular-nums}
+.tab[data-n]::before{content:none;display:none;min-width:24px;margin-inline-end:8px;font-size:16px;font-weight:700;opacity:.45;font-variant-numeric:tabular-nums}
 .wx{font-size:24px;color:#d6dbe1;min-width:180px;text-align:left}
 .f{outline:none;transition:transform .18s ease,box-shadow .18s ease}
 .f:focus{transform:scale(1.06);box-shadow:0 0 0 4px rgba(255,255,255,.92),0 26px 50px rgba(0,0,0,.55);z-index:2}
@@ -71,6 +71,7 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .ichan{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03)),rgba(16,22,30,.86);border-color:rgba(255,255,255,.14)}
 .tab.f:focus{transform:none;box-shadow:0 0 0 3px var(--accent)}
 .heroRow{display:flex;gap:28px;align-items:stretch}
+.heroRow.nom #nextm{display:none}.heroRow.nom .hero{width:auto;flex:1}
 .hero{display:flex;flex-direction:column;gap:12px;width:1040px;flex:none;padding:22px 32px;border-radius:40px;background:var(--card);border:1px solid var(--line)}
 .hero .l{flex:1;display:flex;flex-direction:column;gap:8px}
 .hero small{font-size:24px;color:var(--accent);font-weight:600}
@@ -258,8 +259,9 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 /* ⭐ on every channel: tap / click it — with the remote, hold OK on the channel */
 #nightVeil{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9000;transition:opacity 4s}
 body.nightdim #nightVeil{opacity:.42}
-#offline{position:fixed;top:18px;left:50%;transform:translate(-50%,-140%);z-index:9001;padding:12px 26px;border-radius:999px;background:rgba(255,69,58,.92);color:#fff;font-size:22px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
-#offline.on{transform:translate(-50%,0)}
+#offline{position:fixed;top:18px;left:50%;transform:translate(-50%,-220px);visibility:hidden;z-index:9001;padding:12px 26px;border-radius:999px;background:rgba(255,69,58,.92);color:#fff;font-size:22px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
+body:not(.dev) .dev{display:none!important}
+#offline.on{transform:translate(-50%,0);visibility:visible}
 #offline.back{background:rgba(52,199,89,.92)}
 #p-iptv .fold>h2{cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 22px;margin:10px 0;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);font-size:30px;outline:none}
 #p-iptv .fold>h2::before{content:'▾';font-size:24px;opacity:.7;transition:transform .25s}
@@ -595,7 +597,7 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
       <button class="f ri" data-ipane="epgwrap"><i>📅</i><b>دليل البرامج</b><small></small></button>
       <button class="f ri" data-ipane="m3uwrap"><i>📂</i><b>قوائمي M3U</b><small></small></button>
       <button class="f ri" data-ipane="m3uvwrap"><i>🔗</i><b>افتح رابط M3U</b><small></small></button>
-      <button class="f ri scanri" data-act="scan-all"><i>🩺</i><b>افحص كل القنوات</b><small id="scanBadge"></small></button>
+      <button class="f ri scanri dev" data-act="scan-all"><i>🩺</i><b>افحص كل القنوات</b><small id="scanBadge"></small></button>
     </nav>
     <div class="scroll ipanes" id="iPanes">
     <div class="ipane" id="pinwrap" hidden><h2>📌 المثبّتة في الأعلى <small style="font-size:18px;font-weight:400;opacity:.6">· ضغطة مطوّلة على أي قناة ← «ثبّت في الأعلى»</small></h2><div class="shelf" id="s-pin" style="flex-wrap:wrap"></div></div>
@@ -702,7 +704,7 @@ const LITE = (() => { try { return !!(TV.lite && TV.lite()) || /[?&]lite=1\b/.te
 if (LITE) document.documentElement.classList.add('lite');
 // ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
 let SET = {};
-function loadSet() { try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
+function loadSet() { setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
 const S = (k, d) => SET[k] ?? d;
 function setPref(k, v) { SET[k] = v; if ((k === 'fx' || k === 'ring' || k === 'hud') && typeof fxApply === 'function') setTimeout(fxApply, 0); try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
 loadSet();
@@ -1824,7 +1826,9 @@ document.addEventListener('keydown', () => { const t = Date.now(); LASTKEY = t; 
 const busyKeys = () => Date.now() - LASTKEY < 4000;
 // ---- filters (checkboxes) on the scan's findings + a name search
 const FILT = { ok: true, k4: false, fhd: false, hd: false, hdr: false, b10: false, avc: false, hevc: false, q: '' };
-const FILT_CHIPS = [['ok', '✅ تعمل فقط'], ['k4', '4K'], ['fhd', 'FHD ↑'], ['hd', 'HD ↑'], ['hdr', 'HDR'], ['b10', '10-bit'], ['avc', 'H.264'], ['hevc', 'HEVC']];
+const FILT_ALL = [['ok', '✅ تعمل فقط'], ['k4', '4K'], ['fhd', 'Full HD وأعلى'], ['hd', 'HD وأعلى'], ['hdr', 'HDR'], ['b10', '10-bit'], ['avc', 'H.264'], ['hevc', 'HEVC']];
+const FILT_DEV = new Set(['hdr', 'b10', 'avc', 'hevc']);
+let FILT_CHIPS = FILT_ALL;
 const filtOn = () => FILT.q.trim() !== '' || FILT_CHIPS.some(([k]) => FILT[k]);
 const arNorm = t => String(t || '').toLowerCase().replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[\u064B-\u0652ـ]/g, '').replace(/\s+/g, ' ').trim();
 function passFilt(c) {
@@ -1841,6 +1845,7 @@ function passFilt(c) {
   return true;
 }
 function filtUi() {
+  FILT_CHIPS = DEV() ? FILT_ALL : FILT_ALL.filter(([k]) => !FILT_DEV.has(k)); if (!DEV()) FILT_DEV.forEach(k => { FILT[k] = false; });
   const box = $('#s-ifilt'); if (!box) return;
   const n = Object.keys(SCAN).length;
   box.innerHTML = `<button class="chip f" data-act="scan-all">🩺 ${SCANST.running ? 'الفحص شغّال…' : 'افحص الكل الآن'}</button>` + FILT_CHIPS.map(([k, t]) => `<button class="chip f chk ${FILT[k] ? 'on' : ''}" data-ifilt="${k}">${FILT[k] ? '☑' : '☐'} ${t}</button>`).join('')
@@ -2709,6 +2714,7 @@ function nextTv(m) {
 // 📺 وضع المسلسلات: the top card is «الآن في MBC 1» — its programme now (Shahid's guide, in Arabic), how far, and what's next
 function nowChannel() { return seriesPicks().find(c => /^MBC ?1\b/i.test(c.name)) || null; }
 function nowUi() {
+  $('.heroRow').classList.remove('nom');
   const el = $('#nextm'), c = nowChannel(); el.classList.add('series'); $('#miniM').hidden = true;
   if (!c) { el.style.backgroundImage = ''; el.innerHTML = '<small>الآن في MBC 1</small><div class="empty">قناة MBC 1 مو موجودة في قوائمك</div>'; return; }
   const rows = epgRows(c), now = Date.now() / 1000, r = rows[0] && rows[0][0] <= now ? rows[0] : null, nx = r ? rows[1] : rows[0];
@@ -2722,7 +2728,9 @@ function nextUi() {
   if (SERIES()) return nowUi();
   $('#nextm').classList.remove('series'); $('#nextm').style.backgroundImage = '';
   const el = $('#nextm'), m = NEXTM;
-  if (!m) { el.innerHTML = '<small>أقرب مباراة</small><div class="empty">لا مباريات قريبة لفرقك المميّزة بالجزيرة في DriveCast</div>'; $('#miniM').hidden = true; return; }
+  // no match of the user's teams soon: the card shows what is on MBC 1 now (useful) rather than an empty half of the screen
+  $('.heroRow').classList.toggle('nom', !m && !nowChannel());   // nothing to show: the card steps aside and the prayer card takes the row
+  if (!m) { if (nowChannel()) return nowUi(); el.innerHTML = '<small>أقرب مباراة</small><div class="empty">ما فيه مباريات لفرقك اليوم</div>'; $('#miniM').hidden = true; return; }
   $('#miniM').hidden = false;
   const rule = TVRULES.find(r => r[0].test(m.league?.name || '')), d = new Date(m.timestamp * 1000), live = m.status === 'live';
   const today = NOW(), tom = NOW(); tom.setDate(tom.getDate() + 1);
@@ -3553,9 +3561,14 @@ function show(page, soft) {
 }
 // ⚙️ settings: every part of the TV in one place — sections on the right, their choices on the left (0 on the remote)
 const ON = [['on', 'نعم'], ['off', 'لا']], SHOW = [['on', 'يظهر'], ['off', 'مخفي']];
+function DEV() { return S('dev', 'off') === 'on'; }   // 🛠 the technical tools (scan, codecs, time simulation, player internals) show only in developer mode
 let SEC = 0;
 function mouseState() { try { return JSON.parse(TV.mouse ? TV.mouse() : '{}') || {}; } catch (e) { return {}; } }
 function sections() {
+  const dev = DEV();
+  return allSections().filter(x => dev || !x[3]).map(x => [x[0], x[1], x[2].filter(r => dev || !r.dev)]).filter(x => x[2].length);
+}
+function allSections() {
   const m = mouseState(), u = TV.phoneUrl();
   return [
     ['🕌', 'الصلاة والأذان', [
@@ -3596,25 +3609,25 @@ function sections() {
       { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
       { k: 'hlogo', l: 'شعار القناة', o: [['clear', 'بدون خلفية'], ['tile', 'على مربع أبيض']], d: 'clear' },
       { k: 'up4k', l: '🔷 تحسين الصورة (توضيح الحواف، وتكبير إلى 4K إذا كانت الشاشة 4K — يطفئ نفسه إذا الجهاز ما لحق)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
-      { k: 'livebg', l: '🌅 خلفية حيّة خلف القوائم (الشمس والسماء والقمر تتحرّك — أبطأ على التلفزيون)', o: ON, d: 'off' },
-      { k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
-      { k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
+      { dev: 1, k: 'livebg', l: '🌅 خلفية حيّة خلف القوائم (الشمس والسماء والقمر تتحرّك — أبطأ على التلفزيون)', o: ON, d: 'off' },
+      { dev: 1, k: 'lite', l: '⚡ الواجهة الخفيفة (بدون زجاج شفاف — أسرع بكثير على التلفزيون)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
+      { dev: 1, k: 'motion', l: 'الحركة والتكبير عند التحديد', o: [['on', 'نعم'], ['off', 'لا (أسرع على الأجهزة الضعيفة)']], d: 'on' },
     ]],
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
     ['📺', 'القنوات والمشغّل', [
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'up4k', l: '🔷 تحسين الصورة (توضيح الحواف، وتكبير إلى 4K إذا كانت الشاشة 4K — يطفئ نفسه إذا الجهاز ما لحق)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
-      { k: 'ua', l: 'هوية المشغّل عند سيرفرات IPTV', o: [['vlc', 'مشغّل IPTV (VLC) — الأكثر قبولاً'], ['app', 'DriveCast TV'], ['browser', 'متصفح']], d: 'vlc' },
+      { dev: 1, k: 'ua', l: 'هوية المشغّل عند سيرفرات IPTV', o: [['vlc', 'مشغّل IPTV (VLC) — الأكثر قبولاً'], ['app', 'DriveCast TV'], ['browser', 'متصفح']], d: 'vlc' },
       { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },
       { k: 'livepic', l: 'صورة حيّة (طيور، حركة خفيفة)', o: [['on', 'نعم'], ['off', 'لا']], d: LITE ? 'off' : 'on' },
       { k: 'player', l: 'تشغيل البث', o: [['in', 'مشغّل DriveCast'], ['ext', 'مشغّل آخر (VLC…)']], d: 'in' },
       { k: 'pip', l: '📺 صورة داخل صورة (Home والقناة شغّالة → تكمل في الزاوية)', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'autolast', l: '▶ آخر قناة لما يشتغل التلفزيون', o: [['on', 'نعم'], ['off', 'لا']], d: 'on' },
       { k: 'sleep', l: '⏲ مؤقت النوم (يوقف القناة إذا ما لمست الريموت)', o: [['0', 'إيقاف'], ['30', '٣٠ د'], ['60', 'ساعة'], ['90', 'ساعة ونص'], ['120', 'ساعتين'], ['180', '٣ ساعات']], d: '0' },
-      { k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
-      { k: 'fx', l: '⚡ الشكل والسرعة', o: [['auto', 'تلقائي حسب الجهاز'], ['lite', 'خفيف دائماً'], ['full', 'كامل']], d: 'auto' },
-      { k: 'ring', l: 'إطار التركيز المنزلق', o: ON, d: 'on' },
-      { k: 'hud', l: '📈 عداد الأداء', o: ON, d: 'off' },
+      { dev: 1, k: 'tries', l: 'محاولات إعادة الاتصال', o: [['3', '٣'], ['6', '٦'], ['10', '١٠']], d: '6' },
+      { dev: 1, k: 'fx', l: '⚡ الشكل والسرعة', o: [['auto', 'تلقائي حسب الجهاز'], ['lite', 'خفيف دائماً'], ['full', 'كامل']], d: 'auto' },
+      { dev: 1, k: 'ring', l: 'إطار التركيز المنزلق', o: ON, d: 'on' },
+      { dev: 1, k: 'hud', l: '📈 عداد الأداء', o: ON, d: 'off' },
       { k: 'hold', l: 'الضغطة المطوّلة على OK', o: [['menu', 'قائمة (مفضّلة، مشغّل آخر)'], ['ext', 'مشغّل آخر مباشرة'], ['off', 'لا شيء']], d: 'menu' },
       { k: 'big5', l: 'قنوات الدوريات الخمس أعلى صفحة القنوات', o: SHOW, d: 'on' },
       { a: '', o: [['reload', '↻ حدّث قوائم القنوات']] },
@@ -3641,14 +3654,15 @@ function sections() {
       { a: 'الساعة', o: [['sim-m-60', '−ساعة'], ['sim-m-10', '−١٠ د'], ['sim-m10', '+١٠ د'], ['sim-m60', '+ساعة']] },
       { a: 'السرعة', o: [['sim-x1', 'عادي'], ['sim-x10', '×١٠'], ['sim-x60', '×٦٠'], ['sim-x600', '×٦٠٠']] },
       { a: '', o: [['sim-off', '⏹ ارجع للوقت الحقيقي']] },
-    ]],
+    ], 'dev'],
     ['ℹ️', 'الجهاز', [
       { i: 'صفحة الجوال', t: u ? u.replace('http://', '') : 'تشتغل لما يتصل التلفزيون بالواي فاي' },
       { i: 'الأذان فوق الأفلام', t: TV.canOverlay() ? '✅ مسموح' : '⚠️ يحتاج إذن «العرض فوق التطبيقات»' },
-      { i: 'آخر مشكلة', t: (TV.lastProblem && TV.lastProblem()) || 'ما فيه ✅' },
+      { dev: 1, i: 'آخر مشكلة', t: (TV.lastProblem && TV.lastProblem()) || 'ما فيه ✅' },
       { i: '⬆️ النسخة', t: UPD ? (UPD.error ? 'ما قدرت أتحقق — ' + UPD.error : UPD.newer ? `نسخة جديدة ${AR(UPD.latest)} (عندك ${AR(UPD.have)})` : `محدّثة ✅ · ${AR(UPD.have)}`) + (UPDST ? ' · ' + UPDST : '') : 'اضغط «تحقق»' },
       { a: '', o: [['upd-check', '⬆️ تحقق من التحديث'], ['upd-go', 'حدّث الآن']] },
       { a: '', o: [['system', 'إعدادات التلفزيون'], ['reload-all', '↻ أعد تشغيل الواجهة']] },
+      { k: 'dev', l: '🛠 وضع المطوّر (أدوات الفحص والتجربة)', o: ON, d: 'off' },
     ]],
   ];
 }
@@ -3882,7 +3896,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-close') return closePlayer();
-  if (b.dataset.act === 'nextm') { if (SERIES()) { const c = nowChannel(); if (c) return playChannel([c, ...LIVE.filter(x => x !== c)], 0); return; } return playMatchChannel(); }
+  if (b.dataset.act === 'nextm') { if (SERIES() || !NEXTM) { const c = nowChannel(); if (c) return playChannel([c, ...LIVE.filter(x => x !== c)], 0); return; } return playMatchChannel(); }
   if (b.dataset.act === 'pl-next' && playing) return playSurah(Math.min(114, playing + 1));
   if (b.dataset.act === 'pl-prev' && playing) return playSurah(Math.max(1, playing - 1));
   if (b.dataset.act === 'gofilt') { foldToggle('allwrap', true); const c = $('#s-ifilt .chip'); if (c) { c.focus(); c.scrollIntoView({ block: 'center' }); } return; }
@@ -4317,7 +4331,8 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-16d', NEWS_ROWS = [
+const NEWS = '2026-11-17a', NEWS_ROWS = [
+  ['✨', 'واجهة أنظف: أدوات الفحص والتجربة صارت في «وضع المطوّر» (الإعدادات ← الجهاز)، وكرت المباراة يختفي إذا ما فيه شي يعرضه'],
   ['✏️', 'دليل البرامج: ✏️ على أي قناة (أو ضغطة مطوّلة ← «اربط دليل البرامج») تختار له الدليل الصحيح من أقرب الأسماء — بنفس الرقم والدولة'],
   ['📅', 'الدليل يلقى قنوات أكثر بنفسه: MBC وعُمان وأبوظبي ودبي وبي إن (بي إن 1 ما ياخذ دليل 2 أو 3)'],
   ['⬆️', 'ريموت الجوال: زر «حدّث التلفزيون» يثبّت آخر نسخة لحاله من أي مكان (فعّل «بدون موافقة» مرة وحدة وأنت عند التلفزيون)'],
