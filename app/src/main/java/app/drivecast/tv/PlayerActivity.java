@@ -52,7 +52,7 @@ import java.util.Map;
 public class PlayerActivity extends Activity {
     private ExoPlayer player;
     private DefaultBandwidthMeter meter;
-    private String[] urls, names, logos, groups, ccs;
+    private String[] urls, names, logos, groups, ccs, pls;
     private int i;
     private final Handler h = new Handler(Looper.getMainLooper());      // the bar
     private final Handler net = new Handler(Looper.getMainLooper());    // reconnects, the stall watchdog
@@ -334,7 +334,7 @@ public class PlayerActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         Intent in = getIntent();
         urls = in.getStringArrayExtra("urls"); names = in.getStringArrayExtra("names");
-        logos = in.getStringArrayExtra("logos"); groups = in.getStringArrayExtra("groups"); ccs = in.getStringArrayExtra("ccs");
+        logos = in.getStringArrayExtra("logos"); groups = in.getStringArrayExtra("groups"); ccs = in.getStringArrayExtra("ccs"); pls = in.getStringArrayExtra("pls");
         i = in.getIntExtra("i", 0);
         if (urls == null || urls.length == 0) { finish(); return; }
 
@@ -527,10 +527,18 @@ public class PlayerActivity extends Activity {
         countTick.run();
     }
 
-    // ---- OK: the channel list at the side, like a receiver's. ↑↓ choose (held: fast), ◀ ▶ ten at a time, OK plays it
-    // (the list stays, OK again on the playing one closes it), BACK closes; it hides by itself after 10 s untouched
+    // ---- OK: the channel list at the side, like TiviMate's. Three levels: the channels ▶ their groups ▶ the playlists (◀ or
+    // OK goes back in); next to the list, the chosen channel's guide by the hour, the whole column. ↑↓ choose, OK plays it
+    // (OK again on the playing one closes it), BACK closes (from a group or playlist level: back to the channels); it hides by
+    // itself after 10 s untouched
     private FrameLayout listPanel; private android.widget.ListView listLv; private android.widget.BaseAdapter listAd;
     private TextView listHead; private int sel; private boolean listOn;
+    private int level, lsel;                                   // 0 channels · 1 groups · 2 playlists, and the cursor there
+    private final java.util.List<String> plists = new java.util.ArrayList<>(); private int pi = 0;   // 0 = every playlist
+    private final java.util.Map<String, Integer> gCount = new java.util.HashMap<>(), pCount = new java.util.HashMap<>();
+    private FrameLayout epgCol; private LinearLayout epgRows; private TextView epgHead;
+    private String plOf(int k) { return pls != null && k < pls.length && pls[k] != null ? pls[k] : ""; }
+    private boolean inPl(int k) { return pi == 0 || plists.size() <= pi || plists.get(pi).equals(plOf(k)); }
     private final Runnable listHide = () -> listShow(false);
     private void buildList(FrameLayout root) {
         listPanel = new FrameLayout(this);
@@ -545,7 +553,7 @@ public class PlayerActivity extends Activity {
         listLv.setDivider(null); listLv.setDividerHeight(0); listLv.setSelector(new android.graphics.drawable.ColorDrawable(0));
         listLv.setVerticalScrollBarEnabled(false); listLv.setFocusable(false); listLv.setItemsCanFocus(false); listLv.setCacheColorHint(0);
         listAd = new android.widget.BaseAdapter() {
-            @Override public int getCount() { return lview.length; }
+            @Override public int getCount() { return level == 0 ? lview.length : level == 1 ? lists.size() : plists.size(); }
             @Override public Object getItem(int q) { return lview[q]; }
             @Override public long getItemId(int q) { return q; }
             @Override public View getView(int q, View cv, android.view.ViewGroup parent) {
@@ -556,11 +564,46 @@ public class PlayerActivity extends Activity {
         listLv.setAdapter(listAd);
         box.addView(listLv, new LinearLayout.LayoutParams(-1, 0, 1f));
         TextView tip = text(10.5f, Typeface.DEFAULT, 0x99FFFFFF); tip.setGravity(Gravity.END);
-        tip.setText("↑↓ اختر · ◀ ▶ القوائم · ◀ مطوّلاً بالحرف · OK شغّل · OK مطوّلاً ⭐ المفضّلة"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
+        tip.setText("↑↓ اختر · ▶ المجموعات ثم القوائم · ◀ ارجع · ◀ مطوّلاً بالحرف · OK شغّل · OK مطوّلاً ⭐"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
         box.addView(tip);
         listPanel.addView(box, new FrameLayout.LayoutParams(-1, -1));
         root.addView(listPanel, new FrameLayout.LayoutParams((int) dp(400), -1, Gravity.RIGHT));
         listPanel.setVisibility(View.GONE);
+        // 📅 the chosen channel's guide, hour by hour, in the free space next to the list
+        epgCol = new FrameLayout(this);
+        epgCol.setBackground(new GradientDrawable(GradientDrawable.Orientation.RIGHT_LEFT, new int[] { 0xE6101216, 0xC0101216, 0x00101216 }));
+        LinearLayout eb = new LinearLayout(this); eb.setOrientation(LinearLayout.VERTICAL); eb.setPadding((int) dp(40), (int) dp(26), (int) dp(14), (int) dp(20));
+        epgHead = text(14, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xB3FFFFFF); epgHead.setGravity(Gravity.END); epgHead.setPadding(0, 0, (int) dp(8), (int) dp(12));
+        epgHead.setSingleLine(true); epgHead.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        eb.addView(epgHead);
+        epgRows = new LinearLayout(this); epgRows.setOrientation(LinearLayout.VERTICAL);
+        eb.addView(epgRows, new LinearLayout.LayoutParams(-1, 0, 1f));
+        epgCol.addView(eb, new FrameLayout.LayoutParams(-1, -1));
+        FrameLayout.LayoutParams ep = new FrameLayout.LayoutParams((int) dp(420), -1, Gravity.RIGHT); ep.rightMargin = (int) dp(400);
+        root.addView(epgCol, ep); epgCol.setVisibility(View.GONE);
+    }
+    private final Runnable epgFill = this::epgFillNow;
+    private void epgFillNow() {
+        if (!listOn || level != 0 || sel >= lview.length) { epgCol.setVisibility(View.GONE); return; }
+        int k = lview[sel]; java.util.List<org.json.JSONArray> ps = progs(k);
+        epgHead.setText("📅  " + label(k));
+        epgRows.removeAllViews();
+        long now = System.currentTimeMillis() / 1000;
+        if (ps.isEmpty()) {
+            TextView t = text(15, Typeface.DEFAULT, 0x99FFFFFF); t.setGravity(Gravity.END); t.setText("لا يوجد دليل برامج لهذه القناة"); t.setPadding(0, (int) dp(8), (int) dp(8), 0); epgRows.addView(t);
+        } else for (int q = 0; q < ps.size() && q < 14; q++) try {
+            org.json.JSONArray r = ps.get(q); long st = r.getLong(0), en = r.getLong(1); boolean on = st <= now;
+            LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding((int) dp(10), (int) dp(8), (int) dp(10), (int) dp(8));
+            TextView tm = text(13, Typeface.create("sans-serif-medium", Typeface.BOLD), on ? 0xFF34C759 : 0x99FFFFFF); tm.setMinWidth((int) dp(64)); tm.setText(clock(st));
+            TextView ti = text(on ? 16 : 15, on ? Typeface.create("sans-serif-medium", Typeface.BOLD) : Typeface.DEFAULT, on ? 0xFFFFFFFF : 0xD9FFFFFF);
+            ti.setSingleLine(true); ti.setEllipsize(android.text.TextUtils.TruncateAt.END); ti.setPadding((int) dp(10), 0, 0, 0);
+            ti.setText(r.getString(2) + (on ? "  ·  باقي " + inTime(en - now) : ""));
+            row.addView(tm); row.addView(ti, new LinearLayout.LayoutParams(0, -2, 1f));
+            if (on) { GradientDrawable d = new GradientDrawable(); d.setColor(0x2634C759); d.setCornerRadius(dp(12)); row.setBackground(d); }
+            epgRows.addView(row);
+        } catch (Throwable ignored) { }
+        if (epgCol.getVisibility() != View.VISIBLE) { epgCol.setAlpha(0f); epgCol.setVisibility(View.VISIBLE); epgCol.animate().alpha(1f).setDuration(140); }
     }
     // the list's lists: «الكل», then each group (country / list) in the order met — ▶ moves to the next one
     private static final String USUAL = "🔥 المعتادة";
@@ -582,8 +625,13 @@ public class PlayerActivity extends Activity {
     }
     private String fOf(int k) { return ccs != null && k < ccs.length ? flag(ccs[k]) : ""; }
     private void listsBuild() {
-        lists.clear(); lists.add("الكل");
-        for (int k = 0; k < urls.length; k++) { String g = gOf(k); if (!g.isEmpty() && !lists.contains(g)) lists.add(g); }
+        plists.clear(); plists.add("كل القوائم"); pCount.clear();
+        for (int k = 0; k < urls.length; k++) { String p = plOf(k); if (p.isEmpty()) continue; if (!plists.contains(p)) plists.add(p); pCount.merge(p, 1, Integer::sum); }
+        pCount.put("كل القوائم", urls.length);
+        if (pi >= plists.size()) pi = 0;
+        lists.clear(); lists.add("الكل"); gCount.clear(); int all = 0;
+        for (int k = 0; k < urls.length; k++) { if (!inPl(k)) continue; all++; String g = gOf(k); if (g.isEmpty()) continue; if (!lists.contains(g)) lists.add(g); gCount.merge(g, 1, Integer::sum); }
+        gCount.put("الكل", all);
         if (lists.size() == 2) lists.remove(1);   // one group only: «الكل» is it
         usualNow = usual(); pins = pinned(); favs = favSet();
         boolean any = false; for (int k = 0; k < urls.length && !any; k++) any = usualNow.contains(nOf(k));
@@ -594,9 +642,9 @@ public class PlayerActivity extends Activity {
     private void listView() {
         java.util.List<Integer> v = new java.util.ArrayList<>();
         String g = lists.get(li);
-        if (USUAL.equals(g)) { for (String nm : usualNow) for (int k = 0; k < urls.length; k++) if (nm.equals(nOf(k))) { v.add(k); break; } }
-        else if (FAVL.equals(g)) { for (int k = 0; k < urls.length; k++) if (favs.contains(nOf(k).trim().toLowerCase(Locale.ROOT))) v.add(k); }
-        else for (int k = 0; k < urls.length; k++) if (li == 0 || g.equals(gOf(k))) v.add(k);
+        if (USUAL.equals(g)) { for (String nm : usualNow) for (int k = 0; k < urls.length; k++) if (nm.equals(nOf(k)) && inPl(k)) { v.add(k); break; } }
+        else if (FAVL.equals(g)) { for (int k = 0; k < urls.length; k++) if (inPl(k) && favs.contains(nOf(k).trim().toLowerCase(Locale.ROOT))) v.add(k); }
+        else for (int k = 0; k < urls.length; k++) if (inPl(k) && (li == 0 || g.equals(gOf(k)))) v.add(k);
         lview = new int[v.size()]; for (int k = 0; k < lview.length; k++) lview[k] = v.get(k);
     }
     private int posOf(int ch) { for (int k = 0; k < lview.length; k++) if (lview[k] == ch) return k; return -1; }
@@ -613,6 +661,19 @@ public class PlayerActivity extends Activity {
     }
     private GradientDrawable selBg, curBg;
     private void listBind(LinearLayout r, int q) {
+        if (level > 0) {
+            java.util.List<String> src = level == 1 ? lists : plists; if (q >= src.size()) return;
+            String nm = src.get(q); boolean open = level == 1 ? q == li : q == pi;
+            Integer c = (level == 1 ? gCount : pCount).get(nm);
+            if (USUAL.equals(nm)) c = usualNow.size(); else if (FAVL.equals(nm)) c = favs.size();
+            TextView n = (TextView) r.getChildAt(0), t = (TextView) r.getChildAt(1);
+            n.setText(c == null ? "" : String.valueOf(c));
+            t.setText((open ? "▶  " : "") + (level == 2 ? "📂  " : "") + nm);
+            if (selBg == null) { selBg = new GradientDrawable(); selBg.setColor(0xF2FFFFFF); selBg.setCornerRadius(dp(14)); curBg = new GradientDrawable(); curBg.setColor(0x3334C759); curBg.setCornerRadius(dp(14)); }
+            r.setBackground(q == lsel ? selBg.getConstantState().newDrawable() : open ? curBg.getConstantState().newDrawable() : null);
+            t.setTextColor(q == lsel ? 0xFF111111 : 0xFFFFFFFF); n.setTextColor(q == lsel ? 0xFF555555 : 0x99FFFFFF);
+            return;
+        }
         if (q >= lview.length) return;
         int k = lview[q]; String key = nOf(k).trim().toLowerCase(Locale.ROOT), fl = fOf(k);
         String on = nowNext(k)[0].replaceFirst("  \\(باقي.*$", "");
@@ -627,17 +688,22 @@ public class PlayerActivity extends Activity {
     private void listFill() { listAd.notifyDataSetChanged(); }
     private void listMark() {
         listAd.notifyDataSetChanged();
-        String head = (lists.size() > 1 ? "◀ " + lists.get(li) + " ▶" : "📺 القنوات") + "  ·  " + (lview.length == 0 ? 0 : sel + 1) + " من " + lview.length;
+        String pl = pi > 0 && pi < plists.size() ? "📂 " + plists.get(pi) + "  ›  " : "";
+        String head = level == 2 ? "📂 القوائم  ·  ◀ رجوع"
+                : level == 1 ? pl + "المجموعات  ·  ▶ القوائم"
+                : pl + (lists.size() > 1 ? lists.get(li) : "📺 القنوات") + "  ·  " + (lview.length == 0 ? 0 : sel + 1) + " من " + lview.length;
         if (letterOn && !letters.isEmpty()) head = "🔤 الحرف:  " + letters.get(letterAt) + "   ·  ↑↓ غيّر · OK اختر";
         listHead.setText(head);
+        h.removeCallbacks(epgFill); if (level == 0) h.postDelayed(epgFill, 90); else epgCol.setVisibility(View.GONE);
         // the chosen row in the middle, at once (no smooth scroll: the remote never waits)
-        final int at = sel;
+        final int at = level == 0 ? sel : lsel;
         Runnable mid = () -> listLv.setSelectionFromTop(at, Math.max(0, listLv.getHeight() / 2 - (int) dp(20)));
         if (listLv.getHeight() > 0) mid.run(); else listLv.post(mid);
         h.removeCallbacks(listHide); h.postDelayed(listHide, letterOn ? 20000 : 10000);
     }
     private void listShow(boolean on) {
-        listOn = on; letterOn = false; okDown = false; lrCode = 0;
+        listOn = on; letterOn = false; okDown = false; lrCode = 0; level = 0;
+        if (!on) { h.removeCallbacks(epgFill); epgCol.animate().cancel(); epgCol.setVisibility(View.GONE); }
         if (on) {
             listsBuild(); if (li >= lists.size()) li = 0;
             listView(); if (posOf(Math.max(0, cur)) < 0) { li = 0; listView(); }
@@ -899,7 +965,7 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onKeyUp(int code, KeyEvent e) {
         try {
-            if (listOn && okDown && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+            if (listOn && level == 0 && okDown && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
                 okDown = false;
                 if (sel < lview.length) { if (lview[sel] == cur) listShow(false); else { i = lview[sel]; listShow(false); play(); fill(); showBar(6000); } }   // chosen: the list goes, the bar shows the channel
                 return true;
@@ -908,7 +974,7 @@ public class PlayerActivity extends Activity {
             if (lrCode != 0 && code == lrCode) {
                 boolean held = lrHeld, right = code == KeyEvent.KEYCODE_DPAD_RIGHT; lrCode = 0; lrHeld = false;
                 if (held) return true;
-                if (listOn) { if (!right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
+                if (listOn) { if (level == 0 && !right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
                 else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
                 return true;
             }
@@ -928,13 +994,31 @@ public class PlayerActivity extends Activity {
             }
             return true;
         }
+        if (level > 0) {
+            int m = level == 1 ? lists.size() : plists.size();
+            switch (code) {
+                case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_CHANNEL_UP: if (m > 0) lsel = (lsel - 1 + m) % m; listMark(); return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_CHANNEL_DOWN: if (m > 0) lsel = (lsel + 1) % m; listMark(); return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ from the groups to the playlists
+                    if (e.getRepeatCount() > 0 || level == 2) return true;
+                    level = 2; lsel = pi; listFill(); listMark(); return true;
+                case KeyEvent.KEYCODE_DPAD_LEFT: case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
+                    if (e.getRepeatCount() > 0) return true;
+                    if (level == 2) { pi = lsel; li = 0; listsBuild(); level = 1; lsel = 0; listFill(); listMark(); return true; }   // a playlist: its groups
+                    li = Math.min(lsel, lists.size() - 1); level = 0; listView();                                        // a group: its channels
+                    sel = Math.max(0, posOf(cur)); listFill(); listMark(); return true;
+                case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE:
+                    level = level == 2 ? 1 : 0; lsel = level == 1 ? li : 0; listFill(); listMark(); return true;
+            }
+            return true;
+        }
         if (n == 0 && code != KeyEvent.KEYCODE_DPAD_RIGHT && code != KeyEvent.KEYCODE_DPAD_LEFT && code != KeyEvent.KEYCODE_BACK) return true;
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_CHANNEL_UP: sel = (sel - 1 + n) % n; listMark(); return true;
             case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_CHANNEL_DOWN: sel = (sel + 1) % n; listMark(); return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ the next list (◀, on release, the one before)
-                if (lists.size() < 2 || e.getRepeatCount() > 0) return true;
-                li = (li + 1) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:   // ▶ up to the groups (◀, on release, the group before)
+                if (e.getRepeatCount() > 0) return true;
+                level = 1; lsel = li; listFill(); listMark(); return true;
             case KeyEvent.KEYCODE_DPAD_LEFT: {  // ◀ held: by letter
                 if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }
                 if (!(e.getRepeatCount() == 4 || e.isLongPress()) || lrCode != code || lrHeld || n == 0) return true;   // held: by the repeats, or Android's own long press

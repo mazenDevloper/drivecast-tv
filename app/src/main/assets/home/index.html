@@ -2426,7 +2426,7 @@ async function loadLists() {
   const cl = mineU.find(u => /\/hub\/m3u\?.*&id=/.test(u));
   if (cl) getJ(cl.replace(/&id=[^&]+/, '&list=1')).then(d => { for (const it of (d && d.lists) || []) for (const u of mineU) if (u.endsWith('&id=' + it.id)) M3UNAME[u] = it.name; m3uUi(); }).catch(() => {});
   STARL = []; const MG = MGRP();
-  mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)), gs = MG[mineU[k]];
+  mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)).map(c => ({ ...c, pl: plName(mineU[k]) })), gs = MG[mineU[k]];
     if (gs && gs.length) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url) && gs.includes(c.group)).map(c => ({ ...c, mine: 1, star: 1 })));
     else if (mineU[k] === m3uStar()) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 }))); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
   m3uUi();
@@ -2842,7 +2842,7 @@ async function playChannel(list, i) {
   if (/youtu\.?be/.test(c.url) && !inYt) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external && !/youtu\.?be/.test(c.url)) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/^yt-live:|^yt-search:/.test(x.url) && (inYt || !/youtu\.?be/.test(x.url))), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map(x => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), cc: ccOf(x), epg: epgRows(x).slice(0, 5), alts: x === c || streams.length <= 60 ? altsOf(x) : [], auto: auto ? 1 : 0 }))), Math.max(0, k));
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map((x, j) => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), pl: x.pl || (x.mine ? 'قوائمي' : x.arl ? 'iptv-org' : x.dyn ? 'البث المتجدد' : /youtu/.test(x.url) ? 'يوتيوب' : 'Free-TV'), cc: ccOf(x), epg: epgRows(x).slice(0, Math.abs(j - k) < 300 ? 16 : 4),   /* the guide column in the player: hours ahead */ alts: x === c || streams.length <= 60 ? altsOf(x) : [], auto: auto ? 1 : 0 }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
@@ -4262,12 +4262,14 @@ function m3uvRecentUi() {
   const r = [...new Set([...m3uvRecent(), ...m3uList()])].slice(0, 10);
   box.innerHTML = r.map(u => `<button class="chip f" data-m3uv="${esc(u)}">${u === M3UV.url ? '▶ ' : m3uList().includes(u) ? '📂 ' : '🕘 '}${esc(M3UNAME[u] || u.replace(/^https?:\/\//, '').slice(0, 40))}</button>`).join('');
 }
+// a playlist's name: the one given in the cloud, else the file's own name (…/sports.m3u → sports), else its site
+function plName(u) { if (M3UNAME[u]) return M3UNAME[u]; try { const x = new URL(u), f = decodeURIComponent(x.pathname.split('/').pop() || '').replace(/\.m3u8?$/i, ''); return f && !/^(get\.php|playlist|index)$/i.test(f) ? f : x.hostname.replace(/^www\./, ''); } catch (e) { return 'قائمتي'; } }
 async function m3uvOpen(u) {
   u = String(u || '').trim(); const say = t => { $('#m3uvSay').textContent = t; };
   if (IPANE !== 'm3uvwrap') iPane('m3uvwrap');
   if (!/^https?:\/\/\S{6,}/.test(u)) { say('الرابط لازم يبدأ بـ http'); return; }
   $('#m3uvIn').value = u; say('⏳ أحمّل القائمة…');
-  const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url) && !isVod(c)).map(c => ({ ...c, name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
+  const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url) && !isVod(c)).map(c => ({ ...c, pl: plName(u), name: c.name.replace(/s*[[^]]*]/g, '').trim() || c.name }));   // «[Geo-blocked]», «[Not 24/7]» off the names
   if (!l.length) { say(t ? 'هذا الرابط مو قائمة M3U، أو ما فيها قنوات' : 'ما قدرت أفتح الرابط — تأكد منه ومن الإنترنت'); return; }
   iptvHdrSend(l);
   Object.assign(M3UV, { url: u, all: l, group: 'all', q: '', f: {}, lim: 300 }); $('#m3uvQ').value = ''; window.__mgk = '';
@@ -4409,7 +4411,8 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-17c', NEWS_ROWS = [
+const NEWS = '2026-11-17d', NEWS_ROWS = [
+  ['📺', 'قائمة القنوات في المشغّل مثل TiviMate: جنبها دليل البرامج بالساعات، و▶ ينقلك للمجموعات ثم للقوائم، و◀ يرجعك'],
   ['📺', 'قنوات الرئيسية بالترتيب: MBC 1، عُمان الرياضية، MBC 4، عُمان مباشر، beIN 1·2·3 وLive Event، باقي MBC، دبي، أبوظبي، ثم beIN الإخبارية'],
   ['⌨️', 'خانات الكتابة ما تفتح الكيبورد وأنت تتنقّل: اضغط OK مرتين للكتابة'],
   ['⚽', 'في المباريات: beIN 1 و2 و3 وLive Event أولاً بين قنوات المباراة'],

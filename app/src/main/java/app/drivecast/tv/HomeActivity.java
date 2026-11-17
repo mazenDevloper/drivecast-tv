@@ -279,15 +279,15 @@ public class HomeActivity extends Activity {
     /** the player for a list of channels [{url,name,logo,group,cc,ua,ref,org,epg,alts}] — from the page, or from the player itself
      *  (a match's channels: the player opens them without the home page, which Android may have put away) */
     static Intent playerIntent(android.content.Context ctx, JSONArray a, int index) throws org.json.JSONException {
-        int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
+        int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n], ps = new String[n];
         java.util.Map<String, JSONArray> epg = new HashMap<>(); java.util.Map<String, String[]> alts = new HashMap<>();
-        for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc");
+        for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); ps[k] = c.optString("pl"); cs[k] = c.optString("cc");
             if (!c.optString("ua").isEmpty() || !c.optString("ref").isEmpty() || !c.optString("org").isEmpty()) Iptv.HDR.put(us[k], new String[]{c.optString("ua"), c.optString("ref"), c.optString("org")});
             JSONArray e = c.optJSONArray("epg"); if (e != null && e.length() > 0) epg.put(us[k], e);
             JSONArray al = c.optJSONArray("alts"); if (al != null && al.length() > 0) { String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); alts.put(us[k], x); } }
         PlayerActivity.EPG = epg; PlayerActivity.ALTS = alts;
         boolean auto = n > 0 && a.getJSONObject(0).optInt("auto") == 1;
-        return new Intent(ctx, PlayerActivity.class).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index);
+        return new Intent(ctx, PlayerActivity.class).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index);
     }
 
     class Bridge {
@@ -403,14 +403,14 @@ public class HomeActivity extends Activity {
         private void watchFullOld(String channelsJson, int index) {
             try {
                 JSONArray a = new JSONArray(channelsJson);
-                int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n];
-                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); cs[k] = c.optString("cc");
+                int n = a.length(); String[] us = new String[n], ns = new String[n], ls = new String[n], gs = new String[n], cs = new String[n], ps = new String[n];
+                for (int k = 0; k < n; k++) { JSONObject c = a.getJSONObject(k); us[k] = c.optString("url"); ns[k] = c.optString("name"); ls[k] = c.optString("logo"); gs[k] = c.optString("group"); ps[k] = c.optString("pl"); cs[k] = c.optString("cc");
                     if (!c.optString("ua").isEmpty() || !c.optString("ref").isEmpty() || !c.optString("org").isEmpty()) Iptv.HDR.put(us[k], new String[]{c.optString("ua"), c.optString("ref"), c.optString("org")}); }
                 PlayerActivity.EPG = new HashMap<>();
                 for (int k = 0; k < n; k++) { JSONArray e = a.getJSONObject(k).optJSONArray("epg"); if (e != null && e.length() > 0) PlayerActivity.EPG.put(us[k], e); }
                 PlayerActivity.ALTS = new HashMap<>();
                 for (int k = 0; k < n; k++) { JSONArray al = a.getJSONObject(k).optJSONArray("alts"); if (al == null || al.length() == 0) continue; String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); PlayerActivity.ALTS.put(us[k], x); }
-                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("ccs", cs).putExtra("i", index));
+                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index));
             } catch (Exception ignored) { }
         }
 
