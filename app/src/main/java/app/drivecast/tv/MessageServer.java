@@ -114,7 +114,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
-            else if (first.startsWith("GET /matches")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteMatches ? remoteMatches() : '{\\"m\\":[]}'", true));
+            else if (first.startsWith("GET /matches")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteMatches ? remoteMatches() : '{}'", true));
             else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
             else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
