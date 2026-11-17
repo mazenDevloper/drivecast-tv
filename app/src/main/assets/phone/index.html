@@ -59,7 +59,7 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .nav button{border:0;background:none;color:var(--dim);font:600 12px inherit;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:16px}
 .nav button i{font-style:normal;font-size:23px;line-height:1}
 .nav button.on{color:var(--ink);background:rgba(255,255,255,.07)}
-.sub{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:4px;border-radius:20px;background:var(--card);margin-bottom:14px}
+.sub{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:20px;background:var(--card);margin-bottom:14px}
 .sub button{border:0;background:none;color:var(--dim);font:600 13px inherit;font-family:inherit;padding:9px 0;border-radius:999px}.sub button.on{background:var(--ink);color:#0b1411}
 #r{display:flex;flex-direction:column;align-items:center;gap:10px;min-height:calc(100dvh - 160px);justify-content:flex-end}
 .quick{display:flex;gap:8px;width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.quick::-webkit-scrollbar{display:none}
@@ -101,8 +101,35 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .apps img{width:56px;height:56px;object-fit:contain;border-radius:14px}.apps img.bn{width:100%;height:56px;object-fit:cover;border-radius:12px}
 .apps span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}
 .apps button:active{transform:scale(.96)}
+/* ⚽ today's matches: a tap on a channel plays it on the TV */
+.mc{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:14px 14px 12px;margin-bottom:12px}
+.mc .lg{font-size:12px;color:var(--dim);margin-bottom:8px;display:flex;justify-content:space-between}
+.mc .tm{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center}
+.mc .tm div{display:flex;flex-direction:column;align-items:center;gap:6px;font-weight:700;font-size:15px}
+.mc .tm img{width:44px;height:44px;object-fit:contain}
+.mc .sc{font-size:22px;font-weight:800;min-width:74px}.mc .sc small{display:block;font-size:12px;color:#ff6b6b;font-weight:700}
+.mc .sc.up{font-size:17px;color:var(--dim)}
+.mc .chs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mc .chs button{flex:1 1 45%;min-height:52px;border-radius:16px;border:0;background:var(--acc);color:#fff;font:700 16px inherit;font-family:inherit;padding:6px 10px}
+.mc .chs button:nth-child(n+2){background:rgba(255,255,255,.08);color:var(--ink)}
+.mc .none{color:var(--dim);font-size:13px;margin-top:10px;text-align:center}
+.mc.live{border-color:#7a2a2a}
+/* ⏳ a button that also answers a long press shows it */
+.lpm{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:10px;opacity:.75;pointer-events:none;font-weight:600}
+.lptip{width:min(100%,330px);text-align:center;font-size:13px;color:var(--dim);background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:8px 10px}
+/* 👶 the simple remote: only the big round pad, back, home and the volume; the words big */
+.simpleT{border:1px solid var(--line);background:none;color:var(--dim);border-radius:999px;padding:6px 12px;font:600 13px inherit;font-family:inherit}
+body.simple .simpleT{background:var(--acc);color:#fff;border-color:var(--acc)}
+body.simple #r .quick,body.simple #r .media,body.simple #nums,body.simple .rock .rk2:last-child,body.simple .rock .mic,body.simple [data-k="menu"],body.simple .dpad .hint{display:none!important}
+body.simple .rock{grid-template-columns:1fr;width:min(100%,200px)}body.simple .rk2{flex-direction:row;align-items:center}body.simple .rk2 button{flex:1;height:64px;font-size:30px}
+body.simple .dpad{width:min(90vw,340px,48dvh)}body.simple .dpad button{font-size:34px}body.simple .dpad .ok{font-size:26px}
+body.simple .nav3{grid-template-columns:repeat(2,1fr)}body.simple .nav3 button{height:66px;font-size:20px}
+body.simple .kids{display:grid}
+.kids{display:none;grid-template-columns:repeat(3,1fr);gap:10px;width:min(100%,340px)}
+.kids button{height:84px;border-radius:24px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 15px inherit;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.kids button i{font-style:normal;font-size:30px}
 </style></head><body><div class="c">
-<h1>📺 التلفزيون <small id="st">متصل</small></h1>
+<h1>📺 التلفزيون <span style="display:flex;gap:8px;align-items:center"><button class="simpleT" id="simpleT">👶 بسيط</button><small id="st">متصل</small></span></h1>
 <div class="tabs hide"><button data-t="r" class="on"></button></div>
 
 <section id="r">
@@ -114,13 +141,19 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
     <button class="mic" id="mic">🎙️</button>
     <div class="rk2"><button data-k="chup" data-rep>⌃</button><span>القناة</span><button data-k="chdown" data-rep>⌄</button></div>
   </div>
-  <div class="nav3"><button data-k="back" data-long>↩︎ رجوع</button><button data-k="home">🏠 الرئيسية</button><button data-k="menu">☰ القائمة</button></div>
+  <div class="kids"><button data-k="live"><i>📺</i>القنوات</button><button data-nav="mt"><i>⚽</i>المباريات</button><button data-k="quran"><i>📖</i>القرآن</button></div>
+  <div class="nav3"><button data-k="back">↩︎ رجوع</button><button data-k="home">🏠 الرئيسية</button><button data-k="menu">☰ القائمة</button></div>
   <div class="dpad" id="dpad">
     <button class="u" data-k="up" data-rep>▲</button><button class="d" data-k="down" data-rep>▼</button>
     <button class="rr" data-k="right" data-rep>▶</button><button class="l" data-k="left" data-rep>◀</button>
-    <button class="ok" data-k="ok" data-long>OK</button>
-    <div class="hint">🕹️ جويستيك · ثبّت OK ثانية ونص = القائمة</div>
+    <button class="ok" data-k="ok" data-long>OK<span class="lpm">⏳ مطوّل</span></button>
+    <div class="hint">🕹️ حرّك إصبعك على الدائرة للتنقّل</div>
   </div>
+  <div class="lptip">⏳ <b>اضغط مطوّلاً</b> على <b>OK</b> (ثانية ونص) — تطلع قائمة القناة أو الخيارات، وتشوف دائرة تتعبّى حول الزر</div>
+</section>
+
+<section id="mt" class="hide">
+  <div id="mtl"><p class="s">أجيب المباريات…</p></div>
 </section>
 
 <section id="a" class="hide">
@@ -205,9 +238,9 @@ const $ = i => document.getElementById(i), SURAHS = ["الفاتحة", "البق
 const post = (u, b) => fetch(u, { method: 'POST', body: b }).then(r => { $('st').textContent = 'متصل'; return r; }).catch(() => { $('st').textContent = 'غير متصل'; $('s').textContent = 'ما وصلت، تأكد إنك على نفس الواي فاي'; });
 const buzz = () => navigator.vibrate && navigator.vibrate(10);
 // ---- the tabs: at the bottom (the thumb's place); «المزيد» holds what is used now and then
-const NAV = [['r', '🎮', 'ريموت'], ['a', '🧩', 'التطبيقات'], ['w', '⌨️', 'اكتب وتكلّم'], ['m', '🖱️', 'ماوس'], ['x', '☰', 'المزيد']];
-const MORE = [['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
-const ALLS = ['r', 'a', 'w', 'm', 'q', 'z', 'b', 'd', 'sx'];
+const NAV = [['r', '🎮', 'ريموت'], ['mt', '⚽', 'المباريات'], ['a', '🧩', 'التطبيقات'], ['w', '⌨️', 'اكتب'], ['x', '☰', 'المزيد']];
+const MORE = [['m', '🖱️ ماوس'], ['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
+const ALLS = ['r', 'mt', 'a', 'w', 'm', 'q', 'z', 'b', 'd', 'sx'];
 let cur = 'r', moreAt = 'q';
 document.body.insertAdjacentHTML('beforeend', `<nav class="nav" id="nav">${NAV.map(([t, i, l]) => `<button data-nav="${t}"><i>${i}</i>${l}</button>`).join('')}</nav>`);
 $('subnav').innerHTML = MORE.map(([t, l]) => `<button data-more="${t}">${l}</button>`).join('');
@@ -219,6 +252,7 @@ function go(t) {
   $('subnav').classList.toggle('hide', !more);
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === (more ? 'x' : t)));
   document.querySelectorAll('[data-more]').forEach(b => b.classList.toggle('on', b.dataset.more === t));
+  clearInterval(window.__mtT); if (t === 'mt') { matches(); window.__mtT = setInterval(matches, 30000); }
   if (t === 'd') fit(); if (t === 'q') reciters(); if (t === 'z') azkar(); if (t === 'b') boardLoad(); if (t === 'm') status(); if (t === 'a') apps();
   if (t === 'w') setTimeout(() => $('vq').focus(), 50);
   scrollTo(0, 0);
@@ -379,6 +413,24 @@ $('adbs').onclick = async () => {
     if (Date.now() - t0 < 95e3) setTimeout(poll, 2000); else el.textContent = 'ما وصل السماح — جرّب مرة ثانية وأنت عند التلفزيون';
   })();
 };
+// ⚽ today's matches from the TV itself (its lists and their channels); a tap on a channel plays it there
+async function matches() {
+  const box = $('mtl');
+  try {
+    const j = await (await fetch('/matches')).json();
+    if (j.off) { box.innerHTML = '<p class="s">افتح الشاشة الرئيسية في التلفزيون مرة وحدة</p>'; return; }
+    if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب المباريات…' : 'ما فيه مباريات اليوم'}</p>`; if (j.loading) setTimeout(matches, 2500); return; }
+    const E = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    box.innerHTML = j.m.map(m => `<div class="mc${m.st === 'live' ? ' live' : ''}"><div class="lg"><span>${E(m.lg)}</span><span>${m.st === 'live' ? '🔴 مباشر' : '🕒 ' + E(m.t)}</span></div>
+      <div class="tm"><div>${m.hl ? `<img src="${E(m.hl)}" alt="">` : ''}${E(m.h)}</div><span class="sc${m.st === 'live' ? '' : ' up'}">${m.st === 'live' ? E(m.s) + (m.min ? `<small>${E(m.min)}'</small>` : '') : E(m.t)}</span><div>${m.al ? `<img src="${E(m.al)}" alt="">` : ''}${E(m.a)}</div></div>
+      ${m.ch.length ? `<div class="chs">${m.ch.map((c, k) => `<button data-mi="${m.i}" data-mk="${k}">▶ ${E(c)}</button>`).join('')}</div>` : '<div class="none">ما لقيت قناة تنقلها في قوائمك</div>'}</div>`).join('');
+  } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-mi]'); if (!b) return; buzz(); post('/matchplay', b.dataset.mi + ' ' + b.dataset.mk); $('s').textContent = '▶ ' + b.textContent.replace('▶ ', '') + ' — على التلفزيون'; });
+// 👶 the simple remote, kept on this phone
+function simpleSet(on) { document.body.classList.toggle('simple', on); try { localStorage.simple = on ? '1' : ''; } catch (e) {} }
+$('simpleT').onclick = () => { buzz(); simpleSet(!document.body.classList.contains('simple')); };
+try { simpleSet(localStorage.simple === '1'); } catch (e) {}
 function status() { fetch('/status').then(r => r.json()).then(j => $('mwarn').classList.toggle('hide', !!j.mouse)).catch(() => {}); }
 document.getElementById('mon').onclick = mouseOn;
 // ---- Quran: DriveCast's reciters (through the TV), a surah, played on the TV as sound

@@ -114,6 +114,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
+            else if (first.startsWith("GET /matches")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteMatches ? remoteMatches() : '{\\"m\\":[]}'", true));
             else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
             else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
@@ -167,6 +168,10 @@ public class MessageServer extends Service {
             String[] q = body.trim().split("\\s+");
             String rec = q.length > 1 ? q[0] : "", n = q[q.length - 1];
             if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
+        } else if (first.startsWith("POST /matchplay")) {   // «i k»: match i, its k-th channel, played on the TV
+            String[] q = body.trim().split("\\s+");
+            if (q.length == 2 && q[0].matches("\\d{1,3}") && q[1].matches("\\d{1,2}")) pageCall("window.remotePlayMatch && remotePlayMatch(" + q[0] + "," + q[1] + ")", false);
+            reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /update")) { Update.auto(getApplicationContext()); reply(s.getOutputStream(), "application/json", Update.status(this));
         } else if (first.startsWith("POST /adbsetup")) {   // ask the TV's debugging once («السماح» on the TV), in the background
             android.content.Context ctx = getApplicationContext(); SelfAdb.last = "wait";
@@ -350,6 +355,16 @@ public class MessageServer extends Service {
             try { startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)); } catch (Exception ignored) { }
             main.postDelayed(() -> { HomeActivity a = HomeActivity.front; if (a != null) a.remote(k); }, 900);
         }
+    }
+
+    /** a line run in the home page (HomeActivity's WebView); with wait, its string answer (up to 3 s) */
+    private String pageCall(String js, boolean wait) {
+        HomeActivity a = HomeActivity.alive; if (a == null || a.web == null) return "{\"m\":[],\"off\":true}";
+        final String[] out = { null }; final java.util.concurrent.CountDownLatch l = new java.util.concurrent.CountDownLatch(1);
+        main.post(() -> { try { a.web.evaluateJavascript(js, v -> { out[0] = v; l.countDown(); }); } catch (Throwable t) { l.countDown(); } });
+        if (!wait) return "";
+        try { l.await(3, java.util.concurrent.TimeUnit.SECONDS); Object v = out[0] == null ? null : new org.json.JSONTokener(out[0]).nextValue(); return v instanceof String ? (String) v : "{\"m\":[]}"; }
+        catch (Exception e) { return "{\"m\":[]}"; }
     }
 
     private static int keyCode(String k) {

@@ -1969,6 +1969,15 @@ function scanNext() {
   const went = !!TV.scanStart(JSON.stringify([...new Set(todo)]), false); if (went) SCANPASS++;
   return went;
 }
+function homeScan() {
+  if (!window.TV || !TV.scanStart || TV === FAKE) return;
+  try { if (Date.now() - (+localStorage.getItem('homeScanAt') || 0) < 12 * 3600e3) return; } catch (e) {}
+  const pool = [...STARL, ...ILIST, ...IFAV].filter(c => c && /^https?:/i.test(c.url) && !/youtu/i.test(c.url));
+  const urls = [...new Set(HOME_TOP.flatMap(re => pool.filter(c => re.test(c.name.replace(/^\s*\W+\s*/, ''))).slice(0, 6).map(c => c.url)))].slice(0, 90);
+  if (!urls.length || !TV.scanStart(JSON.stringify(urls), false)) return;
+  try { localStorage.setItem('homeScanAt', Date.now()); } catch (e) {}
+  setTimeout(function again() { if (typeof busyKeys === 'function' && busyKeys()) return setTimeout(again, 5000); scanPoll(); liveUi(); }, Math.max(60e3, urls.length * 1500));
+}
 function scanMaybe() {   // once a day: all the channels the TV knows (favourites, lists, sports, big five)
   if (!window.TV || !TV.scanStart || TV === FAKE) return;
   scanPoll(); return;   // no scan on its own (both editions): the last results are read; 🩺 «افحص كل القنوات» when wanted
@@ -2407,7 +2416,7 @@ const chKey = n => String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').repla
 let ALT = new Map();
 /** every other address known for this channel (the other lists, tv.garden's sports, the changing sports' servers) — for the player to fall back on */
 function altsOf(c) {
-  const k = chKey(c.name), out = [...(ALT.get(k) || [])];
+  const k = chKey(c.name), out = [...(c.palts || []), ...(ALT.get(k) || [])];
   GSP.forEach(x => chKey(x.name) === k && out.push(x.url)); (SPORTS?.list || []).forEach(x => chKey(x.name) === k && out.push(x.url));
   return [...new Set(out)].filter(u => u !== c.url && /^https?:/.test(u) && !/youtu/.test(u)).slice(0, 6);
 }
@@ -2439,7 +2448,7 @@ async function loadLists() {
   if (LITE) ILIST = ILIST.filter(liteOk);
   LISTSOK = Date.now(); MIDX = null; LIDX = null;
   iptvHdrSend(ILIST);
-  lead(); liveUi(); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
+  lead(); liveUi(); setTimeout(homeScan, 20000); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
   setTimeout(() => { if (!$('#p-iptv').classList.contains('on') && !busyKeys()) { window.__iAt = Date.now(); loadIptv(); } }, 12000);   // ⚡ the channels page drawn ahead, hidden: the first visit is instant
   setTimeout(() => { try { loadYtLive().then(() => { if ($('#p-iptv').classList.contains('on')) iptvUi(); }); } catch (e) {} }, 15000);
 }
@@ -2481,9 +2490,12 @@ const SERIES_PICKS = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV( \(|$|\
 function picksOf(res) {
   const pool = [...STARL, ...ILIST, ...IFAV, ...(MYFAV || [])].filter(c => c && c.url && !/geo-blocked|radio|\bFM\b/i.test(c.name)), out = [];
   for (const re of res) {
+    // the one that works first (checked: the best picture; then the last one that played; then not yet checked; a dead one last),
+    // the others kept as its spares — the player moves to them by itself when it fails
     const all = pool.filter(c => re.test(c.name.replace(/^\s*\W+\s*/, '')));
-    const c = all.find(x => SCAN[x.url] === 1 || (SCAN[x.url] && typeof SCAN[x.url] === 'object')) || all.find(x => SCAN[x.url] !== 0) || all[0];
-    if (c && !out.some(o => favKey(o) === favKey(c))) out.push(c);
+    const rank = x => { const v = SCAN[x.url]; return isOk(x) ? -(typeof v === 'object' && v.h || 1) : BEST[chKey(x.name)] === x.url ? 1 : v === 0 ? 3 : 2; };
+    const sorted = [...new Map(all.map(x => [x.url, x])).values()].sort((a, b) => rank(a) - rank(b)), c = sorted[0];
+    if (c && !out.some(o => favKey(o) === favKey(c))) out.push(sorted.length > 1 ? { ...c, palts: sorted.slice(1, 7).filter(x => SCAN[x.url] !== 0).map(x => x.url) } : c);
   }
   return out;
 }
@@ -2817,6 +2829,7 @@ async function resolveChannel(c) {
     const id = (/"canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/.exec(t || '') || /"videoId":"([\w-]{11})"/.exec(t || '') || [])[1];
     return id ? { ...c, url: 'https://www.youtube.com/watch?v=' + id } : c;
   }
+  if (/^https?:/.test(c.url) && (isOk(c) || c.palts)) return c;   // a home channel already chosen as the one that works
   if (Date.now() - listsAt > 30 * 60e3) { listsAt = 0; await loadLists(); }
   const fresh = [...IFAV, ...ILIST, ...(SPORTS?.list || [])].find(x => x.name === c.name && !/geo-blocked/i.test(x.name));
   return fresh ? { ...c, url: fresh.url, logo: c.logo || fresh.logo } : c;
@@ -3474,6 +3487,22 @@ function matchPool(m, r) {
   return own;
 }
 let MATCHPLAY = false;
+// 📱 the phone remote's «المباريات»: today's matches (live first) with the channels that carry them; a tap plays one here
+window.remoteMatches = () => {
+  if ((!MLIST || !MLIST.length) && Date.now() - (window.__rmAt || 0) > 60e3) { window.__rmAt = Date.now(); try { loadMatches(); } catch (e) {} }
+  const out = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished').slice(0, 40).map(([m, i]) => {
+    let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
+    return { i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
+      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => x.c.name) };
+  });
+  return JSON.stringify({ loading: !MLIST || !MLIST.length, m: out });
+};
+window.remotePlayMatch = (i, k) => {
+  const m = MLIST && MLIST[i]; if (!m) return;
+  const v = matchLinks(m).filter(x => x.c); if (!v.length) return playMatch(i);
+  const tag = `⚽ ${m.home?.name || ''} × ${m.away?.name || ''}`;
+  MATCHPLAY = true; playChannel(v.map(x => ({ ...x.c, group: tag })), Math.max(0, Math.min(+k || 0, v.length - 1)));
+};
 function playMatch(i, other) {
   const m = MLIST[i]; if (!m) return; if (m.status === 'finished' && !other) return goals(m); const r = matchRoute(m);
   if (r && r.c) { if (other && TV.external) return resolveChannel(r.c).then(c => TV.external(c.url)); MATCHPLAY = true; return playChannel(matchPool(m, r), 0); }
@@ -3687,7 +3716,7 @@ function allSections() {
       { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
       { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
-      { k: 'hart', l: 'صورة البرنامج خلف الكرت', o: SHOW, d: 'on' },
+      { k: 'hart', l: '🖼️ صور البرامج في كروت الرئيسية (مخفية = شعار القناة وشعار البرنامج فقط)', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'hlogo', l: 'شعار القناة', o: [['clear', 'بدون خلفية'], ['tile', 'على مربع أبيض']], d: 'clear' },
       { k: 'up4k', l: '🔷 تحسين الصورة (توضيح الحواف، وتكبير إلى 4K إذا كانت الشاشة 4K — يطفئ نفسه إذا الجهاز ما لحق)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
       { dev: 1, k: 'livebg', l: '🌅 خلفية حيّة خلف القوائم (الشمس والسماء والقمر تتحرّك — أبطأ على التلفزيون)', o: ON, d: 'off' },
@@ -4427,7 +4456,10 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-17d', NEWS_ROWS = [
+const NEWS = '2026-11-17e', NEWS_ROWS = [
+  ['⚽', 'ريموت الجوال: تبويب «المباريات» — اختر القناة وتشتغل على التلفزيون'],
+  ['👶', 'ريموت الجوال: زر «بسيط» — أزرار كبيرة وقليلة يقدر يستخدمها الطفل'],
+  ['📺', 'قنوات MBC والرئيسية: تُختار النسخة اللي تشتغل، والباقي احتياط ينتقل له المشغّل لحاله'],
   ['📺', 'قائمة القنوات في المشغّل مثل TiviMate: جنبها دليل البرامج بالساعات، و▶ ينقلك للمجموعات ثم للقوائم، و◀ يرجعك'],
   ['📺', 'قنوات الرئيسية بالترتيب: MBC 1، عُمان الرياضية، MBC 4، عُمان مباشر، beIN 1·2·3 وLive Event، باقي MBC، دبي، أبوظبي، ثم beIN الإخبارية'],
   ['⌨️', 'خانات الكتابة ما تفتح الكيبورد وأنت تتنقّل: اضغط OK مرتين للكتابة'],
