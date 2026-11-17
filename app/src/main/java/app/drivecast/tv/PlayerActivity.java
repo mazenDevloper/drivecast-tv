@@ -145,6 +145,15 @@ public class PlayerActivity extends Activity {
     }
     /** 📅 the guide: a channel's first address → its coming programmes [[start s, stop s, title], …] */
     static Map<String, org.json.JSONArray> EPG = new HashMap<>();
+    /** 📦 the channel list is handed to the player in memory, not in the Intent: with every playlist's channels it reached ~800 KB,
+     *  over Binder's 1 MB transaction limit — «Transaction too large», the player never opened and the app fell over */
+    private static android.os.Bundle PEND;
+    static Intent big(android.content.Context c, Intent extras) {
+        PEND = extras.getExtras();
+        Intent i = new Intent(c, PlayerActivity.class).putExtra("big", true);
+        if (PEND != null) { i.putExtra("i", PEND.getInt("i")); i.putExtra("auto", PEND.getBoolean("auto")); }
+        return i;
+    }
     private TextView prog;
     private LinearLayout nowRow; private ImageView plogo; private View pdone, pleft; private String plogoUrl = "";
     /** channel k's programme on now: [start, stop, title, picture?, logo?] or null */
@@ -333,6 +342,7 @@ public class PlayerActivity extends Activity {
         try { TRIES = Integer.parseInt(Access.set(this).getString("tries", "6")); } catch (Exception ignored) { }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         Intent in = getIntent();
+        if (in.getBooleanExtra("big", false) && PEND != null) { in.putExtras(PEND); PEND = null; }   // the list handed over in memory
         urls = in.getStringArrayExtra("urls"); names = in.getStringArrayExtra("names");
         logos = in.getStringArrayExtra("logos"); groups = in.getStringArrayExtra("groups"); ccs = in.getStringArrayExtra("ccs"); pls = in.getStringArrayExtra("pls");
         i = in.getIntExtra("i", 0);

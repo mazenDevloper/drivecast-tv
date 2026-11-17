@@ -287,7 +287,7 @@ public class HomeActivity extends Activity {
             JSONArray al = c.optJSONArray("alts"); if (al != null && al.length() > 0) { String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); alts.put(us[k], x); } }
         PlayerActivity.EPG = epg; PlayerActivity.ALTS = alts;
         boolean auto = n > 0 && a.getJSONObject(0).optInt("auto") == 1;
-        return new Intent(ctx, PlayerActivity.class).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index);
+        return PlayerActivity.big(ctx, new Intent().putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index));
     }
 
     class Bridge {
@@ -391,7 +391,7 @@ public class HomeActivity extends Activity {
                 JSONArray u = new JSONArray(urlsJson), n = new JSONArray(namesJson);
                 String[] us = new String[u.length()], ns = new String[u.length()];
                 for (int k = 0; k < us.length; k++) { us[k] = u.getString(k); ns[k] = n.optString(k, ""); }
-                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("i", index));
+                startActivity(PlayerActivity.big(HomeActivity.this, new Intent().putExtra("urls", us).putExtra("names", ns).putExtra("i", index)));
             } catch (Exception ignored) { }
         }
 
@@ -410,7 +410,7 @@ public class HomeActivity extends Activity {
                 for (int k = 0; k < n; k++) { JSONArray e = a.getJSONObject(k).optJSONArray("epg"); if (e != null && e.length() > 0) PlayerActivity.EPG.put(us[k], e); }
                 PlayerActivity.ALTS = new HashMap<>();
                 for (int k = 0; k < n; k++) { JSONArray al = a.getJSONObject(k).optJSONArray("alts"); if (al == null || al.length() == 0) continue; String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); PlayerActivity.ALTS.put(us[k], x); }
-                startActivity(new Intent(HomeActivity.this, PlayerActivity.class).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index));
+                startActivity(PlayerActivity.big(HomeActivity.this, new Intent().putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index)));
             } catch (Exception ignored) { }
         }
 
