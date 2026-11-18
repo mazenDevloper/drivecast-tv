@@ -356,7 +356,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root); buildGuide(root); buildMenu(root);
+        buildBar(root); buildList(root); buildGuide(root); buildMenu(root); buildSearch(root);
         ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
         GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);
@@ -1214,6 +1214,78 @@ public class PlayerActivity extends Activity {
         player.seekTo(to);
         flash((by < 0 ? "⏪ " : "⏩ ") + Math.abs(by / 1000) + " ث" + (player.isCurrentMediaItemLive() ? "  · متأخر " + mmss(Math.max(0, d - to)) : "  · " + mmss(to)));
     }
+    // ---- «ابحث وشغّل» (blue key): a bar floating at the top; type (the TV's keyboard or the phone remote's) and the closest
+    // channels show under it; up/down pick, OK plays, BACK closes
+    private LinearLayout sBox, sRes; private android.widget.EditText sIn; private boolean sOn; private int sSel;
+    private final java.util.List<Integer> sHits = new java.util.ArrayList<>();
+    private void buildSearch(FrameLayout root) {
+        sBox = new LinearLayout(this); sBox.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable d = new GradientDrawable(); d.setColor(0xF2101216); d.setCornerRadius(dp(22)); d.setStroke((int) dp(1), 0x40FFFFFF);
+        sBox.setBackground(d); sBox.setPadding((int) dp(18), (int) dp(14), (int) dp(18), (int) dp(14));
+        sIn = new android.widget.EditText(this); sIn.setSingleLine(true); sIn.setHint("🔎  ابحث وشغّل — اكتب اسم القناة"); sIn.setHintTextColor(0x99FFFFFF);
+        sIn.setTextColor(Color.WHITE); sIn.setTextSize(22); sIn.setGravity(Gravity.CENTER_VERTICAL | Gravity.START); sIn.setBackground(null);
+        sIn.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        sBox.addView(sIn, new LinearLayout.LayoutParams(-1, -2));
+        sRes = new LinearLayout(this); sRes.setOrientation(LinearLayout.VERTICAL); sBox.addView(sRes, new LinearLayout.LayoutParams(-1, -2));
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams((int) dp(760), -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL); p.topMargin = (int) dp(36);
+        root.addView(sBox, p); sBox.setVisibility(View.GONE);
+        sIn.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence a, int b, int c, int d2) { }
+            public void onTextChanged(CharSequence a, int b, int c, int d2) { }
+            public void afterTextChanged(android.text.Editable e) { sSel = 0; searchFill(); }
+        });
+        sIn.setOnEditorActionListener((v, act, ev) -> { searchGo(); return true; });
+        sIn.setOnKeyListener((v, code, ev) -> {
+            if (ev.getAction() != KeyEvent.ACTION_DOWN) return code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN;
+            switch (code) {
+                case KeyEvent.KEYCODE_DPAD_DOWN: if (sSel < sHits.size() - 1) sSel++; searchMark(); return true;
+                case KeyEvent.KEYCODE_DPAD_UP: if (sSel > 0) sSel--; searchMark(); return true;
+                case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER: searchGo(); return true;
+                case KeyEvent.KEYCODE_BACK: case KeyEvent.KEYCODE_ESCAPE: case KeyEvent.KEYCODE_PROG_BLUE: searchShow(false); return true;
+            }
+            return false;
+        });
+    }
+    private static String sNorm(String x) {
+        if (x == null) return "";
+        return x.toLowerCase(Locale.ROOT).replaceAll("[\\[(][^\\])]*[\\])]", " ").replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا').replace('ة', 'ه').replace('ى', 'ي').replaceAll("\\s+", " ").trim();
+    }
+    private void searchFill() {
+        sHits.clear(); sRes.removeAllViews();
+        String q = sNorm(sIn.getText().toString()); if (q.isEmpty()) return;
+        java.util.List<int[]> sc = new java.util.ArrayList<>();
+        String[] words = q.split(" ");
+        for (int k = 0; k < urls.length; k++) {
+            String n = sNorm(nOf(k)); int score = n.startsWith(q) ? 3 : n.contains(q) ? 2 : 0;
+            if (score == 0) { boolean all = true; for (String w : words) if (!n.contains(w)) { all = false; break; } if (all) score = 1; }
+            if (score > 0) sc.add(new int[]{ score, k });
+        }
+        java.util.Collections.sort(sc, (a, b) -> b[0] != a[0] ? b[0] - a[0] : a[1] - b[1]);
+        for (int x = 0; x < sc.size() && x < 7; x++) {
+            int k = sc.get(x)[1]; sHits.add(k);
+            TextView t = text(18, Typeface.DEFAULT, 0xE6FFFFFF); t.setSingleLine(true); t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            String fl = fOf(k); t.setText((fl.isEmpty() ? "" : fl + "  ") + nOf(k) + "   · " + (k + 1));
+            t.setPadding((int) dp(14), (int) dp(9), (int) dp(14), (int) dp(9));
+            sRes.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        }
+        if (sHits.isEmpty()) { TextView t = text(16, Typeface.DEFAULT, 0x99FFFFFF); t.setText("ما لقيت قناة بهالاسم"); t.setPadding((int) dp(14), (int) dp(9), 0, (int) dp(9)); sRes.addView(t); }
+        searchMark();
+    }
+    private void searchMark() {
+        for (int x = 0; x < sRes.getChildCount() && x < sHits.size(); x++) {
+            View v = sRes.getChildAt(x); GradientDrawable g = new GradientDrawable(); g.setCornerRadius(dp(14));
+            g.setColor(x == sSel ? 0x33FFFFFF : 0x00000000); v.setBackground(g);
+        }
+    }
+    private void searchGo() { if (sSel < sHits.size()) { int k = sHits.get(sSel); searchShow(false); if (k != cur) { i = k; play(); } } }
+    private void searchShow(boolean on) {
+        sOn = on; android.view.inputmethod.InputMethodManager im = (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (on) {
+            if (menuOn) menuShow(false); if (listOn) listShow(false); if (guideOn) guideShow(false);
+            sIn.setText(""); sRes.removeAllViews(); sHits.clear(); sBox.setVisibility(View.VISIBLE); sIn.requestFocus();
+            sIn.postDelayed(() -> { if (im != null) im.showSoftInput(sIn, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT); }, 150);
+        } else { sBox.setVisibility(View.GONE); if (im != null) im.hideSoftInputFromWindow(sIn.getWindowToken(), 0); sIn.clearFocus(); }
+    }
     private void recall() {
         if (prevI < 0 || prevI >= urls.length || prevI == i) { flash("ما فيه قناة سابقة بعد"); return; }
         i = prevI; play();
@@ -1462,10 +1534,15 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_NEXT: i = (i + 1) % urls.length; play(); return true;
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS: i = (i - 1 + urls.length) % urls.length; play(); return true;
             case KeyEvent.KEYCODE_LAST_CHANNEL: recall(); return true;
-            case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: case KeyEvent.KEYCODE_PROG_YELLOW: nextAudio(); return true;
+            case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: nextAudio(); return true;
+            // the colour keys (the Hisense remote over CEC): red the matches on now, green the guide, yellow the channel before, blue search & play
+            case KeyEvent.KEYCODE_PROG_RED: if (listOn) listShow(false); if (guideOn) guideShow(false); menuShow(true); menuLv = 1; menuSel = 0; menuFill(); return true;
+            case KeyEvent.KEYCODE_PROG_GREEN: if (menuOn) menuShow(false); if (listOn) listShow(false); guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); return true;
+            case KeyEvent.KEYCODE_PROG_YELLOW: recall(); return true;
+            case KeyEvent.KEYCODE_PROG_BLUE: searchShow(true); return true;
             case KeyEvent.KEYCODE_MEDIA_STOP: finish(); return true;
             case KeyEvent.KEYCODE_GUIDE: guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); return true;
-            case KeyEvent.KEYCODE_MENU: case KeyEvent.KEYCODE_PROG_GREEN: case KeyEvent.KEYCODE_PROG_RED: fill(); showBar(12000); tickerShow(); return true;
+            case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); tickerShow(); return true;
             default: break;
         }
         if (ok && urls.length > 1) { h.removeCallbacks(hide); hide.run(); listShow(true); return true; }   // OK: the list alone

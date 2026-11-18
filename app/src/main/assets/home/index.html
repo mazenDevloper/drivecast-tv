@@ -4095,6 +4095,12 @@ document.addEventListener('focusin', e => {   // the focus left an open list: it
   if (shut) { foldCounts(); t.scrollIntoView({ block: 'nearest' }); }
 });
 document.addEventListener('click', e => { const h = e.target.closest && e.target.closest('h2[data-fold]'); if (h && !e.target.closest('button')) foldToggle(h.dataset.fold); });
+// the colour keys (the Hisense remote over CEC; HomeActivity calls this): red YouTube, green the channels, yellow the Quran, blue the matches
+window.onTvColor = c => {
+  try { if (typeof CTX !== 'undefined' && CTX) ctxClose(); if (document.body.classList.contains('ambient')) ambient(false); } catch (e) {}
+  if (c === 'red') { const yt = APPS.find(a => /youtube/i.test(a.pkg) && !/music|kids|creator/i.test(a.pkg)); return TV.open(yt ? yt.pkg : 'com.google.android.youtube.tv'); }
+  show(c === 'green' ? 'iptv' : c === 'yellow' ? 'quran' : 'matches');
+};
 document.addEventListener('keydown', e => { const h = document.activeElement; if (e.key === 'Enter' && h && h.dataset && h.dataset.fold) { e.preventDefault(); e.stopImmediatePropagation(); foldToggle(h.dataset.fold); } }, true);
 window.onTvWake = why => {
   if (S('autolast', 'on') !== 'on') return;
