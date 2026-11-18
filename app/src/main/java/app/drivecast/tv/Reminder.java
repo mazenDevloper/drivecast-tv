@@ -107,7 +107,8 @@ public class Reminder extends BroadcastReceiver {
     static void regrant(Context c) { regrant(c, false); }
     static void regrant(Context c, boolean now_) {
         long now = android.os.SystemClock.elapsedRealtime(); // the 10 minutes are kept in the settings, not only in memory: a restarted app must not run it again at once (a loop killed it every 2 s)
-        android.content.SharedPreferences sp = Access.set(c); long last = sp.getLong("grantAt", 0);
+        android.content.SharedPreferences sp = Access.set(c); long last = 0;
+        try { last = sp.getLong("grantAt", 0); } catch (ClassCastException e) { sp.edit().remove("grantAt").apply(); }   // a settings import wrote it as text: the home screen crashed at every start
         if (last > now) last = 0;   // after a reboot the clock starts again
         if (!now_ && last != 0 && now - last < 10 * 60_000L) return; grantAt = now; sp.edit().putLong("grantAt", now).apply();
         new Thread(() -> {
