@@ -701,6 +701,8 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
     if (lastEl === el && now - lastOk < 600) { lastOk = 0; open(el); } else { lastOk = now; lastEl = el; hint(el, 'اضغط OK مرة ثانية للكتابة'); }
   }, true);
   addEventListener('dblclick', e => { const el = e.target; if (el && el.matches && el.matches(FIELD) && !el.dataset.typing) open(el); }, true);
+  // a mouse click or a finger tap (the web version, a phone, RustDesk) writes at once: only the remote's arrows need «OK twice»
+  addEventListener('pointerup', e => { const el = e.target; if (el && el.matches && el.matches(FIELD) && !el.dataset.typing && e.pointerType !== '') open(el); }, true);
 })();
 // 👆 touch and mouse (a tablet through RustDesk, a mouse): a swipe scrolls the row or the page under the finger (also where the
 // TV layout hides the scrollbars), a long press (0.65 s) is the remote's long OK on that card, a wheel scrolls, and a long
