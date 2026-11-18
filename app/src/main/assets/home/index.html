@@ -3003,7 +3003,7 @@ function loadApps() {
   let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (e) {}
   APPS.sort((a, b) => (use[b.pkg] || 0) - (use[a.pkg] || 0) || (b.tv - a.tv) || a.label.localeCompare(b.label, 'ar'));
   $('#s-apps').innerHTML = appsHtml(200) || '<div class="empty">لا تطبيقات</div>';
-  $('#s-apps2').innerHTML = appsHtml(200);
+  $('#s-apps2').innerHTML = appsHtml(200) || '<div class="empty">ما لقيت تطبيقات على الجهاز — افتح «الإعدادات» وجرّب مرة ثانية</div>';
   for (const id of ['#sugg1', '#sugg2']) if ($(id)) $(id).innerHTML = suggestHtml();
 }
 // ⚽ the Matches tab: every match of the day (DriveCast's own list: many sources, the channels that carry them), like its

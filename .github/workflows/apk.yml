@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # ✅ a gate: no build reaches the TVs unless the finished-product and speed checks pass
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Finished-product + speed gate
+        run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium && node tools/final.js && node tools/speed.js
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/cache@v4
