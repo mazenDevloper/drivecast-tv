@@ -4002,7 +4002,14 @@ function homeLayout() {
 // the remote's numbers: 1 = the first tab … (0 = settings)
 document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.dataset.act === 'settings' ? '0' : String(i + 1));
 let NUMS = '', NUMT = null;
+// ⚙️ «00» on the remote: the Android box's own settings (a single 0 stays DriveCast's settings, after a short wait for a second 0)
+let ZERO0 = 0, ZEROT = 0;
 function numberKey(n) {
+  if (n === '0') {
+    if (Date.now() - ZERO0 < 900) { ZERO0 = 0; clearTimeout(ZEROT); clearTimeout(NUMT); NUMS = ''; $('#numIn')?.classList.remove('on'); TV.settings(); return true; }
+    ZERO0 = Date.now();
+    if (!pinRaw().length) { clearTimeout(ZEROT); ZEROT = setTimeout(() => tabKey('0'), 900); return true; }
+  }
   if (!pinRaw().length) return tabKey(n);
   if ($('#bedit').classList.contains('on') || $('#panel').classList.contains('on')) return tabKey(n);
   NUMS = (NUMS + n).slice(-2); clearTimeout(NUMT);
