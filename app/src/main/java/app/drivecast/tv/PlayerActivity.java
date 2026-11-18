@@ -259,9 +259,33 @@ public class PlayerActivity extends Activity {
         return true;
     }
     // ---- 📺 picture in picture: HOME while a channel plays → it goes on in a corner over the home screen
+    // the colour keys: red the matches on now, green the guide, yellow the channel before, blue search & play
+    void colorKey(int code) {
+        switch (code) {
+            case KeyEvent.KEYCODE_PROG_RED: if (listOn) listShow(false); if (guideOn) guideShow(false); menuShow(true); menuLv = 1; menuSel = 0; menuFill(); break;
+            case KeyEvent.KEYCODE_PROG_GREEN: if (menuOn) menuShow(false); if (listOn) listShow(false); guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); break;
+            case KeyEvent.KEYCODE_PROG_YELLOW: recall(); break;
+            case KeyEvent.KEYCODE_PROG_BLUE: searchShow(true); break;
+        }
+    }
+    /** T6's firmware turns green / yellow / blue into HOME before any app sees the key: the player drops to the corner, then the
+     *  key reaches the home screen. Called from there: when the player left less than 2 s ago, it comes back to full screen and
+     *  does the key's action. true = handled */
+    static volatile long leftAt;
+    static boolean colorBack(android.content.Context c, int code) {
+        PlayerActivity p = live;
+        if (p == null || p.isFinishing() || android.os.SystemClock.elapsedRealtime() - leftAt > 2000) return false;
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) c.getSystemService(ACTIVITY_SERVICE);
+            am.moveTaskToFront(p.getTaskId(), 0);
+        } catch (Throwable t) { Crash.note(c, "colorBack: " + t); return false; }
+        p.h.postDelayed(() -> { if (!p.isFinishing()) p.colorKey(code); }, 450);
+        return true;
+    }
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
+        leftAt = android.os.SystemClock.elapsedRealtime();
         try {
             if (!"on".equals(Access.set(this).getString("pip", "on")) || player == null || !player.getPlayWhenReady()) return;
             if (!getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) return;
@@ -1182,6 +1206,17 @@ public class PlayerActivity extends Activity {
         }
         hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً ☰ الخيارات"
             : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ ▶ دليل البرامج  ·  ◀ مطوّلاً القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ مطوّلاً حجم الصورة  ·  OK مطوّلاً ☰ الخيارات");
+        // the colour keys' guide: a coloured dot before each one's action (the Hisense remote's red / green / yellow / blue)
+        {
+            android.text.SpannableStringBuilder cb = new android.text.SpannableStringBuilder("\n");
+            String[][] ck = { { "المباريات الآن", "#FF4D4D" }, { "دليل البرامج", "#3DDC97" }, { "القناة السابقة", "#FFD23F" }, { "ابحث وشغّل", "#4DA3FF" } };
+            for (String[] x : ck) {
+                int st = cb.length(); cb.append("● ");
+                cb.setSpan(new android.text.style.ForegroundColorSpan(Color.parseColor(x[1])), st, st + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                cb.append(x[0]).append("     ");
+            }
+            hint.append(cb);
+        }
         // signal: the connection's speed (estimate) against the stream's bitrate
         long have = meter.getBitrateEstimate();
         int bars = !ready ? 1 : need <= 0 ? (have > 8e6 ? 5 : have > 4e6 ? 4 : have > 2e6 ? 3 : 2) : (int) Math.max(1, Math.min(5, Math.round(have / (double) need * 1.6)));
@@ -1536,10 +1571,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_LAST_CHANNEL: recall(); return true;
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK: case KeyEvent.KEYCODE_LANGUAGE_SWITCH: nextAudio(); return true;
             // the colour keys (the Hisense remote over CEC): red the matches on now, green the guide, yellow the channel before, blue search & play
-            case KeyEvent.KEYCODE_PROG_RED: if (listOn) listShow(false); if (guideOn) guideShow(false); menuShow(true); menuLv = 1; menuSel = 0; menuFill(); return true;
-            case KeyEvent.KEYCODE_PROG_GREEN: if (menuOn) menuShow(false); if (listOn) listShow(false); guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); return true;
-            case KeyEvent.KEYCODE_PROG_YELLOW: recall(); return true;
-            case KeyEvent.KEYCODE_PROG_BLUE: searchShow(true); return true;
+            case KeyEvent.KEYCODE_PROG_RED: case KeyEvent.KEYCODE_PROG_GREEN: case KeyEvent.KEYCODE_PROG_YELLOW: case KeyEvent.KEYCODE_PROG_BLUE: colorKey(code); return true;
             case KeyEvent.KEYCODE_MEDIA_STOP: finish(); return true;
             case KeyEvent.KEYCODE_GUIDE: guideCh = cur >= 0 ? cur : i; guideAt = 0; guideShow(true); return true;
             case KeyEvent.KEYCODE_MENU: fill(); showBar(12000); tickerShow(); return true;

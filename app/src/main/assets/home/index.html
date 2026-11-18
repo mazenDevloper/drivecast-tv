@@ -547,6 +547,9 @@ html.fxlite .wall,html.fxlite .wl{transition:none!important}
 body.ambient.iqbig .wall,body.ambient.adhan .wall{animation:none!important;will-change:auto}
 body.ambient.iqbig :is(#birds,#rkCloud,#rkCloud2,#rkRain,.met),body.ambient.adhan :is(#birds,#rkCloud,#rkCloud2,#rkRain,.met),html.fxlite #birds{display:none!important}
 html.fxlite #fring{box-shadow:none;transition-duration:.07s}
+/* the colour keys' guide: a coloured dot on the tab each one opens (green the channels, yellow the Quran, blue the matches; red YouTube) */
+.tab[data-page="iptv"]::after,.tab[data-page="quran"]::after,.tab[data-page="matches"]::after,.card.yt .txt b::after{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-start:9px;vertical-align:middle}
+.tab[data-page="iptv"]::after{background:#3ddc97}.tab[data-page="quran"]::after{background:#ffd23f}.tab[data-page="matches"]::after{background:#4da3ff}.card.yt .txt b::after{background:#ff4d4d}
 </style>
 </head>
 <body>

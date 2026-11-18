@@ -257,12 +257,15 @@ public class HomeActivity extends Activity {
     }
 
     @Override
+    private boolean colorEaten;
     public boolean dispatchKeyEvent(KeyEvent e) {
         // 🎙️ the remote's mic / search key: speech recognition in Arabic
         if (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH) { if (e.getAction() == KeyEvent.ACTION_UP) voice(this, 77); return true; }
         // the colour keys (the Hisense remote over CEC): red YouTube, green the channels, yellow the Quran, blue the matches
         int ck = e.getKeyCode();
         if (ck == KeyEvent.KEYCODE_PROG_RED || ck == KeyEvent.KEYCODE_PROG_GREEN || ck == KeyEvent.KEYCODE_PROG_YELLOW || ck == KeyEvent.KEYCODE_PROG_BLUE) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0 && PlayerActivity.colorBack(this, ck)) { colorEaten = true; return true; }   // T6 sent the player away: back to it
+            if (colorEaten) { if (e.getAction() == KeyEvent.ACTION_UP) colorEaten = false; return true; }
             if (e.getAction() == KeyEvent.ACTION_UP && web != null) web.evaluateJavascript("window.onTvColor && onTvColor('" + (ck == KeyEvent.KEYCODE_PROG_RED ? "red" : ck == KeyEvent.KEYCODE_PROG_GREEN ? "green" : ck == KeyEvent.KEYCODE_PROG_YELLOW ? "yellow" : "blue") + "')", null);
             return true;
         }
