@@ -11,6 +11,10 @@ if pm path com.carriez.flutter_hbb >/dev/null 2>&1 && ! dumpsys media_projection
   am start -n com.carriez.flutter_hbb/.MainActivity >/dev/null 2>&1; sleep 5; dump
   tap 'content-desc="(مشاركة الشاشة|Share screen)&#10;' ; sleep 2; dump
   if tap 'content-desc="(بدء الخدمة|Start service)"'; then L="$L rd-start"; sleep 3; dump
+    # T6 has no folder picker: the log-folder box is closed, then «Screen capture» → «RustDesk storage» (its own folder)
+    if grep -q 'content-desc="Choose folder"' $X; then input keyevent 4; sleep 2; dump
+      tap 'content-desc="(لقط الشاشة|Screen capture)"'; sleep 3; dump; fi
+    tap 'content-desc="(تخزين RustDesk|RustDesk storage)"' && { L="$L rd-store"; sleep 3; dump; }
     tap 'content-desc="(موافق|OK)"' && L="$L rd-ok"; sleep 3; dump
     tap 'text="(ابدأ الآن|Start now|بدء الآن)"' && L="$L proj-ok"; sleep 2
   fi
