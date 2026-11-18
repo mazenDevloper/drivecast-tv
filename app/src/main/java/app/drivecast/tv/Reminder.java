@@ -106,7 +106,10 @@ public class Reminder extends BroadcastReceiver {
     private static long grantAt; static volatile String grantLast = "";
     static void regrant(Context c) { regrant(c, false); }
     static void regrant(Context c, boolean now_) {
-        long now = android.os.SystemClock.elapsedRealtime(); if (!now_ && grantAt != 0 && now - grantAt < 10 * 60_000L) return; grantAt = now;
+        long now = android.os.SystemClock.elapsedRealtime(); // the 10 minutes are kept in the settings, not only in memory: a restarted app must not run it again at once (a loop killed it every 2 s)
+        android.content.SharedPreferences sp = Access.set(c); long last = sp.getLong("grantAt", 0);
+        if (last > now) last = 0;   // after a reboot the clock starts again
+        if (!now_ && last != 0 && now - last < 10 * 60_000L) return; grantAt = now; sp.edit().putLong("grantAt", now).apply();
         new Thread(() -> {
             String r;
             try (java.io.InputStream in = c.getAssets().open("grant.sh")) { r = SelfAdb.shell(c, new String(readAll(in), "UTF-8"), 0, 90_000); }
