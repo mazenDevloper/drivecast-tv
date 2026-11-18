@@ -138,6 +138,20 @@ public class HomeActivity extends Activity {
     }
 
     /** the TV's address on the home network: the Wi-Fi's, or the cable's (Ethernet) when the TV isn't on Wi-Fi */
+    /** the TV's address on ZeroTier (the ZeroTier One app running on the TV: a VPN, «tun0»/«zt…») — the phone remote from anywhere */
+    static String ztIp() {
+        String lan = lanIp();
+        try {
+            for (java.net.NetworkInterface n : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                String nm = n.getName();
+                if (!n.isUp() || !(nm.startsWith("tun") || nm.startsWith("zt") || nm.startsWith("ppp"))) continue;
+                for (java.net.InetAddress ad : java.util.Collections.list(n.getInetAddresses()))
+                    if (ad instanceof java.net.Inet4Address && !ad.getHostAddress().equals(lan)) return ad.getHostAddress();
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
     static String lanIp() {
         try {
             for (java.net.NetworkInterface n : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
@@ -374,6 +388,8 @@ public class HomeActivity extends Activity {
         }
 
         /** the phone page's address, http://<tv-ip>:8080 */
+        @JavascriptInterface
+        public String ztUrl() { String a = ztIp(); return a.isEmpty() ? "" : "http://" + a + ":" + MessageServer.PORT; }
         @JavascriptInterface
         public String phoneUrl() {
             String a = lanIp();

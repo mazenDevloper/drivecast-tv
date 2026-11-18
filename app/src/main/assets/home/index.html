@@ -699,6 +699,44 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
   }, true);
   addEventListener('dblclick', e => { const el = e.target; if (el && el.matches && el.matches(FIELD) && !el.dataset.typing) open(el); }, true);
 })();
+// 👆 touch and mouse (a tablet through RustDesk, a mouse): a swipe scrolls the row or the page under the finger (also where the
+// TV layout hides the scrollbars), a long press (0.65 s) is the remote's long OK on that card, a wheel scrolls, and a long
+// sideways swipe over something that does not scroll turns to the next tab. A tap stays a tap.
+(() => {
+  let st = null, eat = false;
+  const scroller = (el, axis) => { for (let e = el; e && e !== document.documentElement; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (axis === 'x' ? e.scrollWidth > e.clientWidth + 4 : e.scrollHeight > e.clientHeight + 4) return { e, nat: /auto|scroll/.test(axis === 'x' ? cs.overflowX : cs.overflowY) };
+    } return axis === 'y' ? { e: document.scrollingElement, nat: true } : null; };
+  addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    const b = e.target.closest && e.target.closest('button, .f, [data-i], [data-mi], [data-ilist], [data-app]');
+    st = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: e.target, b, moved: false, ax: '' };
+    clearTimeout(st.hold);
+    st.hold = setTimeout(() => { if (!st || st.moved || !st.b) return; eat = true; try { st.b.focus({ preventScroll: true }); if (typeof holdPlay === 'function') holdPlay(st.b); } catch (x) {} }, 650);
+  }, true);
+  addEventListener('pointermove', e => {
+    if (!st) return;
+    const dx = e.clientX - st.lx, dy = e.clientY - st.ly;
+    if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 18) return;
+    if (!st.moved) { st.moved = true; clearTimeout(st.hold); st.ax = Math.abs(e.clientX - st.x) > Math.abs(e.clientY - st.y) ? 'x' : 'y'; st.sc = scroller(st.t, st.ax); }
+    if (st.sc && (!st.sc.nat || e.pointerType !== 'touch')) st.sc.e.scrollBy(st.ax === 'x' ? { left: -dx } : { top: -dy });   // a mouse drag never scrolls on its own
+    st.lx = e.clientX; st.ly = e.clientY;
+  }, true);
+  const end = e => {
+    if (!st) return; clearTimeout(st.hold);
+    if (st.moved) { eat = true;
+      const dx = e.clientX - st.x;   // a long sideways swipe where nothing scrolls sideways: the next / previous tab
+      if (st.ax === 'x' && !st.sc && Math.abs(dx) > 160) { const tabs = [...document.querySelectorAll('.tabs .tab')].filter(t => t.offsetParent), i = tabs.findIndex(t => t.classList.contains('on')), n = tabs[i + (dx < 0 ? 1 : -1)]; if (n) n.click(); }
+    }
+    st = null; setTimeout(() => { eat = false; }, 60);
+  };
+  addEventListener('pointerup', end, true); addEventListener('pointercancel', () => { if (st) clearTimeout(st.hold); st = null; }, true);
+  addEventListener('click', e => { if (eat) { e.preventDefault(); e.stopImmediatePropagation(); eat = false; } }, true);
+  addEventListener('contextmenu', e => e.preventDefault(), true);   // a long press is ours, not the browser's menu
+  addEventListener('wheel', e => { const ax = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey ? 'x' : 'y', sc = scroller(e.target, ax);
+    if (sc && !sc.nat) { e.preventDefault(); sc.e.scrollBy(ax === 'x' ? { left: e.deltaX || e.deltaY } : { top: e.deltaY }); } }, { passive: false, capture: true });
+})();
 // 🧯 a page error is kept with the TV's problems (Crash.java), which go to DriveCast's server on their own — at most 10 a session
 (() => { let n = 0; const send = m => { try { if (n++ < 10 && window.TV && TV.jsError) TV.jsError(String(m).slice(0, 400)); } catch (e) {} };
   addEventListener('error', e => send((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')));
@@ -3840,6 +3878,9 @@ function allSections() {
       { i: 'الرابط', t: (w.url || '').replace('https://', '') },
       ...(TV.phoneUrl() ? [{ qr: TV.phoneUrl().replace(/\/?$/, '') + '/pair?back=' + encodeURIComponent('https://mazendevloper.github.io/drivecast-tv/remote/'), l: '📱 امسحه بكاميرا الجوال وأنت على واي فاي البيت: ينربط الريموت مرة وحدة ويشتغل بعدها من أي مكان' }] : []),
       { i: 'عنوان التلفزيون (للربط)', t: (TV.phoneUrl() || '').replace('http://', '').replace(':8080', '') || 'يتصل بالواي فاي…' },
+      // 🌍 ZeroTier on the TV: the same remote from anywhere at this address (the phone on the same ZeroTier network)
+      ...((TV.ztUrl && TV.ztUrl()) ? [{ i: '🌍 الريموت من أي مكان (ZeroTier)', t: TV.ztUrl().replace('http://', '') }, { qr: TV.ztUrl() + '/', l: '🌍 امسحه وجوالك على ZeroTier: يفتح الريموت من أي مكان' }]
+        : [{ i: '🌍 الريموت من أي مكان (ZeroTier)', t: 'ثبّت تطبيق ZeroTier One على التلفزيون وادخل شبكتك' }]),
       { k: 'web', l: 'التحكم من الويب', o: ON, d: 'on' },
       { a: '', o: [['newpin', '🔒 فكّ ربط كل المتصفحات']] },
     ]; })()],
@@ -4542,7 +4583,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-18a', NEWS_ROWS = [
+const NEWS = '2026-11-18b', NEWS_ROWS = [
+  ['👆', 'اللمس والماوس (مثل RustDesk من التابلت): السحب يقلّب الصفوف والصفحة، والضغط المطوّل مثل OK المطوّل، والسحب الطويل جانباً ينقل للتبويب الثاني'],
+  ['🌍', 'الريموت من أي مكان عبر ZeroTier: الإعدادات ← الويب (عنوانه ورمز QR)'],
   ['📂', 'ريموت الجوال: «القوائم» — قوائمك ثم مجموعاتها ثم القنوات، وابحث وشغّل بالعربي أو الإنجليزي (حتى اسم فريق يوديك لقناة مباراته)'],
   ['🔔', 'ريموت الجوال: جرس على كل مباراة — التلفزيون يعرض عليك التحويل أول ما تبدأ ومع كل هدف، والجوال يوصله تنبيه'],
   ['⚽', 'ريموت الجوال: تبويب «المباريات» — اختر القناة وتشتغل على التلفزيون'],
