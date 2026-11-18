@@ -30,7 +30,26 @@ h = h.replace('<head>', '<head>\n<script>(function(){var V="' + ver + '";try{fet
 
 p = (root / 'app/src/main/assets/phone/index.html').read_text(encoding='utf-8')
 p = p.replace('<head>', '<head>\n<script src="../hub.js"></script>\n<script src="../remote.js"></script>', 1)
+# 🔔 the remote on the Home Screen is an app of its own (iOS 16.4+): it can get the match alerts with the phone locked
+p = p.replace('<head>', '<head>\n<link rel="manifest" href="manifest.json">\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="الريموت">\n<link rel="apple-touch-icon" href="icon.png">', 1)
 (site / 'remote').mkdir()
 (site / 'remote/index.html').write_text(p, encoding='utf-8')
+import json
+(site / 'remote/manifest.json').write_text(json.dumps({'name': 'ريموت DriveCast TV', 'short_name': 'الريموت', 'start_url': './', 'scope': './', 'display': 'standalone', 'dir': 'rtl', 'lang': 'ar',
+  'background_color': '#0b0f0d', 'theme_color': '#0b0f0d', 'icons': [{'src': 'icon.png', 'sizes': '512x512', 'type': 'image/png'}]}, ensure_ascii=False), encoding='utf-8')
+# the alerts: a push only wakes this worker, which fetches the latest alerts from DriveCast's server and shows them
+(site / 'remote/sw.js').write_text("""self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('push',e=>e.waitUntil((async()=>{
+  let list=[];try{list=(await (await fetch('https://studio.c-p.workers.dev/push/latest',{cache:'no-store'})).json()).alerts||[]}catch(x){}
+  const mine=list.filter(a=>a.fav||a.kind==='tv'||a.kind==='pre'||/^test/.test(a.id||''));list=mine.length?mine:list.slice(0,1);   // your matches first
+  if(!list.length)list=[{id:'x'+Date.now(),title:'⚽ DriveCast TV',body:'تحديث جديد للمباريات'}];
+  for(const a of list.slice(0,4))await self.registration.showNotification(a.title,{body:a.body||'',tag:a.id,icon:'icon.png',data:{url:'./'}});
+})()));
+self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window'}).then(w=>w.length?w[0].focus():clients.openWindow('./')));});
+""", encoding='utf-8')
+icon = root / 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png'
+for cand in [icon, *sorted((root / 'app/src/main/res').glob('**/ic_launcher*.png'), key=lambda x: -x.stat().st_size), *sorted((root / 'app/src/main/res').glob('**/banner*.png'))]:
+    if cand.exists(): shutil.copy(cand, site / 'remote/icon.png'); break
 (site / '.nojekyll').write_text('')
 print('site:', sum(1 for _ in site.rglob('*')), 'files')

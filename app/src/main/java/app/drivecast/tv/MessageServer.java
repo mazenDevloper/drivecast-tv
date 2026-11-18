@@ -168,6 +168,9 @@ public class MessageServer extends Service {
             String[] q = body.trim().split("\\s+");
             String rec = q.length > 1 ? q[0] : "", n = q[q.length - 1];
             if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
+        } else if (first.startsWith("POST /rc")) {   // the phone remote's questions (playlists, groups, channels, search, play, 🔔): answered by the home page
+            String q = body.length() > 2000 ? body.substring(0, 2000) : body;
+            reply(s.getOutputStream(), "application/json", pageCall("window.remoteCall ? remoteCall(" + org.json.JSONObject.quote(q) + ") : '{}'", true));
         } else if (first.startsWith("POST /matchplay")) {   // «i k»: match i, its k-th channel, played on the TV
             String[] q = body.trim().split("\\s+");
             if (q.length == 2 && q[0].matches("\\d{1,3}") && q[1].matches("\\d{1,2}")) pageCall("window.remotePlayMatch && remotePlayMatch(" + q[0] + "," + q[1] + ")", false);

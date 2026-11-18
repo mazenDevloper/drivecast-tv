@@ -3493,9 +3493,95 @@ window.remoteMatches = () => {
   const out = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished').slice(0, 40).map(([m, i]) => {
     let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
     return { i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
-      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => x.c.name) };
+      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => x.c.name), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
   });
   return JSON.stringify({ loading: !MLIST || !MLIST.length, m: out });
+};
+// ---- 📱 what the phone remote asks the TV (MessageServer POST /rc → remoteCall): the playlists → their groups → the channels,
+// «ابحث وشغّل», 🔔 match reminders. Every answer is a short JSON string; nothing here moves the TV's own screen except a play.
+const plOfC = c => c.pl || (c.mine ? 'قوائمي' : c.arl ? 'iptv-org' : c.dyn ? 'البث المتجدد' : /youtu/.test(c.url || '') ? 'يوتيوب' : 'Free-TV');
+let RPOOL = [];
+function rPool() {
+  const seen = new Set();
+  RPOOL = [...STARL, ...ILIST, ...IFAV, ...(MYFAV || [])].filter(c => c && c.url && /^https?:/.test(c.url) && !isVod(c) && !/geo-blocked|radio|\bFM\b/i.test(c.name) && !seen.has(c.url) && (seen.add(c.url), true));
+  return RPOOL;
+}
+const rCh = (c, i) => ({ i, n: c.name, l: c.logo || '', now: epgNow(c) || '', ok: isOk(c) ? 1 : SCAN[c.url] === 0 ? 0 : '' });
+// 🔤 Arabic ↔ English: «سبيستون» finds Spacetoon, «مصر» Egypt, «برشلونة» Barcelona — by meaning (a small dictionary) and by
+// sound (both written as a consonant skeleton: s-b-s-t-n)
+const RDICT = { 'مصر': 'egypt misr', 'السعودية': 'saudi ksa', 'سعودي': 'saudi ksa', 'عمان': 'oman', 'الإمارات': 'uae emirates', 'الامارات': 'uae emirates', 'قطر': 'qatar', 'الكويت': 'kuwait', 'البحرين': 'bahrain', 'الأردن': 'jordan', 'الاردن': 'jordan', 'لبنان': 'lebanon', 'سوريا': 'syria', 'العراق': 'iraq', 'المغرب': 'morocco maroc', 'الجزائر': 'algeria algerie', 'تونس': 'tunisia tunisie', 'ليبيا': 'libya', 'السودان': 'sudan', 'اليمن': 'yemen', 'فلسطين': 'palestine', 'تركيا': 'turkey turk', 'أخبار': 'news', 'اخبار': 'news', 'إخبارية': 'news', 'الإخبارية': 'news', 'رياضة': 'sport sports', 'رياضية': 'sport sports', 'الرياضية': 'sport sports', 'أطفال': 'kids cartoon', 'اطفال': 'kids cartoon', 'كرتون': 'cartoon kids', 'أفلام': 'movies cinema film', 'افلام': 'movies cinema film', 'مسلسلات': 'series drama', 'دراما': 'drama', 'وثائقي': 'documentary docu', 'وثائقية': 'documentary docu', 'قرآن': 'quran', 'القرآن': 'quran', 'أغاني': 'music', 'موسيقى': 'music', 'طبخ': 'food cooking', 'الجزيرة': 'jazeera', 'العربية': 'arabiya', 'دبي': 'dubai', 'أبوظبي': 'abu dhabi', 'ابوظبي': 'abu dhabi', 'الشارقة': 'sharjah', 'مباشر': 'live', 'مباشرة': 'live' };
+const RDICT_EN = Object.entries(RDICT).reduce((o, [a, e]) => { e.split(' ').forEach(w => { (o[w] = o[w] || []).push(a); }); return o; }, {});
+const AR2L = { 'ب': 'b', 'ت': 't', 'ث': 't', 'ج': 'j', 'ح': '', 'خ': 'k', 'د': 'd', 'ذ': 'd', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 's', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'غ': 'j', 'ف': 'f', 'ق': 'k', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n', 'پ': 'b', 'ڤ': 'f', 'گ': 'j', 'چ': 's' };
+function skel(s) {
+  s = String(s || '').toLowerCase().replace(/(^|\s)ال/g, '$1').replace(/(^|\s)(al|el)[\s-]?(?=[a-z]{3})/g, '$1');
+  let o = '';
+  for (const ch of s) o += ch in AR2L ? AR2L[ch] : /[a-z0-9]/.test(ch) ? ch : '';
+  return o.replace(/ph/g, 'f').replace(/[sc]h/g, 's').replace(/th/g, 't').replace(/kh/g, 'k').replace(/gh/g, 'j').replace(/p/g, 'b').replace(/c/g, 's').replace(/q/g, 'k').replace(/g/g, 'j').replace(/v/g, 'f').replace(/x/g, 'ks')
+    .replace(/[aeiouyhw]/g, '').replace(/(.)\1+/g, '$1');
+}
+const arN = s => String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْـ]/g, '');
+function rMatcher(q) {
+  q = String(q || '').trim(); const raw = arN(q), words = raw.split(/\s+/).filter(Boolean);
+  const vars = new Set([raw]);
+  for (const [a, e] of Object.entries(RDICT)) if (raw.includes(arN(a))) e.split(' ').forEach(w => vars.add(raw.replace(arN(a), w)));
+  for (const w of words) (RDICT_EN[w] || []).forEach(a => vars.add(raw.replace(w, arN(a))));
+  const sk = [...vars].map(skel).filter(x => x.length >= 2);
+  return name => { const n = arN(name); if ([...vars].some(v => n.includes(v))) return 2;
+    const ns = skel(name), ws = arN(name).split(/[\s\-_|:]+/).map(skel);
+    return sk.some(x => (x.length >= 3 && ns.includes(x)) || ns.startsWith(x) || ws.some(w => w.startsWith(x))) ? 1 : 0; };
+}
+// 🔔 reminders: a match the phone asked about — the TV offers it at kick-off, and every goal (also to the phone)
+const mKey = m => (m.home?.name || '') + '|' + (m.away?.name || '');
+const REMIND = () => { try { return JSON.parse(localStorage.getItem('mremind') || '[]'); } catch (e) { return []; } };
+function rOffer(t, logo, f) {
+  OFFERP = f;
+  if (TV.playerAlert && TV.playerAlert(t)) return;
+  if (document.body.classList.contains('ambient')) ambient(false);
+  CTX = { offerp: 1, b: document.activeElement }; $('#ctxName').textContent = t; $('#ctxLogo').src = logo || '';
+  $('#ctxBody').innerHTML = `<button class="f" data-ctx="oplay"><i>▶︎</i>حوّل للقناة</button><button class="f" data-ctx="later"><i>✕</i>لا</button>`;
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+const rPush = (title, body) => fetch('https://studio.c-p.workers.dev/push/notify', { method: 'POST', body: JSON.stringify({ title, body: body || '' }) }).catch(() => {});
+let RSTATE = {};
+async function remindLoop() {
+  const rem = REMIND(); if (!rem.length) return;
+  const d = await winwinDay(0).catch(() => null); if (!d || !d.matches) return;
+  const now = {};
+  for (const m of d.matches) {
+    const k = mKey(m); if (!rem.includes(k)) continue;
+    const g = (m.score?.home ?? 0) + (m.score?.away ?? 0), p = RSTATE[k]; now[k] = { st: m.status, g };
+    const title = `${m.home?.name || ''} ${m.status === 'upcoming' ? '×' : (m.score?.home ?? 0) + ' - ' + (m.score?.away ?? 0)} ${m.away?.name || ''}`;
+    const go = () => { const i = (MLIST || []).findIndex(x => mKey(x) === k); if (i >= 0) return playMatch(i); MLIST = [m, ...(MLIST || [])]; playMatch(0); };
+    if (!p) continue;
+    if (p.st === 'upcoming' && m.status === 'live') { rOffer('🟢 بدأت: ' + title, m.home?.logo, go); rPush('🟢 بدأت: ' + title, m.league?.name); }
+    else if (m.status === 'live' && g > p.g) { rOffer('⚽ هدف! ' + title, m.home?.logo, go); rPush('⚽ هدف! ' + title, m.league?.name); }
+    else if (p.st === 'live' && m.status === 'finished') rPush('🏁 انتهت: ' + title, m.league?.name);
+  }
+  RSTATE = { ...RSTATE, ...now };
+}
+setInterval(() => { if (REMIND().length) remindLoop(); }, 60e3);
+window.remoteCall = q => {
+  let a = {}; try { a = JSON.parse(q || '{}'); } catch (e) {}
+  const out = o => JSON.stringify(o);
+  switch (a.f) {
+    case 'playlists': { const m = new Map(); for (const c of rPool()) m.set(plOfC(c), (m.get(plOfC(c)) || 0) + 1); return out({ l: [...m].map(([n, c]) => ({ n, c })).sort((x, y) => y.c - x.c) }); }
+    case 'groups': { const m = new Map(); for (const c of rPool()) if (!a.pl || plOfC(c) === a.pl) { const g = c.group || 'بدون مجموعة'; m.set(g, (m.get(g) || 0) + 1); } return out({ l: [...m].map(([n, c]) => ({ n, c })).sort((x, y) => x.n.localeCompare(y.n, 'ar')) }); }
+    case 'channels': { const l = []; rPool().forEach((c, i) => { if ((!a.pl || plOfC(c) === a.pl) && (!a.g || (c.group || 'بدون مجموعة') === a.g)) l.push(rCh(c, i)); }); return out({ l: l.slice(0, 600), more: Math.max(0, l.length - 600) }); }
+    case 'play': {   // the channel, with the rest of its group in the player's ↑↓
+      const c = RPOOL[+a.i]; if (!c || (a.u && c.url !== a.u)) return out({ ok: 0 });
+      const list = RPOOL.filter(x => plOfC(x) === plOfC(c) && (x.group || '') === (c.group || ''));
+      playChannel(list, Math.max(0, list.indexOf(c))); return out({ ok: 1 });
+    }
+    case 'search': {
+      const t = rMatcher(a.q), pool = rPool();
+      const ms = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished' && (t(m.home?.name) || t(m.away?.name) || t(m.league?.name)))
+        .slice(0, 6).map(([m, i]) => { let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {} return { i, h: m.home?.name || '', a: m.away?.name || '', st: m.status, s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', t: m.timestamp ? hm(m.timestamp) : '', ch: v.slice(0, 6).map(x => x.c.name) }; });
+      const cs = pool.map((c, i) => [c, i, t(c.name)]).filter(x => x[2]).sort((x, y) => y[2] - x[2] || (isOk(y[0]) - isOk(x[0]))).slice(0, 60).map(([c, i]) => rCh(c, i));
+      return out({ m: ms, c: cs });
+    }
+    case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(); return out({ on: r.includes(k) ? 1 : 0 }); }
+  }
+  return out({});
 };
 window.remotePlayMatch = (i, k) => {
   const m = MLIST && MLIST[i]; if (!m) return;
@@ -4456,7 +4542,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-17e', NEWS_ROWS = [
+const NEWS = '2026-11-18a', NEWS_ROWS = [
+  ['📂', 'ريموت الجوال: «القوائم» — قوائمك ثم مجموعاتها ثم القنوات، وابحث وشغّل بالعربي أو الإنجليزي (حتى اسم فريق يوديك لقناة مباراته)'],
+  ['🔔', 'ريموت الجوال: جرس على كل مباراة — التلفزيون يعرض عليك التحويل أول ما تبدأ ومع كل هدف، والجوال يوصله تنبيه'],
   ['⚽', 'ريموت الجوال: تبويب «المباريات» — اختر القناة وتشتغل على التلفزيون'],
   ['👶', 'ريموت الجوال: زر «بسيط» — أزرار كبيرة وقليلة يقدر يستخدمها الطفل'],
   ['📺', 'قنوات MBC والرئيسية: تُختار النسخة اللي تشتغل، والباقي احتياط ينتقل له المشغّل لحاله'],
