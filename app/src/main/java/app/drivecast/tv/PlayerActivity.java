@@ -578,6 +578,12 @@ public class PlayerActivity extends Activity {
         tip.setText("↑↓ اختر · ▶ المجموعات ثم القوائم · ◀ ارجع · ◀ مطوّلاً بالحرف · OK شغّل · OK مطوّلاً ⭐"); tip.setPadding(0, (int) dp(10), (int) dp(10), 0);
         box.addView(tip);
         listPanel.addView(box, new FrameLayout.LayoutParams(-1, -1));
+        listLv.setOnItemClickListener((pa, v, pos, id) -> {
+            if (level > 0) { lsel = pos; tapKey(KeyEvent.KEYCODE_DPAD_CENTER); return; }
+            if (pos >= lview.length) return;
+            if (lview[pos] == cur) { listShow(false); return; }
+            sel = pos; i = lview[pos]; listShow(false); play(); fill(); showBar(6000);
+        });
         root.addView(listPanel, new FrameLayout.LayoutParams((int) dp(400), -1, Gravity.RIGHT));
         listPanel.setVisibility(View.GONE);
         // 📅 the chosen channel's guide, hour by hour, in the free space next to the list
@@ -1357,6 +1363,50 @@ public class PlayerActivity extends Activity {
         try { int n = Integer.parseInt(digits); if (n >= 1 && n <= urls.length) { i = n - 1; play(); } } catch (Exception ignored) { }
         digits = "";
     };
+
+    // 👆 touch (a tablet through RustDesk, a touch screen): the same as the remote's keys — swipe ↑ next channel, ↓ the one before,
+    // a tap opens the channel list (its rows are tapped to play), a swipe sideways in the list goes to its groups / playlists and
+    // back, a long press is the channel's menu, a double tap pauses; a tap outside an open list closes it
+    private android.view.GestureDetector touch;
+    private void tapKey(int code) {
+        try { long t = android.os.SystemClock.uptimeMillis(); key(code, new KeyEvent(t, t, KeyEvent.ACTION_DOWN, code, 0)); onKeyUp(code, new KeyEvent(t, t + 40, KeyEvent.ACTION_UP, code, 0)); }
+        catch (Throwable x) { Crash.note(this, "player touch: " + x); }
+    }
+    private boolean inList(android.view.MotionEvent e) {
+        if (!listOn || listPanel == null) return false;
+        int[] o = new int[2]; listPanel.getLocationOnScreen(o);
+        return e.getRawX() >= o[0] && e.getRawX() <= o[0] + listPanel.getWidth();
+    }
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (touch == null) {
+            touch = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
+                @Override public boolean onDown(android.view.MotionEvent ev) { return true; }
+                @Override public boolean onSingleTapConfirmed(android.view.MotionEvent ev) {
+                    if (inList(ev)) return false;
+                    if (menuOn) { tapKey(KeyEvent.KEYCODE_BACK); return true; }
+                    if (listOn) { listShow(false); return true; }
+                    tapKey(KeyEvent.KEYCODE_DPAD_CENTER); return true;   // the list (as OK does)
+                }
+                @Override public boolean onDoubleTap(android.view.MotionEvent ev) { if (inList(ev) || listOn || menuOn) return false; tapKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE); return true; }
+                @Override public void onLongPress(android.view.MotionEvent ev) { if (inList(ev) || menuOn) return; if (listOn) listShow(false); menuShow(true); }
+                @Override public boolean onFling(android.view.MotionEvent a, android.view.MotionEvent b, float vx, float vy) {
+                    if (a == null || b == null) return false;
+                    float dx = b.getX() - a.getX(), dy = b.getY() - a.getY();
+                    if (Math.abs(dx) > Math.abs(dy) * 1.3 && Math.abs(dx) > 90) {   // sideways: in the list, up to the groups / playlists (towards its edge) and back in
+                        if (listOn) { tapKey(dx > 0 ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT); return true; }
+                        return false;
+                    }
+                    if (inList(a) || listOn || menuOn || guideOn) return false;
+                    if (Math.abs(dy) > 90) { tapKey(dy < 0 ? KeyEvent.KEYCODE_CHANNEL_UP : KeyEvent.KEYCODE_CHANNEL_DOWN); return true; }
+                    return false;
+                }
+            });
+        }
+        boolean used = touch.onTouchEvent(e);
+        if (inList(e) || menuOn) return super.dispatchTouchEvent(e);   // the list and the menu scroll and take taps themselves
+        return used || super.dispatchTouchEvent(e);
+    }
 
     @Override
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
