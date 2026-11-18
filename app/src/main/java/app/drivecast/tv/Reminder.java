@@ -103,11 +103,15 @@ public class Reminder extends BroadcastReceiver {
     /** 🔑 the TV boxes take permissions back (leaving Settings, a «force» clean-up): DriveCast TV, Madar and DriveCast get every
      *  permission they ask for again, their overlay / install / background app-ops and the power-saving exemption — through the
      *  app's own adb (assets/grant.sh), after a boot and each time the home screen shows, at most every 10 minutes */
-    private static long grantAt;
-    static void regrant(Context c) {
-        long now = android.os.SystemClock.elapsedRealtime(); if (grantAt != 0 && now - grantAt < 10 * 60_000L) return; grantAt = now;
+    private static long grantAt; static volatile String grantLast = "";
+    static void regrant(Context c) { regrant(c, false); }
+    static void regrant(Context c, boolean now_) {
+        long now = android.os.SystemClock.elapsedRealtime(); if (!now_ && grantAt != 0 && now - grantAt < 10 * 60_000L) return; grantAt = now;
         new Thread(() -> {
-            try (java.io.InputStream in = c.getAssets().open("grant.sh")) { SelfAdb.shell(c, new String(readAll(in), "UTF-8"), 0, 90_000); } catch (Exception e) {}
+            String r;
+            try (java.io.InputStream in = c.getAssets().open("grant.sh")) { r = SelfAdb.shell(c, new String(readAll(in), "UTF-8"), 0, 90_000); }
+            catch (Exception e) { r = "failed: " + e + " (adb: " + SelfAdb.last + ")"; grantAt = 0; }   // try again on the next home screen
+            grantLast = r.trim(); android.util.Log.i("DCgrant", grantLast);
         }, "regrant").start();
     }
     static void remoteUp(Context c) {

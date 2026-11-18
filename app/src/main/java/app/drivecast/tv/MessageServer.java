@@ -117,6 +117,8 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /matches")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteMatches ? remoteMatches() : '{}'", true));
             else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
             else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
+            else if (first.startsWith("GET /regrant")) reply(s.getOutputStream(), "text/plain", Reminder.grantLast);   // 🔑 the last re-grant's report
+            else if (first.startsWith("POST /regrant")) { Reminder.regrant(getApplicationContext(), true); reply(s.getOutputStream(), "text/plain", "ok"); }
             else if (first.startsWith("GET /status")) reply(s.getOutputStream(), "application/json", "{\"mouse\":" + (MouseService.on != null) + ",\"enabled\":" + Access.enabled(this) + ",\"force\":" + Access.canForce(this) + ",\"home\":" + (HomeActivity.front != null) + ",\"ip\":\"" + HomeActivity.lanIp() + "\"}");
             else if (first.startsWith("GET /apps")) reply(s.getOutputStream(), "application/json", appsJson());   // the phone's apps tab
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
