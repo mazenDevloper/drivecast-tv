@@ -100,6 +100,16 @@ public class Reminder extends BroadcastReceiver {
      *  capture prompt answered) — on Android < 10 the capture permission is lost at each reboot, so the TV vanished from
      *  RustDesk until someone pressed «بدء الخدمة». The script (assets/remoteup.sh) does nothing when both are already up;
      *  it runs as the shell through the app's own adb, at 75 s and again at 4 min */
+    /** 🔑 the TV boxes take permissions back (leaving Settings, a «force» clean-up): DriveCast TV, Madar and DriveCast get every
+     *  permission they ask for again, their overlay / install / background app-ops and the power-saving exemption — through the
+     *  app's own adb (assets/grant.sh), after a boot and each time the home screen shows, at most every 10 minutes */
+    private static long grantAt;
+    static void regrant(Context c) {
+        long now = android.os.SystemClock.elapsedRealtime(); if (grantAt != 0 && now - grantAt < 10 * 60_000L) return; grantAt = now;
+        new Thread(() -> {
+            try (java.io.InputStream in = c.getAssets().open("grant.sh")) { SelfAdb.shell(c, new String(readAll(in), "UTF-8"), 0, 90_000); } catch (Exception e) {}
+        }, "regrant").start();
+    }
     static void remoteUp(Context c) {
         new Thread(() -> {
             String sc;
@@ -107,6 +117,7 @@ public class Reminder extends BroadcastReceiver {
             for (long wait : new long[]{75_000, 165_000}) {
                 try { Thread.sleep(wait); } catch (InterruptedException e) { return; }
                 try { SelfAdb.shell(c, sc, 0, 120_000); } catch (Exception e) {}
+                if (wait == 75_000) { grantAt = 0; regrant(c); }
             }
         }, "remoteUp").start();
     }

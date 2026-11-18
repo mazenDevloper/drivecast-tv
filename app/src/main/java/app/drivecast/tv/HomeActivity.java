@@ -172,6 +172,7 @@ public class HomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         MessageServer.start(this);   // the phone remote's server: back if the system stopped it while the TV slept
+        Reminder.regrant(getApplicationContext());   // 🔑 the box may have taken the apps' permissions back
         quiet(getWindow().getDecorView());
         front = this;
         alive = this;
