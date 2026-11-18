@@ -227,6 +227,11 @@ body.nozoom.deep .wall{transform:none}body.nophrase .phrase{display:none!importa
 .ytph{display:flex;align-items:center;justify-content:space-between;gap:20px}.ytph h3{font-size:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ytpb{overflow:auto;max-height:820px;padding:8px}
 .ytgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.recrow .rc{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;color:inherit;font:inherit;width:150px;flex:none}
+.recrow .rc img,.recrow .rc .ap{width:124px;height:124px;border-radius:50%;object-fit:cover;background:#222;display:grid;place-items:center;font-size:44px;border:4px solid transparent}
+.recrow .rc .ap{border-radius:28px;background:linear-gradient(135deg,#7b2ff7,#f107a3)}.recrow .rc .ap img{width:100%;height:100%;border-radius:24px;border:0}
+.recrow .rc:focus img,.recrow .rc:focus .ap{border-color:#fff;transform:scale(1.08)}.recrow .rc span{font-size:17px;text-align:center;max-width:150px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#ytp.full .box{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
 .ytres{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}.ytres .vid{width:auto}
 .ytres .vid em{display:block;padding:0 14px 12px;font-style:normal;font-size:15px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cities{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -582,6 +587,7 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
     <div class="ibada" id="ibada"></div>
     <div id="shQuran"><div class="qhead"><h2>القرآن والأذكار</h2><form class="ytbar" id="ytBar" autocomplete="off"><input class="f" id="ytQ" type="search" enterkeyhint="search" placeholder="ابحث في يوتيوب…" aria-label="ابحث في يوتيوب"><button class="f" id="ytGo" type="submit" aria-label="ابحث">🔎</button></form></div><div class="shelf" id="s-quran"></div></div>
     <div id="shLive"><h2>قنوات مباشرة<span id="liveNote"></span></h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
+    <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
   </div></section>
 
@@ -1377,6 +1383,8 @@ async function loadReciters() {
   if (Date.now() - recAt < 6 * 3600e3 && RECITERS[0][2] === 'd') return; recAt = Date.now();
   const d = await getJ(DC_QURAN + 'resources/recitations&language=ar');
   const list = arr(d?.recitations).map(r => ['d' + r.id, (r.translated_name?.name || r.reciter_name) + (STYLE[r.style] ? ' (' + STYLE[r.style] + ')' : ''), 'd', String(r.id)]);
+  const q = await getJ('https://api.qurancdn.com/api/qdc/audio/reciters?locale=ar'), seen = new Set(list.map(r => r[1]));
+  for (const r of arr(q?.reciters)) { const n = (r.translated_name?.name || r.name) + (STYLE[r.style?.name] ? ' (' + STYLE[r.style.name] + ')' : ''); if (r.id && !seen.has(n)) { seen.add(n); list.push(['q' + r.id, n, 'q', String(r.id)]); } }
   if (list.length) { RECITERS.splice(0, RECITERS.length, ...list); if (!RECITERS.some(r => r[0] === getRec())) try { localStorage.rec = RECITERS.find(r => r[3] === '7')?.[0] || RECITERS[0][0]; } catch (e) {} quranUi(); }
 }
 // the phone remote's «القرآن»: a reciter + a surah, played here as sound
@@ -1545,7 +1553,7 @@ async function ytSearch(i) {
   $('#ytpBody').innerHTML = '<div class="empty">أبحث في يوتيوب…</div>';
   const vids = ytParse(await getText('https://www.youtube.com/results?hl=ar&gl=OM&search_query=' + encodeURIComponent(q)));
   if (!YTP || YTP.sura !== i) return;
-  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 20).map(ytHtml).join('')}</div>`
+  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 40).map(ytHtml).join('')}</div>`
     : `<div class="empty">ما طلعت نتائج هني</div><button class="btn f" data-ytq="${esc(q)}">افتح البحث في يوتيوب</button>`;
   $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
 }
@@ -1554,7 +1562,7 @@ function ytParse(html) {
   let d; try { d = JSON.parse(m[1]); } catch (e) { return []; }
   const out = [], seen = new Set();
   const walk = o => {
-    if (!o || typeof o !== 'object' || out.length >= 24) return;
+    if (!o || typeof o !== 'object' || out.length >= 40) return;
     const v = o.videoRenderer;
     if (v && v.videoId) { if (!seen.has(v.videoId)) { seen.add(v.videoId); out.push({ id: v.videoId, title: (v.title?.runs || []).map(r => r.text).join('') || v.title?.simpleText || '', ch: (v.ownerText?.runs || [])[0]?.text || '', len: v.lengthText?.simpleText || '' }); } return; }
     for (const k in o) walk(o[k]);
@@ -1573,12 +1581,29 @@ async function ytQuery(q) {
   let vids = ytParse(await getText('https://www.youtube.com/results?hl=ar&gl=OM&search_query=' + encodeURIComponent(q)));
   if (!vids.length) { const j = await getJ('https://studio.c-p.workers.dev/yt/find?q=' + encodeURIComponent(q)); vids = arr(j?.items).map(v => ({ id: v.id, title: v.title, ch: v.channel || '', len: v.len ? `${Math.floor(v.len / 60)}:${String(v.len % 60).padStart(2, '0')}` : '' })); }
   if (!YTP || YTP.q !== q) return;
-  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 24).map(ytHtml).join('')}</div>`
+  $('#ytpBody').innerHTML = vids.length ? `<div class="ytres">${vids.slice(0, 40).map(ytHtml).join('')}</div>`
     : `<div class="empty">ما طلعت نتائج</div><button class="btn f" data-ytq="${esc(q)}">افتح البحث في يوتيوب</button>`;
   $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
 }
 $('#ytBar').addEventListener('submit', e => { e.preventDefault(); const q = $('#ytQ').value; $('#ytQ').blur(); ytQuery(q); });
-function ytClose() { $('#ytp').classList.remove('on'); YTP = null; $('.tab.on')?.focus(); }
+function ytClose() { $('#ytp').classList.remove('on', 'full'); YTP = null; $('.tab.on')?.focus(); }
+// 🏠 the home's reciters row: first the chosen app (default DramaLive), then the reciters saved in DriveCast as circles
+let HREC = null;
+function homeApp() { const k = S('homeapp', ''); return APPS.find(a => a.pkg === k) || APPS.find(a => /drama ?live/i.test(a.label + ' ' + a.pkg)) || null; }
+function hrecUi() {
+  const el = $('#s-hrec'); if (!el) return; const a = homeApp();
+  const app = `<button class="rc f" ${a ? `data-pkg="${esc(a.pkg)}"` : 'data-act="homeapp"'}><div class="ap">${a ? `<img src="${esc(a.art)}" alt="">` : '🎭'}</div><span>${a ? esc(a.label) : 'DramaLive · اختر'}</span></button>`;
+  el.innerHTML = app + (HREC || []).map(c => `<button class="rc f" data-rname="${esc(c.name || c.channeltitle)}" data-full="1"><img src="${esc(c.image)}" alt="" loading="lazy"><span>${esc(c.name || c.channeltitle)}</span></button>`).join('');
+}
+async function loadHrec() {
+  hrecUi(); const rc = await getJ(BIN(BINS.reciters));
+  HREC = arr(rc?.reciters, rc).filter(c => c && (c.name || c.channeltitle)).sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0)); hrecUi();
+}
+function homeAppPick() {
+  YTP = { name: null }; $('#ytpT').textContent = 'اختر التطبيق لأول كرت';
+  $('#ytpBody').innerHTML = `<div class="ytgrid">${APPS.map(a => `<button class="sura f" data-happ="${esc(a.pkg)}">${esc(a.label)}</button>`).join('')}</div>`;
+  $('#ytp').classList.add('on', 'full'); $('#ytpBody').scrollTop = 0; $('#ytpBody .f')?.focus();
+}
 let subsAt = 0;
 async function loadSubs() {
   if (Date.now() - subsAt < 5 * 60000) return; subsAt = Date.now();
@@ -2523,6 +2548,7 @@ function homeOrder() {
   const secs = [['hero', '#homeScroll>.heroRow'], ['live', '#shLive'], ['apps', '#shApps'], ['quran', '#shQuran'], ['ibada', '#ibada']];
   const def = SERIES() ? { hero: 1, live: 2, apps: 3, ibada: 4, quran: 5 } : { hero: 1, ibada: 2, quran: 3, live: 4, apps: 5 };
   for (const [k, q] of secs) { const el = $(q); if (!el) continue; const v = +S('pos-' + k, '') || def[k]; el.style.order = String(v * 2 + (S('pos-' + k, '') ? 0 : 1)); }
+  if ($('#shRec')) $('#shRec').style.order = String(+$('#shLive').style.order || 0);
   for (const t of ['board', 'subs', 'apps', 'quran']) { const b = $(`#tabs [data-page="${t}"]`); if (b) b.hidden = S('tab-' + t, t === 'quran' ? 'on' : 'off') === 'off'; }
   if (LITE) { const m = $('#tabs [data-page="matches"]'); if (m) m.hidden = SERIES(); const q = $('#tabs [data-page="quran"]'); if (q) q.textContent = '📻 الراديو'; }
 }
@@ -4149,7 +4175,9 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'phone') return settings(true);
   if (b.dataset.wall) { try { localStorage.wall = b.dataset.wall; } catch (x) {} applyWall(); return settings(true); }
   if (b.dataset.yt) { lastSet({ k: 'yt', id: b.dataset.yt, t: (b.querySelector('span,b')?.textContent || '').replace(/^● مباشر\s*/, '').trim() }); return TV.youtube(b.dataset.yt); }
-  if (b.dataset.rname) return ytPick(b.dataset.rname);
+  if (b.dataset.act === 'homeapp') return homeAppPick();
+  if (b.dataset.happ) { setPref('homeapp', b.dataset.happ); ytClose(); return hrecUi(); }
+  if (b.dataset.rname) { ytPick(b.dataset.rname); $('#ytp').classList.add('full'); return; }
   if (b.dataset.yts) return ytSearch(+b.dataset.yts);
   if (b.dataset.ytq) return TV.link('https://www.youtube.com/results?search_query=' + encodeURIComponent(b.dataset.ytq));
   if (b.dataset.act === 'ytclose') return ytClose();
@@ -4601,7 +4629,9 @@ function ctxOpen(b) {
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
-const NEWS = '2026-11-18c', NEWS_ROWS = [
+const NEWS = '2026-11-18d', NEWS_ROWS = [
+  ['📿', 'صف القرّاء في الرئيسية تحت القنوات المباشرة: أول كرت تطبيقك (DramaLive)، بعده دوائر قرّائك من DriveCast — اختر القارئ ثم السورة وتطلع 40 تلاوة'],
+  ['🎙️', 'قائمة القرّاء في القرآن صارت كاملة: كل قرّاء quran.com'],
   ['👆', 'المشغّل باللمس: اسحب ↑ للقناة التالية و↓ للسابقة، نقرة تفتح القائمة (وانقر القناة لتشغيلها)، سحب جانبي للمجموعات والقوائم، مطوّل للخيارات، نقرتين للإيقاف'],
   ['👆', 'اللمس والماوس (مثل RustDesk من التابلت): السحب يقلّب الصفوف والصفحة، والضغط المطوّل مثل OK المطوّل، والسحب الطويل جانباً ينقل للتبويب الثاني'],
   ['🌍', 'الريموت من أي مكان عبر ZeroTier: الإعدادات ← الويب (عنوانه ورمز QR)'],
@@ -4669,7 +4699,7 @@ function newsMaybe() {
   CTX = { news: 1, b: document.activeElement };
   $('#ctxName').textContent = '✨ الجديد في DriveCast TV'; $('#ctxLogo').src = '';
   $('#ctxBody').innerHTML = NEWS_ROWS.map(([ic, t], k) => `<button class="f" data-ctx="news"><i>${ic}</i>${t}</button>`).join('') + '<button class="f" data-ctx="news"><i>✓</i><b>تمام</b></button>';
-  $('#ctx').classList.add('on'); $('#ctxBody .f:last-child').focus();
+  $('#ctx').classList.add('on'); $('#ctxBody').scrollTop = 0; $('#ctxBody .f')?.focus();
 }
 setTimeout(() => { try { if (window.TV && TV.prefs) newsMaybe(); } catch (e) {} }, 6000);
 function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; CTX = null; if (b && document.body.contains(b)) b.focus(); }
@@ -4837,7 +4867,7 @@ function hudApply() {
 }
 
 $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml();
-homeLayout(); uiApply(); homeOrder(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => loadReciters(), { timeout: 4000 }); watchFavs(); if (SIM) simApply();
+homeLayout(); uiApply(); homeOrder(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); loadHrec(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => loadReciters(), { timeout: 4000 }); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
 setInterval(tick, 20000); setInterval(() => { if (!busyKeys()) loadMatches(); }, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
