@@ -256,8 +256,8 @@ public class HomeActivity extends Activity {
         if (web != null) web.evaluateJavascript("window.onTvBack ? onTvBack() : false", null);
     }
 
-    @Override
     private boolean colorEaten;
+    @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         // 🎙️ the remote's mic / search key: speech recognition in Arabic
         if (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH) { if (e.getAction() == KeyEvent.ACTION_UP) voice(this, 77); return true; }
