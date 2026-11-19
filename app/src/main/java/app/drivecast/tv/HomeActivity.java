@@ -602,6 +602,16 @@ public class HomeActivity extends Activity {
         @JavascriptInterface
         public void setTicker(String t) { PlayerActivity.TICKER = t == null ? "" : t.length() > 600 ? t.substring(0, 600) : t; }
 
+        /** ⚽ the live scores of the 🔔 matches for the player's bottom-left corner: a JSON array of lines */
+        @JavascriptInterface
+        public void playerScores(String j) { runOnUiThread(() -> PlayerActivity.scores(j)); }
+        /** ⚽ a goal over a playing channel: the card with «حوّل للقناة» (OK), gone after 6 s; false when no channel plays */
+        @JavascriptInterface
+        public boolean playerGoal(String t) {
+            if (PlayerActivity.live == null) return false;
+            runOnUiThread(() -> PlayerActivity.goal(t)); return true;
+        }
+
         /** the launcher's alert over a playing channel: true when a channel is playing (the alert went there) */
         @JavascriptInterface
         public boolean playerAlert(String t) {

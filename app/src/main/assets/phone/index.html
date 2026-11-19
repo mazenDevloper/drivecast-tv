@@ -551,6 +551,17 @@ document.getElementById('mon').onclick = mouseOn;
 let recLoaded = false;
 function reciters() {
   if (recLoaded) return;
+  // 📖 the TV's whole list (DriveCast's reciters + every quran.com reciter); DriveCast's alone if the TV is older
+  rc({ f: 'reciters' }).then(j => {
+    if (!j || !j.r || j.r.length < 2) throw 0;
+    let saved = ''; try { saved = localStorage.rec || ''; } catch (e) {} saved = saved || j.cur || '';
+    const E = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    $('rec').innerHTML = j.r.map(r => `<option value="${E(r[0])}" ${r[0] === saved ? 'selected' : ''}>${E(r[1])}</option>`).join('');
+    $('rec').previousElementSibling && ($('rec').previousElementSibling.textContent = `القارئ · ${j.r.length} قارئ`);
+    recLoaded = true;
+  }).catch(() => recOld());
+}
+function recOld() {
   fetch('/reciters').then(r => r.json()).then(j => {
     const list = (j.recitations || []).map(r => [ 'd' + r.id, ((r.translated_name && r.translated_name.name) || r.reciter_name) + (r.style ? ' (' + ({ Mujawwad: 'مجوّد', Murattal: 'مرتّل', Muallim: 'معلّم' }[r.style] || r.style) + ')' : '') ]);
     if (!list.length) throw 0;

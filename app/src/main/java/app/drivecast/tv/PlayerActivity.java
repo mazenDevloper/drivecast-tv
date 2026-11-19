@@ -70,6 +70,59 @@ public class PlayerActivity extends Activity {
     }
     // ---- ⏰ «a match of yours starts»: the launcher's alert over the channel; OK within 25 s plays it
     private static long offerUntil;
+    // ---- ⚽ the scores of your 🔔 matches (and your teams'), live, in the bottom-left corner (the bottom-right one is «التالي»)
+    static String SCORES = "[]";
+    private LinearLayout sbox;
+    static void scores(String json) {
+        SCORES = json == null ? "[]" : json;
+        PlayerActivity p = live; if (p != null) p.scoresFill();
+    }
+    private void scoresFill() {
+        if (sbox == null) return;
+        sbox.removeAllViews();
+        boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
+            || (menuPanel != null && menuPanel.getVisibility() == View.VISIBLE) || (gbox != null && gbox.getVisibility() == View.VISIBLE);
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(SCORES);
+            for (int k = 0; k < a.length() && k < 3; k++) {
+                TextView t = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
+                t.setText(a.optString(k)); t.setSingleLine(true); t.setTextDirection(View.TEXT_DIRECTION_RTL);
+                GradientDrawable b = new GradientDrawable(); b.setColor(0xCC101216); b.setCornerRadius(dp(14)); b.setStroke((int) dp(1), 0x33FFFFFF); t.setBackground(b);
+                t.setPadding((int) dp(14), (int) dp(7), (int) dp(14), (int) dp(7));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.topMargin = (int) dp(6);
+                sbox.addView(t, lp);
+            }
+        } catch (Throwable ignored) { }
+        sbox.setVisibility(busy || sbox.getChildCount() == 0 ? View.GONE : View.VISIBLE);
+    }
+    // ---- ⚽ a goal in a 🔔 match: a card with «حوّل للقناة» ready for OK; untouched, it goes after 6 s
+    private LinearLayout gbox; private TextView gtxt;
+    private final Runnable goalHide = () -> { if (gbox != null) gbox.animate().alpha(0f).setDuration(300).withEndAction(() -> { gbox.setVisibility(View.GONE); scoresFill(); }); if (System.currentTimeMillis() < offerUntil) offerUntil = 0; };
+    static void goal(String text) {
+        PlayerActivity p = live; if (p == null || p.gbox == null) return;
+        offerUntil = System.currentTimeMillis() + 6000;
+        p.gtxt.setText(text);
+        p.gbox.animate().cancel(); p.gbox.setAlpha(0f); p.gbox.setVisibility(View.VISIBLE); p.gbox.animate().alpha(1f).setDuration(250);
+        p.h.removeCallbacks(p.goalHide); p.h.postDelayed(p.goalHide, 6000);
+        p.scoresFill();
+    }
+    private void goalBuild(FrameLayout root) {
+        gbox = new LinearLayout(this); gbox.setOrientation(LinearLayout.VERTICAL); gbox.setGravity(Gravity.CENTER_HORIZONTAL);
+        GradientDrawable b = new GradientDrawable(); b.setColor(0xEE101216); b.setCornerRadius(dp(22)); b.setStroke((int) dp(2), 0xFF34C759); gbox.setBackground(b);
+        gbox.setPadding((int) dp(24), (int) dp(16), (int) dp(24), (int) dp(16));
+        gtxt = text(22, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); gtxt.setGravity(Gravity.CENTER); gtxt.setTextDirection(View.TEXT_DIRECTION_RTL);
+        TextView btn = text(19, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFF101216); btn.setText("▶  حوّل للقناة  ·  OK");
+        GradientDrawable bb = new GradientDrawable(); bb.setColor(0xFFFFFFFF); bb.setCornerRadius(dp(16)); btn.setBackground(bb);   // drawn as the focused button: OK does it
+        btn.setPadding((int) dp(22), (int) dp(10), (int) dp(22), (int) dp(10));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-2, -2); blp.topMargin = (int) dp(12);
+        gbox.addView(gtxt); gbox.addView(btn, blp);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT); lp.setMargins((int) dp(36), 0, 0, (int) dp(30));
+        root.addView(gbox, lp); gbox.setVisibility(View.GONE);
+        sbox = new LinearLayout(this); sbox.setOrientation(LinearLayout.VERTICAL); sbox.setGravity(Gravity.LEFT);
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT); sp.setMargins((int) dp(36), 0, 0, (int) dp(30));
+        root.addView(sbox, sp); sbox.setVisibility(View.GONE);
+        scoresFill();
+    }
     static void offer(String text) {
         PlayerActivity p = live; if (p == null) return;
         offerUntil = System.currentTimeMillis() + 25000;
@@ -574,6 +627,7 @@ public class PlayerActivity extends Activity {
         nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
         root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE);
         cd.postDelayed(nextTick, 4000);
+        goalBuild(root);
     }
     private int nextAt = 1;
     private final Runnable nextBack = () -> { nextAt = 1; try { nextFill(); } catch (Throwable ignored) { } };
@@ -734,7 +788,18 @@ public class PlayerActivity extends Activity {
         String g = lists.get(li);
         if (USUAL.equals(g)) { for (String nm : usualNow) for (int k = 0; k < urls.length; k++) if (nm.equals(nOf(k)) && inPl(k)) { v.add(k); break; } }
         else if (FAVL.equals(g)) { for (int k = 0; k < urls.length; k++) if (inPl(k) && favs.contains(nOf(k).trim().toLowerCase(Locale.ROOT))) v.add(k); }
-        else for (int k = 0; k < urls.length; k++) if (inPl(k) && (li == 0 || g.equals(gOf(k)))) v.add(k);
+        else {
+            for (int k = 0; k < urls.length; k++) if (inPl(k) && (li == 0 || g.equals(gOf(k)))) v.add(k);
+            // 📅 in each group the channels with a guide come first (their own order kept on both sides)
+            if (li > 0 && !"🏠 الرئيسية".equals(g)) {   // a group (not «الكل», not the home's own order)
+                java.util.List<Integer> on = new java.util.ArrayList<>(), off = new java.util.ArrayList<>();
+                long now = System.currentTimeMillis() / 1000;
+                for (int k : v) { org.json.JSONArray a = EPG.get(key0(k)); boolean has = false;
+                    try { has = a != null && a.length() > 0 && a.getJSONArray(a.length() - 1).getLong(1) > now; } catch (Throwable ignored) { }
+                    (has ? on : off).add(k); }
+                v.clear(); v.addAll(on); v.addAll(off);
+            }
+        }
         lview = new int[v.size()]; for (int k = 0; k < lview.length; k++) lview[k] = v.get(k);
     }
     private int posOf(int ch) { for (int k = 0; k < lview.length; k++) if (lview[k] == ch) return k; return -1; }
@@ -1439,12 +1504,12 @@ public class PlayerActivity extends Activity {
     };
 
     private void showBar(long ms) {
-        bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0); if (nextBox != null) nextBox.setVisibility(View.GONE);
+        bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0); if (nextBox != null) nextBox.setVisibility(View.GONE); if (sbox != null) sbox.setVisibility(View.GONE);
         if (was && barDirty) fill();
         h.removeCallbacks(hide);
         if (ms > 0) h.postDelayed(hide, ms);
     }
-    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> cd.post(nextTick));
+    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> { cd.post(nextTick); scoresFill(); });
 
     private void setNote(String s) { note.setText(s); note.setVisibility(s == null ? View.GONE : View.VISIBLE); }
 
@@ -1575,6 +1640,7 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
+        if (gbox != null && gbox.getVisibility() == View.VISIBLE && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) { h.removeCallbacks(goalHide); goalHide.run(); return true; }
         if (code == KeyEvent.KEYCODE_SEARCH) { HomeActivity.voice(this, 78); return true; }   // 🎙️
         if (listOn && listKey(code, e)) return true;
         if (guideOn && guideKey(code, e)) return true;
@@ -1597,7 +1663,7 @@ public class PlayerActivity extends Activity {
     /** a short OK (on its release), or the keys after OK */
     private boolean keyRest(int code, KeyEvent e, boolean ok) {
         if (ok && System.currentTimeMillis() < offerUntil) {
-            offerUntil = 0; setNote(null);
+            offerUntil = 0; setNote(null); h.removeCallbacks(goalHide); if (gbox != null) gbox.setVisibility(View.GONE);
             HomeActivity hm = HomeActivity.alive; if (hm != null) hm.run("window.playOffer && playOffer()");
             return true;
         }

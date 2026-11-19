@@ -2181,7 +2181,9 @@ function iptvUi() {
   if (FILT.q.trim()) { const seen = new Set(pool.map(c => c.url)); pool = pool.concat([...MYFAV, ...IFAV].filter(c => c && c.url && !seen.has(c.url) && seen.add(c.url))); }   // a name search also looks in the favourites
   pool = pool.filter(passFilt);
   // «الكل»: by kind (Arab sports, the big five, Arab general…); inside a kind the working ones first (green), then not checked yet
-  pool = pool.map((c, i) => [IGROUP === 'all' ? catOf(c) : 0, isOk(c) ? 0 : 1, i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map(x => x[3]);
+  // 📅 inside each kind the channels with a guide first, then the working ones (green), then not checked yet
+  const hasG = c => { try { const r = EPG && EPG[epgId(c)]; return r && r.length && r[r.length - 1][1] > Date.now() / 1000 ? 0 : 1; } catch (e) { return 1; } };
+  pool = pool.map((c, i) => [IGROUP === 'all' ? catOf(c) : 0, hasG(c), isOk(c) ? 0 : 1, i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3]).map(x => x[4]);
   const shown = pool.slice(0, 300);
   window.__shown = shown;
   chunkList($('#s-ilist'), shown, (c, i) => ichHtml(c, i, 'shown'), `<div class="empty">${FILT.q.trim() ? 'ما لقيت قناة بهذا الاسم' : ALL.length ? 'ما فيه قنوات بهذا الفلتر' : 'جارٍ التحميل…'}</div>`);
@@ -2390,13 +2392,15 @@ async function loadSpg() {
   if (Date.now() - spgAt < 2 * 3600e3) return; spgAt = Date.now();
   const d = await getJ(SPGURL); if (d && d.g) SPG = d; else spgAt = 0;
 }
+// 📰 a news channel is never a match's carrier (a guide may name the teams in a bulletin: the Saudi league went to a news channel)
+const NEWSCH = /news|nachrichten|noticias|info\b|أخبار|اخبار|إخبار|الاخباري|الإخباري|ekhbariya|ikhbariya|al ?arabiya|العربية(?!\s*(ال)?رياضي)|jazeera(?!\s*sport)|الجزيرة(?!\s*(ال)?رياضي)|sky ?news|سكاي نيوز|\bcnn\b|\bbbc\b|france ?24|rt ?arabic|asharq|الشرق|al ?hadath|الحدث|\bcnbc|bloomberg|euronews/i;
 /** the carriers the guides name for a match: [{ n: the name as the TV shows it, logo, cc }] — the Arab region's first */
 function spgFor(m) {
   if (!SPG || !m) return [];
   const t = m.timestamp || 0, H = m.home?.name, A = m.away?.name;
   const g = SPG.g.find(g => Math.abs(g[4] - t) < 1800 && ((tSame(H, g[0]) || tSame(H, g[2])) && (tSame(A, g[1]) || tSame(A, g[3])) || (tSame(H, g[1]) || tSame(H, g[3])) && (tSame(A, g[0]) || tSame(A, g[2]))));
   if (!g) return [];
-  return g[5].map(i => SPG.ch[i]).filter(Boolean).map(([n, logo, cc]) => { n = String(n).replace(/\s*\([^)]*\)/g, '').trim(); return { n: ARABCC.has(cc) ? n : `${n} (${cc.toUpperCase()})`, logo, cc }; })
+  return g[5].map(i => SPG.ch[i]).filter(x => x && !NEWSCH.test(String(x[0]))).map(([n, logo, cc]) => { n = String(n).replace(/\s*\([^)]*\)/g, '').trim(); return { n: ARABCC.has(cc) ? n : `${n} (${cc.toUpperCase()})`, logo, cc }; })
     .sort((a, b) => ARABCC.has(b.cc) - ARABCC.has(a.cc));
 }
 const EPGID = { 'الكأس 1': 'AlkassOne.qa', 'الكأس 2': 'AlkassTwo.qa', 'الكأس 3': 'AlkassThree.qa', 'الكأس 4': 'AlkassFour.qa', 'دبي الرياضية 1': 'DubaiSports1.ae', 'دبي الرياضية 2': 'DubaiSports2.ae', 'إم بي سي أكشن': 'MBCAction.ae' };
@@ -2507,7 +2511,7 @@ async function loadLists() {
   STARL = []; const MG = MGRP();
   mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)).map(c => ({ ...c, pl: plName(mineU[k]) })), gs = MG[mineU[k]];
     if (gs && gs.length) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url) && gs.includes(c.group)).map(c => ({ ...c, mine: 1, star: 1 })));
-    else if (mineU[k] === m3uStar()) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, group: '📂 قائمتي', mine: 1, star: 1 }))); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, group: '📂 قائمتي', mine: 1 }); }); });
+    else if (mineU[k] === m3uStar()) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, og: c.group, group: '📂 قائمتي', mine: 1, star: 1 }))); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, og: c.group, group: '📂 قائمتي', mine: 1 }); }); });
   m3uUi();
   free.forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(c); });
   const lead = () => ILIST.forEach(c => { const b = BEST[chKey(c.name)]; if (b && b !== c.url && (ALT.get(chKey(c.name)) || []).includes(b)) c.url = b; });
@@ -2853,7 +2857,7 @@ function nextTv(m) {
   const go = matchRoute(m), chs = mChannels(m).filter(c => !go || c !== go.want).slice(0, go ? 1 : 2);
   const img = n => m.chl && m.chl[n] ? `<img src="${esc(m.chl[n])}" alt="" onerror="this.remove()">` : '';
   if (!go && !chs.length) return '📺 القناة الناقلة غير معروفة';
-  return (go ? `<span class="go">${img(go.want)}${go.local ? '🌍 ' : ''}▶ ${esc(go.label)}</span>` : '') + chs.map(c => `<span>${img(c) || '📺 '}${esc(c)}</span>`).join('');
+  return (go ? `<span class="go">${img(go.want)}${go.local ? '🌍 ' : ''}▶ ${esc(chEn(go.label))}</span>` : '') + chs.map(c => `<span>${img(c) || '📺 '}${esc(chEn(c))}</span>`).join('');
 }
 // 📺 وضع المسلسلات: the top card is «الآن في MBC 1» — its programme now (Shahid's guide, in Arabic), how far, and what's next
 function nowChannel() { return seriesPicks().find(c => /^MBC ?1\b/i.test(c.name)) || null; }
@@ -2923,9 +2927,10 @@ async function playChannel(list, i) {
   if (list) { const c0 = list[i]; list = list.filter((x, k) => k === i || !/^(dyn|yt-search):/.test(x.url)); i = list.indexOf(c0); }   // no unresolved card in the player's ↑↓
   // 🏠 from the home: its channels first (the group «الرئيسية»), then every other channel of every playlist — ▶ in the player
   // picks a group, ▶ again a playlist
-  if (fromHome && list) { const c0 = list[i], seen = new Set(list.map(x => x.url));
+  // 📂 from anywhere else too: every channel of every playlist follows, so the player's «القوائم» level has each M3U with ALL its groups
+  if (list && list[i]) { const c0 = list[i], seen = new Set(list.map(x => x.url));
     const rest = [...STARL, ...ILIST].filter(x => x && /^https?:/.test(x.url) && !seen.has(x.url) && !/geo-blocked|radio|\bFM\b/i.test(x.name) && (seen.add(x.url), true));
-    list = [...list.map(x => ({ ...x, group: '🏠 الرئيسية', pl: x.pl || 'الرئيسية' })), ...rest]; i = list.findIndex(x => x.url === c0.url); }
+    list = [...(fromHome ? list.map(x => ({ ...x, og: '', group: '🏠 الرئيسية', pl: x.pl || 'الرئيسية' })) : list), ...rest]; i = list.findIndex(x => x.url === c0.url); }
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
   if (radioOn) closePlayer();
@@ -2934,7 +2939,7 @@ async function playChannel(list, i) {
   if (/youtu\.?be/.test(c.url) && !inYt) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external && !/youtu\.?be/.test(c.url)) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/^yt-live:|^yt-search:/.test(x.url) && (inYt || !/youtu\.?be/.test(x.url))), k = streams.indexOf(c);
-  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map((x, j) => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: x.group || (x.cc ? x.cc.toUpperCase() : ''), pl: x.pl || (x.mine ? 'قوائمي' : x.arl ? 'iptv-org' : x.dyn ? 'البث المتجدد' : /youtu/.test(x.url) ? 'يوتيوب' : 'Free-TV'), cc: ccOf(x), epg: epgRows(x).slice(0, Math.abs(j - k) < 300 ? 16 : 4),   /* the guide column in the player: hours ahead */ alts: x === c || streams.length <= 60 ? altsOf(x) : [], auto: auto ? 1 : 0 }))), Math.max(0, k));
+  if (TV.watchFull) TV.watchFull(JSON.stringify(streams.map((x, j) => ({ url: x.url, ua: x.ua || '', ref: x.ref || '', org: x.org || '', name: x.name, logo: x.logo || '', group: (x.og && x.pl ? x.og : x.group) || (x.cc ? x.cc.toUpperCase() : ''), pl: x.pl || (x.mine ? 'قوائمي' : x.arl ? 'iptv-org' : x.dyn ? 'البث المتجدد' : /youtu/.test(x.url) ? 'يوتيوب' : 'Free-TV'), cc: ccOf(x), epg: epgRows(x).slice(0, Math.abs(j - k) < 300 ? 16 : 4),   /* the guide column in the player: hours ahead */ alts: x === c || streams.length <= 60 ? altsOf(x) : [], auto: auto ? 1 : 0 }))), Math.max(0, k));
   else if (TV.watch) TV.watch(JSON.stringify(streams.map(x => x.url)), JSON.stringify(streams.map(x => x.name)), Math.max(0, k)); else TV.link(c.url);
 }
 // OK on the match card: the channel that shows it (from the lists), else that channel's app on the TV, else today's matches
@@ -3088,7 +3093,7 @@ async function loadMatches() {
         return `<button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
           <div class="lg">${m.league?.logo ? `<img src="${esc(m.league.logo)}" alt="" onerror="this.remove()">` : '🏆'}<span>${esc(m.league?.name || '')}</span><b>${live ? '● مباشر' : fin ? 'انتهت' : isMine(m) ? '⭐ فريقك' : 'قريباً'}</b></div>
           <div class="row">${tm(m.home)}<div class="mid"><span class="big">${big}</span><small>${sub}</small></div>${tm(m.away)}</div>
-          <div class="chs">${fin ? '<span class="go hl">🎬 ملخص الأهداف</span>' : ''}${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(x.c.name)}${x.c.star ? ' ⭐' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(x.want)}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(go.label)}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(c)}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>`;
+          <div class="chs">${fin ? '<span class="go hl">🎬 ملخص الأهداف</span>' : ''}${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(chEn(x.c.name))}${x.c.star ? ' ⭐' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(chEn(x.want))}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(chEn(go.label))}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(chEn(c))}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>`;
       };
     box.innerHTML = groups.map(g => `<div class="mhour ${g.k === 'live' ? 'live' : g.k === 'fin' ? 'fin' : ''}"><div class="mh"><b>${g.k === 'live' ? '🔴 الآن' : g.k === 'fin' ? 'انتهت' : hourAr(+g.k.slice(1))}</b><i></i>${g.k !== 'live' && g.k !== 'fin' && +g.k.slice(1) === nowH ? '<em>هذي الساعة</em>' : ''}<small>${AR(g.items.length)} مباراة</small></div><div class="mgrid">${g.items.map(([m, i]) => card(m, i)).join('')}</div></div>`).join('') || `<div class="empty">${MTAB === 'live' ? 'ما فيه مباراة مباشرة الحين' : MTAB === 'mine' ? 'ما فيه مباريات لفرقك اليوم' : 'ما لقيت مباريات'}</div>`;
     const n = $('#mnote'); if (n) n.textContent = MLIST.length ? `${AR(MLIST.length)} مباراة · OK يشغّل القناة الناقلة` : '';
@@ -3129,7 +3134,7 @@ async function matchAlerts() {
       if (MPL.size > 300) MPL.clear();   // kept between refreshes: the player may ask for a match it listed a moment ago
       TV.setMatches(JSON.stringify(pm.map(m => { const k = tKey(m.home?.name) + '|' + tKey(m.away?.name) + '|' + m.timestamp; MPL.set(k, m);
         const ln = matchLinks(m).filter(x => x.c);
-        return { k, t: `${m.mine ? '⭐ ' : ''}${m.home?.name} ${m.status === 'live' ? AR(m.score?.home ?? 0) + '-' + AR(m.score?.away ?? 0) : '×'} ${m.away?.name}${m.status === 'live' && m.elapsed != null ? ' · ' + AR(m.elapsed) + '′' : m.status !== 'live' ? ' · ' + hm(m.timestamp) : ''}`, lg: m.league?.name || '', ch: ln.map(x => ({ n: String(x.want).replace(/^🌍 /, ''), name: x.c.name, p: /^https?:/.test(x.c.url || '') ? { url: x.c.url, ua: x.c.ua || '', ref: x.c.ref || '', org: x.c.org || '', name: x.c.name, logo: x.c.logo || '', group: x.c.group || '', cc: ccOf(x.c), epg: epgRows(x.c).slice(0, 5), alts: altsOf(x.c) } : null })) }; })));
+        return { k, t: `${m.mine ? '⭐ ' : ''}${m.home?.name} ${m.status === 'live' ? AR(m.score?.home ?? 0) + '-' + AR(m.score?.away ?? 0) : '×'} ${m.away?.name}${m.status === 'live' && m.elapsed != null ? ' · ' + AR(m.elapsed) + '′' : m.status !== 'live' ? ' · ' + hm(m.timestamp) : ''}`, lg: m.league?.name || '', ch: ln.map(x => ({ n: chEn(String(x.want).replace(/^🌍 /, '')), name: chEn(x.c.name), p: /^https?:/.test(x.c.url || '') ? { url: x.c.url, ua: x.c.ua || '', ref: x.c.ref || '', org: x.c.org || '', name: x.c.name, logo: x.c.logo || '', group: x.c.group || '', cc: ccOf(x.c), epg: epgRows(x.c).slice(0, 5), alts: altsOf(x.c) } : null })) }; })));
     } catch (e) {}
     if (TV.setTicker) TV.setTicker(live.map(m => `${m.mine ? '⭐ ' : ''}${m.home?.name} ${AR(m.score?.home ?? 0)}-${AR(m.score?.away ?? 0)} ${m.away?.name}${m.elapsed != null ? ' ' + AR(m.elapsed) + '′' : ''}`).join('     ⚽     '));
   } catch (e) {}
@@ -3150,7 +3155,7 @@ async function matchPanel(i) {
   $('#ctxName').textContent = `${m.home?.name} × ${m.away?.name}`; $('#ctxLogo').src = m.league?.logo || '';
   const chs = mChannels(m), loc = localChannels(m);
   const rows = matchLinks(m).map(x => ({ n: x.want, c: x.c }));
-  const html = rows.map((r, k) => `<button class="f" data-ctx="mch${k}"><i>${m.chl && m.chl[r.n] ? `<img src="${esc(m.chl[r.n])}" alt="" style="height:22px;max-width:70px;background:#fff;border-radius:4px;padding:1px 3px">` : '📺'}</i>${esc(r.n)}${r.c ? ` · ▶ ${esc(r.c.name)}${r.c.star ? ' ⭐' : ''}` : ' · مو في قنواتك'}</button>`).join('')
+  const html = rows.map((r, k) => `<button class="f" data-ctx="mch${k}"><i>${m.chl && m.chl[r.n] ? `<img src="${esc(m.chl[r.n])}" alt="" style="height:22px;max-width:70px;background:#fff;border-radius:4px;padding:1px 3px">` : '📺'}</i>${esc(chEn(r.n))}${r.c ? ` · ▶ ${esc(chEn(r.c.name))}${r.c.star ? ' ⭐' : ''}` : ' · مو في قنواتك'}</button>`).join('')
     + (m.status === 'finished' ? '<button class="f" data-ctx="mgoals"><i>🎬</i>ملخص الأهداف من يوتيوب</button>' : '') + loc.slice(0, 6).map((c, k) => `<button class="f" data-ctx="mloc${k}"><i>🌍</i>${esc(c.name)}${c.st === 'ok' || GSP.includes(c) ? ' 🟢' : ''}</button>`).join('');
   $('#ctxBody').innerHTML = (html || '<div class="empty">ما فيه قنوات معروفة لهالمباراة</div>') + '<div id="mDet" class="empty" style="font-size:20px;text-align:right">…</div>';
   CTX.rows = rows; CTX.loc = loc;
@@ -3394,6 +3399,29 @@ function sameChannel(want, c) {
 const chRank = n => isArabChannel(n) && !(/\(([A-Z]{2})\)$/.test(n) && !ARABCC.has(n.slice(-3, -1).toLowerCase())) ? 0 : /\b(usa|us)\b|fubo|espn|fox|cbs|nbc|paramount|peacock/i.test(n) ? 1 : /\b(esp|spain)\b|movistar|dazn \(spain\)|la ?liga tv/i.test(n) ? 2 : /\b(por|bra)\b|sport tv|globo|premiere|sportv|eleven/i.test(n) ? 3 : 4;
 // the platforms a source names as a «carrier» (an app or a site, not a channel): left out of the carriers
 const PLATFORM = /red ?bull|youtube|يوتيوب|facebook|فيسبوك|twitch|\bkick\b|shahid|شاهد|\btod\b|stc ?tv|jawwy|fifa ?\+|espn ?\+|paramount ?\+|peacock|prime video|apple ?tv|netflix|fubo|sling|starzplay|osn ?\+|tiktok|instagram|twitter|\bapp\b|تطبيق|website|موقع|streaming|ستريم|tv ?pass|onefootball|dazn app|vix\b|max\b ?app/i;
+// 🔤 a carrier's name in English on screen (the lists name them so: easier to find) — «الكأس 1» → Alkass One, «ثمانية» →
+// Thmanyah, «أبوظبي الرياضية 2» → AD Sports 2; matching still uses the names as they are
+const EN_N = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+const CH_EN = [
+  [/بي\s*[اإأآ]?\s*ن\s*(سبورت[س]?|الرياضي[ةه])\s*ماكس/i, 'beIN Sports MAX'], [/بي\s*[اإأآ]?\s*ن\s*(سبورت[س]?|الرياضي[ةه])\s*(اكسترا|إكسترا)/i, 'beIN Sports XTRA'],
+  [/بي\s*[اإأآ]?\s*ن\s*(سبورت[س]?|الرياضي[ةه])?|بين\s*سبورت[س]?/i, 'beIN Sports'], [/لايف\s*[اإأ]يفنت/i, 'Live Event'],
+  [/ثماني[ةه]/i, 'Thmanyah'], [/[اإأ]س\s*[اإأ]س\s*سي/i, 'SSC'],
+  [/[اأ]بو\s*ظبي\s*(ال)?رياضي[ةه]\s*بريميوم/i, 'AD Sports Premium'], [/[اأ]بو\s*ظبي\s*(ال)?رياضي[ةه]/i, 'AD Sports'],
+  [/دبي\s*(ال)?رياضي[ةه]/i, 'Dubai Sports'], [/الشارق[ةه]\s*(ال)?رياضي[ةه]/i, 'Sharjah Sports'], [/عُ?مان\s*(ال)?رياضي[ةه]/i, 'Oman Sports'],
+  [/(ال)?سعودي[ةه]\s*(ال)?رياضي[ةه]/i, 'KSA Sports'], [/(ال)?[اأ]ردن(ي[ةه])?\s*(ال)?رياضي[ةه]/i, 'Jordan Sport'], [/(ال)?كويت\s*(ال)?رياضي[ةه]/i, 'KTV Sport'],
+  [/(ال)?بحرين\s*(ال)?رياضي[ةه]/i, 'Bahrain Sports'], [/(ال)?عراقي[ةه]\s*(ال)?رياضي[ةه]/i, 'Iraqia Sport'], [/(ال)?رياضي[ةه]\s*(ال)?مغربي[ةه]/i, 'Arryadia'],
+  [/[اأ]ون\s*تايم\s*سبورت[س]?/i, 'On Time Sports'], [/(ال)?نيل\s*(ال)?رياضي[ةه]|نايل\s*سبورت/i, 'Nile Sport'],
+  [/[اإأ]م\s*بي\s*سي\s*[اأإ]كشن/i, 'MBC Action'], [/[اإأ]م\s*بي\s*سي/i, 'MBC'], [/شاهد/i, 'Shahid'], [/ستارز\s*بلاي(\s*سبورت[س]?)?/i, 'STARZPLAY Sports'],
+  [/ياس/i, 'Yas'], [/شاشا/i, 'Shasha'], [/يوتيوب/i, 'YouTube'], [/(ال)?عربي[ةه]\s*(ال)?رياضي[ةه]/i, 'Al Araby Sport'],
+];
+function chEn(n) {
+  let s = String(n || '').replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/\s*·\s*/g, ' · ');
+  if (!/[؀-ۿ]/.test(s)) return s;
+  const kass = s.match(/(ال)?ك[اأ]س\s*(\d+)?/);
+  if (kass) return 'Alkass ' + (kass[2] ? EN_N[+kass[2]] || kass[2] : 'One') + s.slice(kass.index + kass[0].length).replace(/[؀-ۿ]+/g, '').replace(/\s+/g, ' ').trimEnd();
+  for (const [re, en] of CH_EN) s = s.replace(re, ' ' + en + ' ');
+  return s.replace(/\s*(اتش\s*دي|HD)\s*/gi, ' HD ').replace(/\s+/g, ' ').trim();
+}
 const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); const all = l.concat((m.channels || []).filter(c => !l.includes(c)));
     for (const x of spgFor(m)) if (!all.some(c => sameChannel(x.n, { name: c, cc: ARABCC.has(x.cc) ? x.cc : '' }) || c === x.n)) { all.push(x.n); if (x.logo) { m.chl = m.chl || {}; if (!m.chl[x.n]) m.chl[x.n] = x.logo; } }   /* 🏟️ the guides' carriers */ return all.filter(c => !PLATFORM.test(c)).map((c, i) => [chRank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); } catch (e) { return (m.channels || []).filter(c => !PLATFORM.test(c)); } };
 // 🔗 every carrier of a match with the best channel of the lists for it (the ⭐ list first, a working one before one not checked)
@@ -3475,7 +3503,8 @@ function carrierFind(want, pools) {
 }
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
-  const pools = MPOOLS(), v = mChannels(m).map(want => { const c = bestFor(want, pools); if (c) return { want, c }; const f = carrierFind(want, pools); return f ? { want, c: f, found: 1 } : { want, c: null }; });
+  const ok = (want, c) => c && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
+  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); return f ? { want, c: f, found: 1 } : { want, c: null }; });
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
   for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   // ⭐ among a match's own carriers, beIN SPORTS 1, 2, 3 and Live Event come first (the order of the rest stays)
@@ -3509,7 +3538,8 @@ function epgCarrier(m) {
   const t = m.timestamp || 0, sides = [m.home?.name, m.away?.name].flatMap(n => [n, enName(n)]).filter(x => x && String(x).length > 2).map(x => String(x).toLowerCase());
   const pools = [...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
   for (const c of pools) {
-    const rows = c && EPG[epgId(c)]; if (!rows) continue;
+    if (!c || NEWSCH.test(c.name) || !SPORTY.test(c.name + ' ' + (c.group || ''))) continue;   // a sports channel only
+    const rows = EPG[epgId(c)]; if (!rows) continue;
     const r = rows.find(r => r[0] <= t + 900 && r[1] > t + 600); if (!r) continue;
     const ti = String(r[2]).toLowerCase();
     if (sides.filter(n => ti.includes(n)).length >= 1 && /v |vs|x |×|ضد|-|–/.test(ti)) return { label: c.name, c, epg: r[2] };
@@ -3519,7 +3549,7 @@ function epgCarrier(m) {
 function localChannels(m) {
   const cs = matchCountries(m); if (!cs.length) return [];
   const seen = new Set(), out = [];
-  const take = (c, w) => { const k = favKey(c); if (seen.has(k) || /geo-blocked/i.test(c.name)) return; seen.add(k); out.push({ c, w: w + (c.st === 'ok' || (typeof isOk === 'function' && isOk(c)) ? 50 : 0) - cs.indexOf(ccOf(c)) }); };
+  const take = (c, w) => { const k = favKey(c); if (seen.has(k) || /geo-blocked/i.test(c.name) || NEWSCH.test(c.name)) return; seen.add(k); out.push({ c, w: w + (c.st === 'ok' || (typeof isOk === 'function' && isOk(c)) ? 50 : 0) - cs.indexOf(ccOf(c)) }); };
   for (const c of GSP) if (cs.includes(c.cc || ccOf(c))) take(c, 100);                                    // checked sports channels
   for (const c of [...PINS, ...MYFAV, ...IFAV, ...ILIST]) if (cs.includes(ccOf(c)) && SPORTY.test(c.name + ' ' + (c.group || ''))) take(c, 40);
   return out.sort((a, b) => b.w - a.w).slice(0, 12).map(x => x.c);
@@ -3567,7 +3597,7 @@ window.remoteMatches = () => {
   const out = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished').slice(0, 40).map(([m, i]) => {
     let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
     return { i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
-      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => x.c.name), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
+      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => chEn(x.c.name)), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
   });
   return JSON.stringify({ loading: !MLIST || !MLIST.length, m: out });
 };
@@ -3607,19 +3637,26 @@ function rMatcher(q) {
 // 🔔 reminders: a match the phone asked about — the TV offers it at kick-off, and every goal (also to the phone)
 const mKey = m => (m.home?.name || '') + '|' + (m.away?.name || '');
 const REMIND = () => { try { return JSON.parse(localStorage.getItem('mremind') || '[]'); } catch (e) { return []; } };
-function rOffer(t, logo, f) {
+function rOffer(t, logo, f, goal) {
   OFFERP = f;
+  if (goal && TV.playerGoal && TV.playerGoal(t)) return;   // ⚽ over a channel: the card, «حوّل للقناة» ready for OK, 6 s
   if (TV.playerAlert && TV.playerAlert(t)) return;
   if (document.body.classList.contains('ambient')) ambient(false);
   CTX = { offerp: 1, b: document.activeElement }; $('#ctxName').textContent = t; $('#ctxLogo').src = logo || '';
   $('#ctxBody').innerHTML = `<button class="f" data-ctx="oplay"><i>▶︎</i>حوّل للقناة</button><button class="f" data-ctx="later"><i>✕</i>لا</button>`;
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+  if (goal) { const mine = CTX; clearTimeout(window.__goalT); window.__goalT = setTimeout(() => { if (CTX === mine && $('#ctx').classList.contains('on')) $('#ctx').classList.remove('on'), CTX = null, mine.b && mine.b.focus && mine.b.focus(); }, 6000); }   // untouched: gone after 6 s
 }
 const rPush = (title, body) => fetch('https://studio.c-p.workers.dev/push/notify', { method: 'POST', body: JSON.stringify({ title, body: body || '' }) }).catch(() => {});
 let RSTATE = {};
 async function remindLoop() {
-  const rem = REMIND(); if (!rem.length) return;
+  const rem = REMIND();
+  const mineOf = m => (MLIST || []).some(x => x.mine && mSame(x, m));
+  if (!rem.length && !(TV.playerScores && (MLIST || []).some(x => x.mine))) { if (TV.playerScores) TV.playerScores('[]'); return; }
   const d = await winwinDay(0).catch(() => null); if (!d || !d.matches) return;
+  // ⚽ the player's bottom-left corner: the live 🔔 matches (and your teams'), with the minute
+  if (TV.playerScores) try { TV.playerScores(JSON.stringify(d.matches.filter(m => m.status === 'live' && (rem.includes(mKey(m)) || mineOf(m))).slice(0, 3)
+    .map(m => `⚽ ${m.home?.name || ''} ${m.score?.home ?? 0} - ${m.score?.away ?? 0} ${m.away?.name || ''}${m.elapsed != null ? '  ·  ' + m.elapsed + '′' : ''}`))); } catch (e) {}
   const now = {};
   for (const m of d.matches) {
     const k = mKey(m); if (!rem.includes(k)) continue;
@@ -3628,12 +3665,12 @@ async function remindLoop() {
     const go = () => { const i = (MLIST || []).findIndex(x => mKey(x) === k); if (i >= 0) return playMatch(i); MLIST = [m, ...(MLIST || [])]; playMatch(0); };
     if (!p) continue;
     if (p.st === 'upcoming' && m.status === 'live') { rOffer('🟢 بدأت: ' + title, m.home?.logo, go); rPush('🟢 بدأت: ' + title, m.league?.name); }
-    else if (m.status === 'live' && g > p.g) { rOffer('⚽ هدف! ' + title, m.home?.logo, go); rPush('⚽ هدف! ' + title, m.league?.name); }
+    else if (m.status === 'live' && g > p.g) { rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); rPush('⚽ هدف! ' + title, m.league?.name); }
     else if (p.st === 'live' && m.status === 'finished') rPush('🏁 انتهت: ' + title, m.league?.name);
   }
   RSTATE = { ...RSTATE, ...now };
 }
-setInterval(() => { if (REMIND().length) remindLoop(); }, 60e3);
+setInterval(() => remindLoop(), 60e3);
 window.remoteCall = q => {
   let a = {}; try { a = JSON.parse(q || '{}'); } catch (e) {}
   const out = o => JSON.stringify(o);
@@ -3649,10 +3686,11 @@ window.remoteCall = q => {
     case 'search': {
       const t = rMatcher(a.q), pool = rPool();
       const ms = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished' && (t(m.home?.name) || t(m.away?.name) || t(m.league?.name)))
-        .slice(0, 6).map(([m, i]) => { let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {} return { i, h: m.home?.name || '', a: m.away?.name || '', st: m.status, s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', t: m.timestamp ? hm(m.timestamp) : '', ch: v.slice(0, 6).map(x => x.c.name) }; });
+        .slice(0, 6).map(([m, i]) => { let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {} return { i, h: m.home?.name || '', a: m.away?.name || '', st: m.status, s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', t: m.timestamp ? hm(m.timestamp) : '', ch: v.slice(0, 6).map(x => chEn(x.c.name)) }; });
       const cs = pool.map((c, i) => [c, i, t(c.name)]).filter(x => x[2]).sort((x, y) => y[2] - x[2] || (isOk(y[0]) - isOk(x[0]))).slice(0, 60).map(([c, i]) => rCh(c, i));
       return out({ m: ms, c: cs });
     }
+    case 'reciters': { loadReciters(); return out({ r: RECITERS.map(r => [r[0], r[1]]), cur: (() => { try { return localStorage.rec || ''; } catch (e) { return ''; } })() }); }   // 📖 every reciter the TV has (DriveCast's + quran.com's)
     case 'yday': {   // 📅 yesterday's matches with their results (the phone asks again while «loading»)
       const c = mCache.yday;
       if (!c || Date.now() - c.at > 30 * 60e3) { if (!window.__ydBusy) { window.__ydBusy = 1; mFetch('yday').finally(() => { window.__ydBusy = 0; }); } if (!c) return out({ loading: 1, m: [] }); }
