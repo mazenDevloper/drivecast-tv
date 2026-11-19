@@ -36,6 +36,7 @@ final class Keys {
         if (d == null || e.getDeviceId() <= 0 || d.isVirtual()) return "cec";   // CEC keys are injected on the virtual keyboard
         return "dev";
     }
+    static String name(KeyEvent e) { return e.getKeyCode() == 0 ? "زر #" + e.getScanCode() : name(e.getKeyCode()); }
     static String name(int code) { String s = KeyEvent.keyCodeToString(code); return s.startsWith("KEYCODE_") ? s.substring(8) : s; }
 
     private static JSONObject map(Context c) {
@@ -50,16 +51,16 @@ final class Keys {
 
     /** true = the key is eaten here */
     static boolean on(AccessibilityService s, KeyEvent e) {
-        int code = e.getKeyCode(); String src = src(e), id = src + ":" + code; boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+        int code = e.getKeyCode(); String src = src(e), id = src + ":" + (code == 0 ? "s" + e.getScanCode() : String.valueOf(code));   // a key Android has no name for: told apart by its scan code boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         long now = SystemClock.uptimeMillis();
         if (down && e.getRepeatCount() == 0) {
-            synchronized (LOG) { LOG.addFirst(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + (src.equals("cec") ? "📺 التلفاز" : src.equals("ir") ? "📡 ريموت البوكس" : "⌨️ " + src) + "  " + name(code)); while (LOG.size() > 12) LOG.removeLast(); }
+            synchronized (LOG) { LOG.addFirst(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + (src.equals("cec") ? "📺 التلفاز" : src.equals("ir") ? "📡 ريموت البوكس" : "⌨️ " + src) + "  " + name(e)); while (LOG.size() > 12) LOG.removeLast(); }
         }
         if ("cec".equals(src)) lastCec = now;
         if (learn) {
             if (down && e.getRepeatCount() == 0) {
                 learn = false; HomeActivity h = HomeActivity.alive;
-                if (h != null) h.runOnUiThread(() -> h.run("window.keyLearned && keyLearned('" + id + "','" + name(code) + "','" + src + "')"));
+                if (h != null) h.runOnUiThread(() -> h.run("window.keyLearned && keyLearned('" + id + "','" + name(e) + "','" + src + "')"));
                 held.add(id);
             }
             return true;
