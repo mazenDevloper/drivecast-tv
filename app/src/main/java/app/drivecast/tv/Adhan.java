@@ -109,11 +109,23 @@ public class Adhan extends BroadcastReceiver {
     private static java.io.File sound(Context c, boolean iqama, int prayer) {
         if (!iqama) {
             java.io.File mine = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC), "adhan.mp3");
-            if (!"haram".equals(Access.set(c).getString("asound", "haram")) && mine.canRead()) return mine;   // «ملفي» in the settings
+            String as = Access.set(c).getString("asound", "mazn");
+            if ("mine".equals(as) && mine.canRead()) return mine;   // «ملفي» in the settings
             java.io.File fajr = new java.io.File(c.getFilesDir(), "adhan-fajr.mp3");
-            if (prayer == 0 && fajr.length() > 50_000) return fajr;
+            if (prayer == 0 && fajr.length() > 50_000) return fajr;   // Fajr keeps the Haram's Fajr adhan («الصلاة خير من النوم»)
+            if ("mazn".equals(as)) { java.io.File v = voice(c); if (v != null) return v; }   // 🎙️ the default: Mazn's own adhan, in the app
         }
         java.io.File f = new java.io.File(c.getFilesDir(), iqama ? "iqama.mp3" : "adhan.mp3");
+        return f.length() > 50_000 ? f : null;
+    }
+
+    /** 🎙️ the adhan recorded by the app's owner (assets/adhan/mazn.m4a), copied once into the app's files for MediaPlayer */
+    private static java.io.File voice(Context c) {
+        java.io.File f = new java.io.File(c.getFilesDir(), "adhan-mazn.m4a");
+        if (f.length() > 50_000) return f;
+        try (InputStream in = c.getAssets().open("adhan/mazn.m4a"); java.io.FileOutputStream o = new java.io.FileOutputStream(f)) {
+            byte[] buf = new byte[16384]; int n; while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+        } catch (Exception e) { f.delete(); return null; }
         return f.length() > 50_000 ? f : null;
     }
 

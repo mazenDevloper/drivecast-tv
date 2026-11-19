@@ -3653,6 +3653,15 @@ window.remoteCall = q => {
       const cs = pool.map((c, i) => [c, i, t(c.name)]).filter(x => x[2]).sort((x, y) => y[2] - x[2] || (isOk(y[0]) - isOk(x[0]))).slice(0, 60).map(([c, i]) => rCh(c, i));
       return out({ m: ms, c: cs });
     }
+    case 'yday': {   // 📅 yesterday's matches with their results (the phone asks again while «loading»)
+      const c = mCache.yday;
+      if (!c || Date.now() - c.at > 30 * 60e3) { if (!window.__ydBusy) { window.__ydBusy = 1; mFetch('yday').finally(() => { window.__ydBusy = 0; }); } if (!c) return out({ loading: 1, m: [] }); }
+      const BIG = m => BIGL.test(m.league?.name || '') ? 1 : 0;
+      const l = arr(c.d?.matches).filter(m => m.status === 'finished').sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp)).slice(0, 60);
+      return out({ m: l.map(m => ({ h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', lg: m.league?.name || '',
+        s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`, t: m.timestamp ? hm(m.timestamp) : '' })) });
+    }
+    case 'goals': { if (!a.h || !a.a) return out({ ok: 0 }); goals({ home: { name: String(a.h) }, away: { name: String(a.a) } }); return out({ ok: 1 }); }   // 🎬 the summary, played here
     case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(); return out({ on: r.includes(k) ? 1 : 0 }); }
   }
   return out({});
@@ -3846,7 +3855,7 @@ function allSections() {
       { k: 'adhan', l: 'الأذان', o: [['sound', 'بالصوت'], ['banner', 'شريط فقط'], ['off', 'لا شيء']], d: 'sound' },
       { k: 'fajr', l: 'أذان الفجر', o: [['on', 'بالصوت'], ['banner', 'شريط فقط']], d: 'on' },
       { k: 'iqama', l: 'الإقامة', o: [['sound', 'بالصوت'], ['banner', 'شريط فقط'], ['off', 'لا شيء']], d: 'sound' },
-      { k: 'asound', l: 'صوت الأذان', o: [['haram', 'الحرم المكي'], ['mine', 'ملفي في Music']], d: 'haram' },
+      { k: 'asound', l: 'صوت الأذان', o: [['mazn', 'صوت مازن'], ['haram', 'الحرم المكي'], ['mine', 'ملفي في Music']], d: 'mazn' },
       { k: 'vol', l: 'مستوى الصوت', o: [['40', 'منخفض'], ['70', 'متوسط'], ['100', 'عالي']], d: '100' },
       { a: 'جرّب الصوت', o: [['adhan', '🕌 الأذان'], ['iqama', '🔔 الإقامة'], ['stop', '⏹ وقّف']] },
       { k: 'iqsrc', l: 'دقائق الإقامة', o: [['dc', 'من DriveCast'], ['custom', 'أحددها هنا']], d: 'dc' },

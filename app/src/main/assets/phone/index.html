@@ -111,6 +111,8 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .mc .sc.up{font-size:17px;color:var(--dim)}
 .mc .chs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .mc .chs button{flex:1 1 45%;min-height:52px;border-radius:16px;border:0;background:var(--acc);color:#fff;font:700 16px inherit;font-family:inherit;padding:6px 10px}
+.mseg{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:12px}.mseg button{flex:1;min-height:44px;border:0;border-radius:12px;background:none;color:var(--ink);font:700 15px inherit;font-family:inherit}.mseg button.on{background:var(--acc);color:#fff}
+.mc .hlb{width:100%;min-height:52px;margin-top:12px;border-radius:16px;border:0;background:var(--acc);color:#fff;font:700 16px inherit;font-family:inherit}
 .mc .chs button:nth-child(n+2){background:rgba(255,255,255,.08);color:var(--ink)}
 .mc .none{color:var(--dim);font-size:13px;margin-top:10px;text-align:center}
 .mc.live{border-color:#7a2a2a}
@@ -177,6 +179,7 @@ body.simple .kids{display:grid}
 
 <section id="mt" class="hide">
   <div id="pushBox" class="hide"><button id="pushOn" class="big" style="margin-bottom:12px">🔔 فعّل تنبيهات المباريات على هذا الجوال</button></div>
+  <div class="mseg" id="mseg"><button data-md="t" class="on">اليوم</button><button data-md="y">أمس · النتائج</button></div>
   <div id="mtl"><p class="s">أجيب المباريات…</p></div>
 </section>
 
@@ -442,7 +445,21 @@ $('adbs').onclick = async () => {
 // ⚽ today's matches from the TV itself (its lists and their channels); a tap on a channel plays it there
 // the score with the home team's goals on its side (an Arabic page: the right)
 const scoreH = s => { const [h, a] = String(s || '').split(/\s*-\s*/); return `<span style="display:inline-flex;gap:8px;direction:rtl"><b>${h ?? ''}</b><i style="font-style:normal">-</i><b>${a ?? ''}</b></span>`; };
+let MDAY = 't';
+// 📅 yesterday: the finished matches with their results, and «🎬 الملخص» plays the goals' summary on the TV
+async function yday() {
+  const box = $('mtl');
+  try {
+    const j = await rc({ f: 'yday' }); if (MDAY !== 'y') return;
+    if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب مباريات أمس…' : 'ما فيه نتائج لأمس'}</p>`; if (j.loading) setTimeout(yday, 2500); return; }
+    const E = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    box.innerHTML = j.m.map(m => `<div class="mc"><div class="lg"><span>${E(m.lg)}</span><span>انتهت</span></div>
+      <div class="tm"><div>${m.hl ? `<img src="${E(m.hl)}" alt="">` : ''}${E(m.h)}</div><span class="sc">${scoreH(m.s)}</span><div>${m.al ? `<img src="${E(m.al)}" alt="">` : ''}${E(m.a)}</div></div>
+      <button class="hlb" data-gh="${E(m.h)}" data-ga="${E(m.a)}">🎬 الملخص على التلفزيون</button></div>`).join('');
+  } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
+}
 async function matches() {
+  if (MDAY === 'y') return yday();
   const box = $('mtl');
   try {
     const j = await (await fetch('/matches')).json();
@@ -455,6 +472,12 @@ async function matches() {
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-mi]'); if (!b) return; buzz(); post('/matchplay', b.dataset.mi + ' ' + b.dataset.mk); $('s').textContent = '▶ ' + b.textContent.replace('▶ ', '') + ' — على التلفزيون'; });
+document.addEventListener('click', e => {
+  const sg = e.target.closest('#mseg button');
+  if (sg) { buzz(); MDAY = sg.dataset.md; document.querySelectorAll('#mseg button').forEach(x => x.classList.toggle('on', x === sg)); $('mtl').innerHTML = '<p class="s">…</p>'; return matches(); }
+  const g = e.target.closest('[data-gh]');
+  if (g) { buzz(); rc({ f: 'goals', h: g.dataset.gh, a: g.dataset.ga }).catch(() => {}); $('s').textContent = '🎬 أدوّر الملخص — على التلفزيون'; }
+});
 // 👶 the simple remote, kept on this phone
 function simpleSet(on) { document.body.classList.toggle('simple', on); try { localStorage.simple = on ? '1' : ''; } catch (e) {} }
 $('simpleT').onclick = () => { buzz(); simpleSet(!document.body.classList.contains('simple')); };
