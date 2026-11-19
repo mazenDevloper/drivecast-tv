@@ -3399,7 +3399,7 @@ function sameChannel(want, c) {
 const chRank = n => isArabChannel(n) && !(/\(([A-Z]{2})\)$/.test(n) && !ARABCC.has(n.slice(-3, -1).toLowerCase())) ? 0 : /\b(usa|us)\b|fubo|espn|fox|cbs|nbc|paramount|peacock/i.test(n) ? 1 : /\b(esp|spain)\b|movistar|dazn \(spain\)|la ?liga tv/i.test(n) ? 2 : /\b(por|bra)\b|sport tv|globo|premiere|sportv|eleven/i.test(n) ? 3 : 4;
 // the platforms a source names as a «carrier» (an app or a site, not a channel): left out of the carriers
 const PLATFORM = /red ?bull|youtube|يوتيوب|facebook|فيسبوك|twitch|\bkick\b|shahid|شاهد|\btod\b|stc ?tv|jawwy|fifa ?\+|espn ?\+|paramount ?\+|peacock|prime video|apple ?tv|netflix|fubo|sling|starzplay|osn ?\+|tiktok|instagram|twitter|\bapp\b|تطبيق|website|موقع|streaming|ستريم|tv ?pass|onefootball|dazn app|vix\b|max\b ?app/i;
-// 🔤 a carrier's name in English on screen (the lists name them so: easier to find) — «الكأس 1» → Alkass One, «ثمانية» →
+// 🔤 a carrier's name in English on screen (the lists name them so: easier to find) — «الكأس 1» → Alkass 1, «ثمانية» →
 // Thmanyah, «أبوظبي الرياضية 2» → AD Sports 2; matching still uses the names as they are
 const EN_N = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 const CH_EN = [
@@ -3418,7 +3418,7 @@ function chEn(n) {
   let s = String(n || '').replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/\s*·\s*/g, ' · ');
   if (!/[؀-ۿ]/.test(s)) return s;
   const kass = s.match(/(ال)?ك[اأ]س\s*(\d+)?/);
-  if (kass) return 'Alkass ' + (kass[2] ? EN_N[+kass[2]] || kass[2] : 'One') + s.slice(kass.index + kass[0].length).replace(/[؀-ۿ]+/g, '').replace(/\s+/g, ' ').trimEnd();
+  if (kass) return 'Alkass ' + (kass[2] || '1') + s.slice(kass.index + kass[0].length).replace(/[؀-ۿ]+/g, '').replace(/\s+/g, ' ').trimEnd();
   for (const [re, en] of CH_EN) s = s.replace(re, ' ' + en + ' ');
   return s.replace(/\s*(اتش\s*دي|HD)\s*/gi, ' HD ').replace(/\s+/g, ' ').trim();
 }
