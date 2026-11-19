@@ -40,7 +40,7 @@ import java.util.Locale;
  * Adapted from noor-tv (MIT, majedphotos): the city now comes from the home screen's settings (City).
  */
 public class Adhan extends BroadcastReceiver {
-    static final String FIRE = "app.drivecast.tv.ADHAN", IQAMA = "app.drivecast.tv.IQAMA";
+    static final String FIRE = "app.drivecast.tv.ADHAN", IQAMA = "app.drivecast.tv.IQAMA", VERSE = "app.drivecast.tv.VERSE";
     // the Haram recordings (Internet Archive): downloaded once in the background, kept in the app's files
     private static final String[][] SOUNDS = {
         {"adhan.mp3", "https://archive.org/download/Mp3CollectionAdzan/Adzan%20Makkah.mp3"},
@@ -267,14 +267,19 @@ public class Adhan extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
         boolean iqama = IQAMA.equals(i.getAction());
-        if (!FIRE.equals(i.getAction()) && !iqama) return;
         Context app = c.getApplicationContext();
+        if (VERSE.equals(i.getAction())) { verse(app); return; }
+        if (!FIRE.equals(i.getAction()) && !iqama) return;
         int prayer = i.getIntExtra("p", 1);
         SharedPreferences st = Access.set(app);
         String mode = st.getString(iqama ? "iqama" : "adhan", "sound");
         if (!iqama) {
             schedule(app);
             long at = i.getLongExtra("at", System.currentTimeMillis());
+            if (!"off".equals(st.getString("pverse", "on"))) {   // 📖 10 minutes after the adhan: «إن الصلاة كانت على المؤمنين كتابا موقوتا»
+                PendingIntent vp = PendingIntent.getBroadcast(app, 3, new Intent(app, Adhan.class).setAction(VERSE), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                exact(app, Math.max(at, System.currentTimeMillis() - 60_000L) + 10 * 60_000L, vp);
+            }
             SharedPreferences ps = app.getSharedPreferences("pset", Context.MODE_PRIVATE);
             int testIq = ps.getInt("testIq", 0);
             if (testIq > 0) ps.edit().remove("testIq").apply();
@@ -404,6 +409,29 @@ public class Adhan extends BroadcastReceiver {
             if (e.getEventType() == UsageEvents.Event.ACTIVITY_RESUMED) top = e.getPackageName();
         }
         return top;
+    }
+
+    /** 📖 An-Nisa 103 in the middle of the screen: white, in Amiri Quran, no box behind it (a soft shadow only), for 25 s */
+    private static void verse(Context c) {
+        if (!Settings.canDrawOverlays(c) || !c.getSystemService(PowerManager.class).isInteractive()) return;
+        new Handler(Looper.getMainLooper()).post(() -> {
+            WindowManager wm = c.getSystemService(WindowManager.class);
+            TextView v = new TextView(c);
+            v.setText("إِنَّ ٱلصَّلَوٰةَ كَانَتۡ عَلَى ٱلۡمُؤۡمِنِينَ كِتَٰبٗا مَّوۡقُوتٗا ﴿١٠٣﴾");
+            v.setTextColor(Color.WHITE); v.setTextSize(44); v.setGravity(Gravity.CENTER);
+            try { v.setTypeface(Typeface.createFromAsset(c.getAssets(), "fonts/AmiriQuran.ttf")); } catch (Exception ignored) { }
+            v.setShadowLayer(18, 0, 3, 0xCC000000);
+            v.setPadding(60, 30, 60, 30);
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                    PixelFormat.TRANSLUCENT);
+            lp.gravity = Gravity.CENTER;
+            try { wm.addView(v, lp); } catch (Exception e) { return; }
+            v.setAlpha(0f); v.animate().alpha(1f).setDuration(1200);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> v.animate().alpha(0f).setDuration(1200).withEndAction(() -> { try { wm.removeView(v); } catch (Exception ignored) { } }), 25_000);
+        });
     }
 
     private static void banner(Context c, String text, int ms) {
