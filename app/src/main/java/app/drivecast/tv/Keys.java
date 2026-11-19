@@ -51,7 +51,7 @@ final class Keys {
 
     /** true = the key is eaten here */
     static boolean on(AccessibilityService s, KeyEvent e) {
-        int code = e.getKeyCode(); String src = src(e), id = src + ":" + (code == 0 ? "s" + e.getScanCode() : String.valueOf(code));   // a key Android has no name for: told apart by its scan code boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+        int code = e.getKeyCode(); String src = src(e), id = src + ":" + (code == 0 ? "s" + e.getScanCode() : String.valueOf(code));; boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         long now = SystemClock.uptimeMillis();
         if (down && e.getRepeatCount() == 0) {
             synchronized (LOG) { LOG.addFirst(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + (src.equals("cec") ? "📺 التلفاز" : src.equals("ir") ? "📡 ريموت البوكس" : "⌨️ " + src) + "  " + name(e)); while (LOG.size() > 12) LOG.removeLast(); }
