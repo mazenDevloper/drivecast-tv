@@ -61,10 +61,9 @@ final class Access {
             if (list == null || !list.contains(ME)) { force(c); return; }
             String without = list.replace(":" + ME, "").replace(ME + ":", "").replace(ME, "");
             Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, without);
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
-                Settings.Secure.putInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
-            }, 1500);
+            try { Thread.sleep(1500); } catch (InterruptedException ignored) { }   // called on a worker thread
+            Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
+            Settings.Secure.putInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
         } catch (Exception ignored) { }
     }
     /** if wanted and allowed: on now */

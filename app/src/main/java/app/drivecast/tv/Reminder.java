@@ -43,7 +43,7 @@ public class Reminder extends BroadcastReceiver {
             Adhan.schedule(c);
             MessageServer.start(c);
             Access.keep(c);
-            if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction())) { Context ac = c.getApplicationContext(); new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> Access.rebind(ac), 4000); }
+            if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction())) { Context ac = c.getApplicationContext(); final PendingResult pr = goAsync(); new Thread(() -> { try { Thread.sleep(3000); Access.rebind(ac); } catch (Throwable ignored) { } finally { pr.finish(); } }, "rebind").start(); }
             if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { unstickBoot(c.getApplicationContext()); remoteUp(c.getApplicationContext()); }
             return;
         }

@@ -171,6 +171,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        Access.keep(this);   // the mouse / remote keys service back in the list if anything took it out
         MessageServer.start(this);   // the phone remote's server: back if the system stopped it while the TV slept
         Reminder.regrant(getApplicationContext());   // 🔑 the box may have taken the apps' permissions back
         quiet(getWindow().getDecorView());
