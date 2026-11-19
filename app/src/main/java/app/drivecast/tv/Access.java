@@ -60,6 +60,13 @@ final class Access {
             String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
             if (list == null || !list.contains(ME)) { force(c); return; }
             String without = list.replace(":" + ME, "").replace(ME + ":", "").replace(ME, "");
+            // off and on again from a shell process of its own (detached): taking the service off can stop this app's process,
+            // and then the half done here never put it back (the box was left with no remote-keys service at all)
+            try {
+                String q = without.isEmpty() ? "''" : "'" + without + "'";
+                SelfAdb.shell(c, "nohup sh -c \"settings put secure enabled_accessibility_services " + q + "; sleep 2; settings put secure enabled_accessibility_services '" + list + "'; settings put secure accessibility_enabled 1\" >/dev/null 2>&1 &", 0, 5000);
+                return;
+            } catch (Exception ignored) { }
             Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, without);
             try { Thread.sleep(1500); } catch (InterruptedException ignored) { }   // called on a worker thread
             Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
