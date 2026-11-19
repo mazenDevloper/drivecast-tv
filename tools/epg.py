@@ -43,7 +43,7 @@ norm = lambda s: re.sub(r'[^a-z0-9]', '', (s or '').lower())
 # time +0100) are corrected by the shift the sports guide measured against the day's kick-offs (sports.json «sh»).
 EXTRA_ALL = ['BEIN1', 'AE1', 'SA1', 'SA2', 'EG1', 'ALJAZEERA1']
 EXTRA_SPORT = ['UK1', 'PT1', 'ES1', 'FR1', 'IT1', 'DE1', 'TR1', 'US_SPORTS1', 'US2', 'AU1', 'IN4', 'BR1', 'MX1',
-               'BR2', 'AR1', 'CO1', 'BE2', 'PL1']   # Globo / SporTV / Premiere, ESPN · Fox Sports · TyC Latin America, Eleven Sports, Sportklub
+               'BR2', 'AR1', 'CO1', 'BE2', 'PL1', 'IE1', 'GR1']   # Sky Sports & TNT Sports (Ireland's guide has Sky's full set), Greece's Novasports, Globo / SporTV / Premiere, ESPN · Fox Sports · TyC Latin America, Eleven Sports, Sportklub
 def extra(guide, lo, hi, out):
     import os
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
