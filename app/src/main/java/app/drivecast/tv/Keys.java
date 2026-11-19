@@ -32,6 +32,7 @@ final class Keys {
         if ((e.getSource() & InputDevice.SOURCE_HDMI) == InputDevice.SOURCE_HDMI) return "cec";
         InputDevice d = e.getDevice(); String n = d == null ? "" : String.valueOf(d.getName()).toLowerCase(java.util.Locale.ROOT);
         if (n.contains("cec") || n.contains("hdmi")) return "cec";
+        if (n.contains("uinput") && n.contains("ir")) return "irx";   // T6: multi_ir turns other brands' remotes (by their IR address) into keys on a second device
         if (n.contains("-ir") || n.startsWith("ir") || n.contains(" ir") || n.contains("_ir")) return "ir";
         if (d == null || e.getDeviceId() <= 0 || d.isVirtual()) return "cec";   // CEC keys are injected on the virtual keyboard
         return "dev";
@@ -54,7 +55,7 @@ final class Keys {
         int code = e.getKeyCode(); String src = src(e), id = src + ":" + (code == 0 ? "s" + e.getScanCode() : String.valueOf(code));; boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         long now = SystemClock.uptimeMillis();
         if (down && e.getRepeatCount() == 0) {
-            synchronized (LOG) { LOG.addFirst(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + (src.equals("cec") ? "📺 التلفاز" : src.equals("ir") ? "📡 ريموت البوكس" : "⌨️ " + src) + "  " + name(e)); while (LOG.size() > 12) LOG.removeLast(); }
+            synchronized (LOG) { LOG.addFirst(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()) + "  " + (src.equals("cec") ? "📺 التلفاز" : src.equals("ir") ? "📡 أشعة ١" : src.equals("irx") ? "📡 أشعة ٢ (ريموت آخر)" : "⌨️ " + src) + "  " + name(e) + "  ·" + e.getScanCode()); while (LOG.size() > 12) LOG.removeLast(); }
         }
         if ("cec".equals(src)) lastCec = now;
         if (learn) {
@@ -70,7 +71,7 @@ final class Keys {
         JSONObject m = map(s); String a = m.optString(id, m.optString("any:" + code, ""));
         if (!a.isEmpty()) { if (down) { held.add(id); if (e.getRepeatCount() == 0) act(s, a); } return true; }
         // the clash guard
-        if ("ir".equals(src) && collides(code) && !"off".equals(Access.set(s).getString("irguard", "on"))) {
+        if (("ir".equals(src) || "irx".equals(src)) && collides(code) && !"off".equals(Access.set(s).getString("irguard", "on"))) {
             if (now - lastCec < 8000) return true;
             if (code == KeyEvent.KEYCODE_BACK) {
                 if (down && e.getRepeatCount() == 0) { long at = now; H.postDelayed(() -> { if (lastCec < at) s.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK); }, 250); }

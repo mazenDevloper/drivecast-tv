@@ -3957,7 +3957,7 @@ let KLEARN = null, KLEARNING = false;
 const KACTS = [['none', '🚫 لا شيء (تجاهله)'], ['back', '↩ رجوع'], ['home', '🏠 الرئيسية'], ['recents', '🗂 التطبيقات المفتوحة'], ['settings', '⚙️ إعدادات الأندرويد'], ['dcset', '🛠 إعدادات DriveCast'],
   ['iptv', '📺 القنوات'], ['quran', '📖 القرآن'], ['matches', '⚽ المباريات'], ['red', '🔴 الأحمر'], ['green', '🟢 الأخضر'], ['yellow', '🟡 الأصفر'], ['blue', '🔵 الأزرق'],
   ['key:164', '🔇 كتم الصوت'], ['key:85', '⏯ تشغيل / إيقاف'], ['key:26', '⏻ إطفاء البوكس'], ['app:com.google.android.youtube.tv', '▶️ يوتيوب'], ['app:com.carriez.flutter_hbb', '🖥 RustDesk']];
-const KSRC = { cec: '📺 ريموت التلفاز', ir: '📡 ريموت البوكس', dev: '⌨️ جهاز' };
+const KSRC = { cec: '📺 ريموت التلفاز (HDMI)', ir: '📡 أشعة ١', irx: '📡 أشعة ٢ (ريموت آخر)', dev: '⌨️ جهاز' };
 function kmap() { try { return JSON.parse(TV.keyMap ? TV.keyMap() : '{}') || {}; } catch (e) { return {}; } }
 function keyRows() {
   if (!TV.keyMap) return [{ i: 'أزرار الريموت', t: 'تحتاج آخر نسخة من DriveCast TV' }];
@@ -3968,7 +3968,7 @@ function keyRows() {
   else if (KLEARN) r.push({ a: `${KSRC[KLEARN.src] || KLEARN.src} · ${KLEARN.name} ← يسوي:`, o: [...KACTS.map(([v, l]) => ['km=' + v, l]), ['km-cancel', '✖ إلغاء']] });
   else r.push({ a: '', o: [['km-learn', '🎯 تعلّم زر']] });
   Object.entries(m).forEach(([id, a]) => { const [s, c] = id.split(':'); r.push({ a: `${KSRC[s] || s} · ${(KNAMES[id] || ('#' + c))} ← ${al[a] || a}`, o: [['kmdel=' + id, '✖ احذف']] }); });
-  r.push({ i: 'آخر الأزرار المضغوطة', t: (TV.keyLog && TV.keyLog()) || '—' });
+  r.push({ i: 'آخر الأزرار المضغوطة', t: (TV.keyLog && TV.keyLog()) || '—', log: 1 });
   return r;
 }
 let KNAMES = {}; try { KNAMES = JSON.parse(localStorage.knames || '{}'); } catch (e) {}
@@ -3981,7 +3981,7 @@ function keyAct(a) {
 }
 function rowHtml(r) {
   if (r.qr) return `<div class="srow qrrow"><span>${r.l}</span><div class="qrbox" data-qr="${esc(r.qr)}"></div></div>`;
-  if (r.i) return `<div class="srow"><span>${r.i}</span><em>${esc(r.t)}</em></div>`;
+  if (r.i) return `<div class="srow"><span>${r.i}</span><em${r.log ? ' style="white-space:pre-line;direction:ltr;text-align:left"' : ''}>${esc(r.t)}</em></div>`;
   if (r.a !== undefined) return `<div class="srow"><span>${r.a}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f" data-sact="${v}">${l}</button>`).join('')}</div></div>`;
   const cur = String(r.v ?? S(r.k, r.d));
   if (r.n) { const b = (d, t) => `<button class="f" data-set="${r.k}" data-v="${Math.max(r.n[0], Math.min(r.n[1], +cur + d))}">${t}</button>`;
