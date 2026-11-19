@@ -53,6 +53,20 @@ final class Access {
         return enabled(c);
     }
 
+    /** after an update Android leaves the service listed but unbound (no mouse, no remote keys): off and on again */
+    static void rebind(Context c) {
+        if (!wanted(c) || !canForce(c) || MouseService.on != null) return;
+        try {
+            String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (list == null || !list.contains(ME)) { force(c); return; }
+            String without = list.replace(":" + ME, "").replace(ME + ":", "").replace(ME, "");
+            Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, without);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
+                Settings.Secure.putInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            }, 1500);
+        } catch (Exception ignored) { }
+    }
     /** if wanted and allowed: on now */
     static void keep(Context c) { if (wanted(c)) force(c); }
 
