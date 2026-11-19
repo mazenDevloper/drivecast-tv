@@ -563,7 +563,7 @@ public class PlayerActivity extends Activity {
         // ⏭ «التالي» in the bottom-right corner while the channel plays: the next programme's logo (or its name), like a
         // broadcaster's own corner; hidden while the bar, the list or the menu is up
         nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.HORIZONTAL); nextBox.setGravity(Gravity.CENTER_VERTICAL);
-        GradientDrawable nb = new GradientDrawable(); nb.setColor(0x99101216); nb.setCornerRadius(dp(14)); nextBox.setBackground(nb);
+        GradientDrawable nxb = new GradientDrawable(); nxb.setColor(0x99101216); nxb.setCornerRadius(dp(14)); nextBox.setBackground(nxb);
         nextBox.setPadding((int) dp(12), (int) dp(8), (int) dp(12), (int) dp(8));
         nextTxt = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(4), 0, dp(1), 0xCC000000);
         nextImg = new ImageView(this); nextImg.setAdjustViewBounds(true); nextImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
