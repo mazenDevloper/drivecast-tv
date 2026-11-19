@@ -129,6 +129,22 @@ public class Reminder extends BroadcastReceiver {
             }
         }, "remoteUp").start();
     }
+    /** 🖥 RustDesk / ZeroTier watchdog: the box's low-memory killer stops RustDesk (exit-info LOW_MEMORY) and it never comes
+     *  back by itself. Every 3 minutes while the home screen is in front (never over a channel or an app being watched —
+     *  restarting it shows RustDesk's screens for a few seconds), remoteup.sh brings it back; it does nothing when both are up */
+    private static long upAt; private static volatile boolean upBusy;
+    static void remoteWatch(Context c) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (upBusy || now - upAt < 3 * 60_000L || now < 4 * 60_000L) return;
+        upAt = now; upBusy = true;
+        new Thread(() -> {
+            try (java.io.InputStream in = c.getAssets().open("remoteup.sh")) {
+                String r = SelfAdb.shell(c, new String(readAll(in), "UTF-8"), 0, 120_000);
+                if (r != null && r.contains("rd-")) Crash.note(c, "RustDesk was stopped (low memory?) — started again:" + r.trim());
+            } catch (Exception e) { }
+            finally { upBusy = false; }
+        }, "remoteWatch").start();
+    }
     private static byte[] readAll(java.io.InputStream in) throws java.io.IOException {
         java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(); byte[] b = new byte[4096]; int n;
         while ((n = in.read(b)) > 0) o.write(b, 0, n); return o.toByteArray();

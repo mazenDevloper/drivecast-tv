@@ -243,6 +243,9 @@ public class HomeActivity extends Activity {
     }
 
     /** a line of the page's script (the phone remote's Quran) */
+    private final Runnable watch = new Runnable() { public void run() { if (hasWindowFocus()) Reminder.remoteWatch(HomeActivity.this); h2.postDelayed(this, 60_000); } };
+    private final android.os.Handler h2 = new android.os.Handler(android.os.Looper.getMainLooper());
+    @Override public void onWindowFocusChanged(boolean f) { super.onWindowFocusChanged(f); h2.removeCallbacks(watch); if (f) h2.postDelayed(watch, 20_000); }
     void run(String js) { if (web != null) web.evaluateJavascript(js, null); }
 
     /** a key from the phone remote: up/down/left/right/ok/back/menu/ambient/quran/live/match/stop */
@@ -315,6 +318,14 @@ public class HomeActivity extends Activity {
     }
 
     class Bridge {
+        /** 🎛️ the remote's keys: learn the next key pressed (→ keyLearned(id, name, src)), the map {"src:code": action}, the guard, the last keys */
+        @JavascriptInterface public boolean keyLearn() { if (MouseService.on == null) return false; Keys.learn = true; return true; }
+        @JavascriptInterface public void keyLearnStop() { Keys.learn = false; }
+        @JavascriptInterface public String keyMap() { return Access.set(HomeActivity.this).getString("keymap", "{}"); }
+        @JavascriptInterface public void keyMapSet(String j) { Access.set(HomeActivity.this).edit().putString("keymap", j).apply(); }
+        @JavascriptInterface public String keyGuard() { return Access.set(HomeActivity.this).getString("irguard", "on"); }
+        @JavascriptInterface public void keyGuardSet(String v) { Access.set(HomeActivity.this).edit().putString("irguard", v).apply(); }
+        @JavascriptInterface public String keyLog() { return Keys.log(); }
         /** 🎙️ the page's mic button */
         @JavascriptInterface
         public void voice() { runOnUiThread(() -> HomeActivity.voice(HomeActivity.this, 77)); }

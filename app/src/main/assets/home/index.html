@@ -3920,6 +3920,7 @@ function allSections() {
       { k: 'force', l: 'إبقاء الماوس مفعّل دائماً', o: ON, d: 'on' },
       { a: '', o: [['mouse-on', '🖱️ شغّل الماوس الحين'], ['access', 'إعدادات تسهيل الوصول']] },
     ]],
+    ['🎮', 'أزرار الريموت', keyRows()],
     ['🌐', 'الويب', (() => { let w = {}; try { w = JSON.parse(TV.webInfo ? TV.webInfo() : '{}'); } catch (e) {} return [
       { i: 'الحالة', t: S('web', 'on') === 'off' ? 'مطفّي' : w.online ? '✅ التلفزيون متصل — تقدر تتحكم فيه من أي مكان' : '… يتصل' },
       { i: 'الرابط', t: (w.url || '').replace('https://', '') },
@@ -3950,6 +3951,33 @@ function allSections() {
       { k: 'dev', l: '🛠 وضع المطوّر (أدوات الفحص والتجربة)', o: ON, d: 'off' },
     ]],
   ];
+}
+// ---- 🎛️ re-programming the remote's keys (box IR or the TV's remote over CEC), on the whole box through the mouse service
+let KLEARN = null, KLEARNING = false;
+const KACTS = [['none', '🚫 لا شيء (تجاهله)'], ['back', '↩ رجوع'], ['home', '🏠 الرئيسية'], ['recents', '🗂 التطبيقات المفتوحة'], ['settings', '⚙️ إعدادات الأندرويد'], ['dcset', '🛠 إعدادات DriveCast'],
+  ['iptv', '📺 القنوات'], ['quran', '📖 القرآن'], ['matches', '⚽ المباريات'], ['red', '🔴 الأحمر'], ['green', '🟢 الأخضر'], ['yellow', '🟡 الأصفر'], ['blue', '🔵 الأزرق'],
+  ['key:164', '🔇 كتم الصوت'], ['key:85', '⏯ تشغيل / إيقاف'], ['key:26', '⏻ إطفاء البوكس'], ['app:com.google.android.youtube.tv', '▶️ يوتيوب'], ['app:com.carriez.flutter_hbb', '🖥 RustDesk']];
+const KSRC = { cec: '📺 ريموت التلفاز', ir: '📡 ريموت البوكس', dev: '⌨️ جهاز' };
+function kmap() { try { return JSON.parse(TV.keyMap ? TV.keyMap() : '{}') || {}; } catch (e) { return {}; } }
+function keyRows() {
+  if (!TV.keyMap) return [{ i: 'أزرار الريموت', t: 'تحتاج آخر نسخة من DriveCast TV' }];
+  const m = kmap(), al = Object.fromEntries(KACTS), r = [];
+  r.push({ i: 'كيف', t: 'اضغط «تعلّم زر» ثم اضغط الزر في أي ريموت، واختر وش يسوي. يشتغل في كل البوكس (يحتاج الماوس مفعّل)' });
+  r.push({ k: 'irguard', l: '🛡️ منع تضارب ريموت التلفاز مع البوكس (أوك التلفاز = رجوع البوكس…)', o: [['on', 'نعم'], ['off', 'لا']], v: TV.keyGuard() });
+  if (KLEARNING) r.push({ i: '⏳ اضغط الزر الحين…', t: 'في ريموت البوكس أو ريموت التلفاز' });
+  else if (KLEARN) r.push({ a: `${KSRC[KLEARN.src] || KLEARN.src} · ${KLEARN.name} ← يسوي:`, o: [...KACTS.map(([v, l]) => ['km=' + v, l]), ['km-cancel', '✖ إلغاء']] });
+  else r.push({ a: '', o: [['km-learn', '🎯 تعلّم زر']] });
+  Object.entries(m).forEach(([id, a]) => { const [s, c] = id.split(':'); r.push({ a: `${KSRC[s] || s} · ${(KNAMES[id] || ('#' + c))} ← ${al[a] || a}`, o: [['kmdel=' + id, '✖ احذف']] }); });
+  r.push({ i: 'آخر الأزرار المضغوطة', t: (TV.keyLog && TV.keyLog()) || '—' });
+  return r;
+}
+let KNAMES = {}; try { KNAMES = JSON.parse(localStorage.knames || '{}'); } catch (e) {}
+window.keyLearned = (id, name, src) => { KLEARNING = false; KLEARN = { id, name, src }; KNAMES[id] = name; try { localStorage.knames = JSON.stringify(KNAMES); } catch (e) {} if ($('#panel').classList.contains('on')) { setsBody(); $('#sbody [data-sact^="km="]')?.focus(); } };
+function keyAct(a) {
+  if (a === 'km-learn') { if (!TV.keyLearn()) { toast('⚠️ فعّل الماوس أول (من «الماوس والريموت»)'); return; } KLEARNING = true; setsBody(); setTimeout(() => { if (KLEARNING) { KLEARNING = false; TV.keyLearnStop(); if ($('#panel').classList.contains('on')) setsBody(); } }, 15000); return; }
+  if (a === 'km-cancel') { KLEARN = null; setsBody(); $('#sbody [data-sact="km-learn"]')?.focus(); return; }
+  if (a.startsWith('km=') && KLEARN) { const m = kmap(); m[KLEARN.id] = a.slice(3); TV.keyMapSet(JSON.stringify(m)); toast('✅ ' + KLEARN.name + ' صار مبرمج'); KLEARN = null; setsBody(); $('#sbody [data-sact="km-learn"]')?.focus(); return; }
+  if (a.startsWith('kmdel=')) { const m = kmap(); delete m[a.slice(6)]; TV.keyMapSet(JSON.stringify(m)); setsBody(); $('#sbody [data-sact="km-learn"]')?.focus(); return; }
 }
 function rowHtml(r) {
   if (r.qr) return `<div class="srow qrrow"><span>${r.l}</span><div class="qrbox" data-qr="${esc(r.qr)}"></div></div>`;
@@ -3989,6 +4017,7 @@ function setClick(b) {
 }
 function applySet(k, v) {
   if (k === 'city') { const c = CITIES.find(x => x[0] === v); if (!c) return; TV.setCity(String(c[1]), String(c[2]), c[3], c[0]); P.city = v; setTimeout(() => { loadPrayers(); if ($('#panel').classList.contains('on') && SEC === 0) setsBody(); }, 1500); return; }
+  if (k === 'irguard') { TV.keyGuardSet && TV.keyGuardSet(v); return; }
   if (k === 'boardbg') { loadBoard(); BOARD.bg = v; BOARD.v2 = 1; saveBoard(); boardUi(); return; }
   if (k === 'homeunhide') { if (v === 'all') { setPref('homehide', '[]'); liveUi(); toast('↩ رجعت كل القنوات للرئيسية'); } return; }
   setPref(k, v);
@@ -4019,6 +4048,7 @@ function updGo() {
 setInterval(updCheck, 6 * 3600e3); setTimeout(updCheck, 8000);
 setTimeout(() => { const f = TV.updFail && TV.updFail(); if (f) UPDST = f === 'key' ? '⚠️ ما تركّب فوق النسخة الحالية (مفتاح توقيع مختلف) — ركّبها مرة وحدة مع كلود' : '⚠️ ما تركّب: ' + f; }, 3000);
 function setAct(a) {
+  if (/^km/.test(a)) return keyAct(a);
   if (a === 'upd-check') { UPDST = 'أتحقق…'; updCheck(); setsBody(); return; }
   if (a === 'upd-go') { updGo(); return; }
   if (/^sim-/.test(a)) { simAct(a).then(() => { if ($('#panel').classList.contains('on')) { const all = [...document.querySelectorAll('#sbody .f')], at = all.indexOf(document.activeElement); setsBody(); (document.querySelectorAll('#sbody .f')[at] || $('#sbody .f'))?.focus(); } }); return; }

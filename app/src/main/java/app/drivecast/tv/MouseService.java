@@ -105,6 +105,8 @@ public class MouseService extends AccessibilityService {
         } catch (Exception ignored) { }
     }
 
+    /** 🎛️ the remote's keys: re-programmed keys and the TV-remote clash guard (Keys) */
+    @Override protected boolean onKeyEvent(android.view.KeyEvent e) { try { return Keys.on(this, e); } catch (Throwable t) { return false; } }
     @Override public void onAccessibilityEvent(AccessibilityEvent e) { }
     @Override public void onInterrupt() { }
 
