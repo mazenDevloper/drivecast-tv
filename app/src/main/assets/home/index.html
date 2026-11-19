@@ -3015,12 +3015,17 @@ const WINWIN = 'https://www.winwin.com/api/component_data/match_landing_section/
 async function winwinDay(plus) {
   const t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3);   // Oman's football day (until 05:00 it is still yesterday's)
   const ymd = t.toISOString().slice(0, 10).replace(/-/g, '');
+  const day0 = Date.parse(t.toISOString().slice(0, 10) + 'T01:00:00Z') / 1000;   // 05:00 in Oman
   const d = await getJ(WINWIN + ymd); if (!Array.isArray(d)) return null;
   const out = [];
   for (const g of d) for (const m of g.matches || []) {
     if (!m || m.status === 'postponed' || !m.team1 || !m.team2) continue;
     if (/تحت \d\d|سيدات|للشباب|الدرجة الثانية/.test((m.league?.name || '') + ' ' + m.team1.name)) continue;
-    const ts = Date.parse(`${m.date || t.toISOString().slice(0, 10)}T${m.kickoffTime || '00:00'}:00Z`) / 1000;   // its times are UTC
+    let ts = Date.parse(`${m.date || t.toISOString().slice(0, 10)}T${m.kickoffTime || '00:00'}:00Z`) / 1000;   // its times are UTC
+    // 📅 only this football day (Oman 05:00 → 05:00 next day): winwin's day also lists the next morning's matches (Asia,
+    // Australia) under it — they showed at noon as if today's
+    if (!m.date && ts < day0) ts += 86400;
+    if (ts < day0 || ts >= day0 + 86400) continue;
     const chl = {}; for (const c of m.matchChannels || []) if (c && c.name) chl[c.name] = c.logo || '';
     const st = m.status === 'ended' ? 'finished' : m.status === 'live' ? 'live' : 'upcoming';
     out.push({ id: 'ww' + m.id, ww: 1, league: { id: '', name: (m.league?.name || '') + (m.leagueStage && !/الجولة|المنتظم/.test(m.leagueStage) ? ' · ' + m.leagueStage : ''), logo: m.league?.logo || '' },
@@ -3881,6 +3886,7 @@ function allSections() {
     ['🖼️', 'الخلفية', [{ k: 'wall', l: 'صورة الخلفية', o: WALLS, d: 'rawas', v: getWall() }]],
     ['📺', 'القنوات والمشغّل', [
       { k: 'pclock', l: 'ساعة فوق القناة', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
+      { k: 'pnext', l: '«التالي» في زاوية القناة', o: [['on', 'يظهر'], ['off', 'مخفي']], d: 'on' },
       { k: 'up4k', l: '🔷 تحسين الصورة (توضيح الحواف، وتكبير إلى 4K إذا كانت الشاشة 4K — يطفئ نفسه إذا الجهاز ما لحق)', o: [['off', 'لا'], ['on', 'نعم']], d: 'off' },
       { dev: 1, k: 'ua', l: 'هوية المشغّل عند سيرفرات IPTV', o: [['vlc', 'مشغّل IPTV (VLC) — الأكثر قبولاً'], ['app', 'DriveCast TV'], ['browser', 'متصفح']], d: 'vlc' },
       { k: 'pq', l: 'جودة القنوات', o: [['smart', 'أعلى جودة وتنزل بس لو النت ما يكفي'], ['max', 'أعلى جودة دايماً (ما تنزل أبداً)']], d: 'smart' },

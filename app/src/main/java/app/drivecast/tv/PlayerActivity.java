@@ -560,6 +560,53 @@ public class PlayerActivity extends Activity {
         cdp.setMargins(0, (int) dp(66), 0, 0);
         root.addView(count, cdp); count.setVisibility(View.GONE);
         countTick.run();
+        // ⏭ «التالي» in the bottom-right corner while the channel plays: the next programme's logo (or its name), like a
+        // broadcaster's own corner; hidden while the bar, the list or the menu is up
+        nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.HORIZONTAL); nextBox.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable nb = new GradientDrawable(); nb.setColor(0x99101216); nb.setCornerRadius(dp(14)); nextBox.setBackground(nb);
+        nextBox.setPadding((int) dp(12), (int) dp(8), (int) dp(12), (int) dp(8));
+        nextTxt = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(4), 0, dp(1), 0xCC000000);
+        nextImg = new ImageView(this); nextImg.setAdjustViewBounds(true); nextImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        nextImg.setMaxWidth((int) dp(120)); nextImg.setMaxHeight((int) dp(56));
+        LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.leftMargin = (int) dp(10);
+        nextBox.addView(nextTxt); nextBox.addView(nextImg, nip);
+        FrameLayout.LayoutParams nxp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
+        nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
+        root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE); nextBox.setAlpha(0.85f);
+        cd.postDelayed(nextTick, 4000);
+    }
+    private LinearLayout nextBox; private TextView nextTxt; private ImageView nextImg; private String nextUrl = "";
+    private final Runnable nextTick = new Runnable() { @Override public void run() {
+        cd.removeCallbacks(this); cd.postDelayed(this, 20000);
+        try { nextFill(); } catch (Throwable t) { if (nextBox != null) nextBox.setVisibility(View.GONE); }
+    } };
+    private void nextFill() {
+        if (nextBox == null) return;
+        boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
+            || (menuPanel != null && menuPanel.getVisibility() == View.VISIBLE) || "off".equals(Access.set(this).getString("pnext", "on"));
+        org.json.JSONArray nx = null;
+        try {
+            org.json.JSONArray a = EPG.get(key0(i)); long now = System.currentTimeMillis() / 1000;
+            if (a != null) for (int q = 0; q < a.length(); q++) { org.json.JSONArray r = a.getJSONArray(q); if (r.getLong(0) > now) { nx = r; break; } }
+        } catch (Throwable ignored) { }
+        if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
+        String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
+        String title = nx.optString(2, ""); if (title.length() > 26) title = title.substring(0, 25) + "…";
+        nextTxt.setText(u.isEmpty() ? "التالي · " + clock(nx.optLong(0)) + "\n" + title : "التالي\n" + clock(nx.optLong(0)));
+        nextBox.setVisibility(View.VISIBLE);
+        if (u.equals(nextUrl)) return; nextUrl = u;
+        if (u.isEmpty()) { nextImg.setImageDrawable(null); nextImg.setVisibility(View.GONE); return; }
+        Bitmap c = LOGOS.get(u); if (c != null) { nextImg.setImageBitmap(c); nextImg.setVisibility(View.VISIBLE); return; }
+        nextImg.setVisibility(View.GONE);
+        final String want = u;
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(want).openConnection();
+                con.setConnectTimeout(6000); con.setReadTimeout(8000);
+                Bitmap bm = small(con.getInputStream(), 256);
+                if (bm != null) { LOGOS.put(want, bm); runOnUiThread(() -> { if (want.equals(nextUrl)) { nextImg.setImageBitmap(bm); nextImg.setVisibility(View.VISIBLE); } }); }
+            } catch (Exception ignored) { }
+        }, "nextlogo").start();
     }
 
     // ---- OK: the channel list at the side, like TiviMate's. Three levels: the channels ▶ their groups ▶ the playlists (◀ or
@@ -1387,12 +1434,12 @@ public class PlayerActivity extends Activity {
     };
 
     private void showBar(long ms) {
-        bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0);
+        bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0); if (nextBox != null) nextBox.setVisibility(View.GONE);
         if (was && barDirty) fill();
         h.removeCallbacks(hide);
         if (ms > 0) h.postDelayed(hide, ms);
     }
-    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450);
+    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> cd.post(nextTick));
 
     private void setNote(String s) { note.setText(s); note.setVisibility(s == null ? View.GONE : View.VISIBLE); }
 
