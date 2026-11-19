@@ -283,7 +283,7 @@ input[readonly]:not([type=time]){caret-color:transparent}
 .ichan .pno{flex:none;display:inline-grid;place-items:center;min-width:34px;height:30px;padding:0 7px;margin-inline-end:10px;border-radius:9px;background:rgba(52,199,89,.9);color:#fff;font-size:18px;font-weight:800;vertical-align:2px}
 #numIn{position:fixed;top:120px;left:50%;transform:translateX(-50%) scale(.9);opacity:0;z-index:9002;padding:18px 40px;border-radius:28px;background:rgba(16,18,22,.92);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:44px;font-weight:800;box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .2s;pointer-events:none;text-align:center}
 #numIn small{display:block;font-size:22px;font-weight:500;opacity:.75;margin-top:4px}
-#numIn.on{opacity:1;transform:translateX(-50%) scale(1)}
+#numIn.on{opacity:1;transform:translateX(-50%) scale(1);transition:none}
 .ichan .pin{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer;margin-inline-end:8px}
 .ichan.pinned .pin{color:#fff;background:rgba(52,199,89,.55)}
 .ichan .star{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);cursor:pointer}
@@ -640,7 +640,7 @@ html.fxlite #fring{box-shadow:none;transition-duration:.07s}
       <div class="ibrowse"><div class="glist" id="m3uvGroups"></div><div class="grid ch" id="m3uvList"></div></div></div></div>
   </div></section>
   <section class="page" id="p-matches"><div class="scroll" id="matchScroll">
-    <div class="mtabs" id="mtabs"><button class="chip f on" data-mt="all">⚽ كل مباريات اليوم</button><button class="chip f" data-mt="live">🔴 مباشر الآن</button><button class="chip f" data-mt="mine">⭐ فرقي</button><button class="chip f" data-mt="yday">⏪ أمس</button><button class="chip f" data-mt="tom">📅 بكرة</button><span id="mnote"></span></div>
+    <div class="mtabs" id="mtabs"><button class="chip f on" data-mt="all">⚽ كل مباريات اليوم</button><button class="chip f" data-mt="live">🔴 مباشر الآن</button><button class="chip f" data-mt="mine">⭐ فرقي</button><button class="chip f" data-mt="yday">⏪ أمس</button><button class="chip f" data-mt="tom">📅 بكرة</button><button class="chip f" data-mt="refresh">↻ تحديث</button><span id="mnote"></span></div>
     <div id="s-matches"></div>
   </div></section>
   <section class="page" id="p-board"><div class="scroll" id="boardScroll">
@@ -3045,8 +3045,26 @@ async function winwinDay(plus) {
 const tKey = n => String(n || '').toLowerCase().replace(/[ً-ْ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/جمهوريه|نادي|\bfc\b|\bcf\b/g, '').replace(/(^|\s)ال/g, '$1').replace(/[^a-z0-9؀-ۿ]+/g, '');
 const tSame = (a, b) => { a = tKey(a); b = tKey(b); return !!a && !!b && (a === b || (a.length > 3 && b.length > 3 && (a.includes(b) || b.includes(a)))); };
 const mSame = (x, y) => Math.abs((x.timestamp || 0) - (y.timestamp || 0)) < 20 * 60 && (tSame(x.home?.name, y.home?.name) || tSame(x.away?.name, y.away?.name) || tSame(x.home?.name, y.away?.name));
+// ⏱ 365Scores' day (the source of DriveCast's own list): the status, score and minute of each match, kept for 40 s
+const S365 = {};
+async function s365Day(plus) {
+  const c = S365[plus]; if (c && Date.now() - c.at < 40e3) return c.v;
+  const t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3), dd = t.toISOString().slice(0, 10).split('-').reverse().join('/');
+  const d = await getJ(`https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&sports=1&startDate=${dd}&endDate=${dd}&showOdds=false`);
+  const v = arr(d?.games).filter(g => g && g.homeCompetitor && g.awayCompetitor).map(g => ({ id: '365' + g.id, timestamp: Date.parse(g.startTime) / 1000,
+    status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null,
+    score: { home: g.homeCompetitor.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor.score >= 0 ? g.awayCompetitor.score : null },
+    home: { name: g.homeCompetitor.name }, away: { name: g.awayCompetitor.name } }));
+  if (v.length) S365[plus] = { at: Date.now(), v };
+  return v.length ? v : (c && c.v) || [];
+}
+function s365Fix(ms, live) {
+  for (const m of ms) { const s = live.find(x => mSame(m, x)); if (!s) continue;
+    m.status = s.status; if (s.score.home != null) m.score = { home: s.score.home, away: s.score.away }; m.elapsed = s.elapsed; m.s365 = 1; }
+  return ms;
+}
 async function mFetch(k) {
-  if (mCache[k] && Date.now() - mCache[k].at < (k === 'live' ? 30e3 : 3 * 60e3)) return mCache[k].d;
+  if (mCache[k] && Date.now() - mCache[k].at < (k === 'tom' ? 3 * 60e3 : 40e3)) return mCache[k].d;
   let d = null;
   if (k === 'mine') { try { d = await (await fetch('https://studio.c-p.workers.dev/now?lang=27')).json(); } catch (e) {} d = d && { matches: (d.matches || []).map(m => ({ ...m, channels: m.channels || [], mine: 1 })) }; }
   else {
@@ -3054,6 +3072,7 @@ async function mFetch(k) {
     // DriveCast's own list when it does not answer
     d = await winwinDay(k === 'tom' ? 1 : k === 'yday' ? -1 : 0);
     if ((!d || !d.matches.length) && k !== 'yday') d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
+    if (d && d.matches && k !== 'tom') { try { s365Fix(d.matches, await s365Day(k === 'yday' ? -1 : 0)); } catch (e) {} }
   }
   if (d && d.matches) mCache[k] = { at: Date.now(), d };
   return d || (mCache[k] && mCache[k].d);
@@ -3425,11 +3444,11 @@ function chEn(n) {
 const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); const all = l.concat((m.channels || []).filter(c => !l.includes(c)));
     for (const x of spgFor(m)) if (!all.some(c => sameChannel(x.n, { name: c, cc: ARABCC.has(x.cc) ? x.cc : '' }) || c === x.n)) { all.push(x.n); if (x.logo) { m.chl = m.chl || {}; if (!m.chl[x.n]) m.chl[x.n] = x.logo; } }   /* 🏟️ the guides' carriers */ return all.filter(c => !PLATFORM.test(c)).map((c, i) => [chRank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); } catch (e) { return (m.channels || []).filter(c => !PLATFORM.test(c)); } };
 // 🔗 every carrier of a match with the best channel of the lists for it (the ⭐ list first, a working one before one not checked)
-const MPOOLS = () => [...STARL, ...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST];
+const MPOOLS = () => [...STARL, ...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])];   // 📂 the M3U opened in «M3U» too
 const wkey = n => chToks(n).w.filter(t => !isNum(t)).sort().join(' ');
 let MIDX = null, MIDXK = '';
 function midx(pools) {
-  const k = [pools.length, ILIST.length, STARL.length, DYNCH.length, GSP.length, PINS.length].join(':');
+  const k = [pools.length, ILIST.length, STARL.length, DYNCH.length, GSP.length, PINS.length, (M3UV.all || []).length].join(':');
   if (MIDX && k === MIDXK) return MIDX;
   MIDX = new Map(); MIDXK = k;
   for (const c of pools) {
@@ -4316,7 +4335,8 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'upd') return updGo();
   if (b.dataset.ib) return ibToggle(b.dataset.ib);
   if (b.dataset.epg) return epgPress(b.dataset.epg);
-  if (b.dataset.mt) { MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
+  if (b.dataset.mt === 'refresh') { for (const k in mCache) delete mCache[k]; for (const k in S365) delete S365[k]; loadMatches.busy = 0; toast('↻ أحدّث المباريات…', 1500); loadNext(); return loadMatches(); }
+  if (b.dataset.mt) { if (b.dataset.mt === MTAB) delete mCache[MTAB === 'tom' || MTAB === 'yday' ? MTAB : 'all']; MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
   if (b.dataset.mi != null) return playMatch(+b.dataset.mi);
   if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
   if (b.dataset.act === 'm3u-file') return $('#m3uFileIn').click();
@@ -4974,7 +4994,7 @@ $('#s-quran').innerHTML = cardsHtml(true); $('#s-quran2').innerHTML = cardsHtml(
 homeLayout(); uiApply(); homeOrder(); loadFont(); loadPhrase(); loadPrayers(); loadApps(); loadHrec(); tick(); loadMatches(); loadSettings(); loadNext(); loadLists(); (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => loadReciters(), { timeout: 4000 }); watchFavs(); if (SIM) simApply();
 // a link that ends with ?autoplay=true opens with the radio on air (a browser may ask for one touch first)
 if (/[?&]autoplay=(true|1)\b/.test(location.search)) setTimeout(radioStart, 800);
-setInterval(tick, 20000); setInterval(() => { if (!busyKeys()) loadMatches(); }, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); setInterval(loadNext, 5 * 60000); setInterval(nextUi, 60000);
+setInterval(tick, 20000); setInterval(() => { if (!busyKeys()) loadMatches(); }, 120000); setInterval(() => { loadPrayers(); loadSettings(); }, 30 * 60000); (function nextLoop() { const m = NEXTM, soon = m && (m.status === 'live' || Math.abs(m.timestamp * 1000 - Date.now()) < 20 * 60e3); setTimeout(() => { loadNext().finally(nextLoop); }, soon ? 30e3 : 120e3); })(); setInterval(nextUi, 60000);
 $('#homeScroll').addEventListener('scroll', () => document.body.classList.toggle('deep', $('#homeScroll').scrollTop > 60));
 document.querySelector('.tab').focus();
 // a TV that reports a smaller CSS width (720p / 1080p at a density): the 1920×1080 design scaled to fit

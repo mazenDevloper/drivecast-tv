@@ -1649,7 +1649,7 @@ public class PlayerActivity extends Activity {
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
-            num.setText(digits + "_"); showBar(2500);
+            num.setText(digits + "_"); setNote("🔢 " + digits + "_"); showBar(2500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);
             h.removeCallbacks(jump); h.postDelayed(jump, digits.length() >= 3 ? 600 : 1300); return true;
         }
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
