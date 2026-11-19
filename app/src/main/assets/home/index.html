@@ -3921,6 +3921,7 @@ function allSections() {
       { a: '', o: [['mouse-on', '🖱️ شغّل الماوس الحين'], ['access', 'إعدادات تسهيل الوصول']] },
     ]],
     ['🎮', 'أزرار الريموت', keyRows()],
+    ['🔢', 'اختصارات الأرقام', shortRows()],
     ['🌐', 'الويب', (() => { let w = {}; try { w = JSON.parse(TV.webInfo ? TV.webInfo() : '{}'); } catch (e) {} return [
       { i: 'الحالة', t: S('web', 'on') === 'off' ? 'مطفّي' : w.online ? '✅ التلفزيون متصل — تقدر تتحكم فيه من أي مكان' : '… يتصل' },
       { i: 'الرابط', t: (w.url || '').replace('https://', '') },
@@ -4076,25 +4077,44 @@ function homeLayout() {
 // the remote's numbers: 1 = the first tab … (0 = settings)
 document.querySelectorAll('.tabs .tab').forEach((t, i) => t.dataset.n = t.dataset.act === 'settings' ? '0' : String(i + 1));
 let NUMS = '', NUMT = null;
-// ⚙️ «00» on the remote: the Android box's own settings (a single 0 stays DriveCast's settings, after a short wait for a second 0)
-let ZERO0 = 0, ZEROT = 0;
+// 🔢 the remote's number shortcuts, like a receiver's: the digits are gathered (1.3 s after the last one, at once at 3) and
+// the whole code decides — a leading 0 is a code of its own (01 ≠ 1). The list is in Settings → «اختصارات الأرقام»
+function tabGo(pg) { if (document.body.classList.contains('ambient')) ambient(false); if (YTP) ytClose(); show(pg); $(`.tab[data-page="${pg}"]`)?.focus(); }
+async function chByName(re, label) {
+  if (!ILIST.length) { try { await loadLists(); } catch (e) {} }
+  const all = ILIST.filter(c => c && re.test(c.name || ''));
+  const c = all.find(c => /bein|بي ?إن/i.test(c.name)) || all[0];
+  if (!c) { toast('⚠️ ما لقيت قناة ' + label + ' في قوائمك'); return; }
+  if (document.body.classList.contains('ambient')) ambient(false);
+  playChannel(ILIST, ILIST.indexOf(c));
+}
+const SHORTS = [
+  { c: '0', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
+  { c: '00', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
+  { c: '000', l: '🛠 إعدادات الأندرويد (البوكس)', go: () => TV.settings() },
+  { c: '999', l: '🔴 حدث الآن — المباريات المباشرة', go: () => tabGo('matches') },
+  { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
+  { c: '002', l: '📺 كل القنوات', go: () => tabGo('iptv') },
+  { c: '003', l: '⚽ المباريات', go: () => tabGo('matches') },
+  { c: '004', l: '📱 التطبيقات', go: () => tabGo('apps') },
+  { c: '005', l: '🏠 الرئيسية', go: () => tabGo('home') },
+  { c: /^06([1-9])$/, s: '061 – 069', l: 'beIN SPORTS LIVE EVENT 1 – 9', name: m => 'beIN LIVE EVENT ' + m[1], go: m => chByName(new RegExp('live\\s*event\\s*0?' + m[1] + '(?!\\d)', 'i'), 'LIVE EVENT ' + m[1]) },
+  { c: /^0([1-9])$/, s: '01 – 09', l: 'التاب بالترتيب (01 الرئيسية…)', name: m => { const t = document.querySelector(`.tabs .tab[data-n="${m[1]}"]`); return t ? 'تاب ' + t.textContent.replace(/\d/g, '').trim() : ''; }, go: m => tabKey(m[1]) },
+  { c: /^([1-9]\d{0,2})$/, s: '1 – 999', l: 'القناة المثبّتة بهذا الرقم (رقم من خانة وما فيه قناة: التاب)', name: m => { const c = PINS[+m[1] - 1]; return c ? c.name : ''; },
+    go: m => { const i = +m[1] - 1; if (PINS[i]) { if (document.body.classList.contains('ambient')) ambient(false); return playChannel(PINS, i); } if (m[1].length === 1) tabKey(m[1]); else toast('ما فيه قناة بالرقم ' + m[1]); } },
+];
+function shortFind(code) { for (const r of SHORTS) { if (typeof r.c === 'string') { if (r.c === code) return [r, null]; } else { const m = code.match(r.c); if (m) return [r, m]; } } return [null, null]; }
+window.shortcutGo = code => { const [r, m] = shortFind(code); if (r) r.go(m); else toast('🔢 ' + code + ' — ما له اختصار'); };
+function shortRows() { return [{ i: 'كيف', t: 'اكتب الرقم في الريموت (في الرئيسية أو أثناء القناة). الصفر في البداية له معنى: 1 غير 01 غير 001' }, ...SHORTS.map(r => ({ i: r.s || r.c, t: r.l }))]; }
 function numberKey(n) {
-  if (n === '0') {
-    if (Date.now() - ZERO0 < 900) { ZERO0 = 0; clearTimeout(ZEROT); clearTimeout(NUMT); NUMS = ''; $('#numIn')?.classList.remove('on'); TV.settings(); return true; }
-    ZERO0 = Date.now();
-    if (!pinRaw().length) { clearTimeout(ZEROT); ZEROT = setTimeout(() => tabKey('0'), 900); return true; }
-  }
-  if (!pinRaw().length) return tabKey(n);
-  if ($('#bedit').classList.contains('on') || $('#panel').classList.contains('on')) return tabKey(n);
-  NUMS = (NUMS + n).slice(-2); clearTimeout(NUMT);
-  pinUi(); const k = +NUMS, c = PINS[k - 1], box = $('#numIn');
-  box.innerHTML = `${NUMS}_<small>${c ? esc(c.name) : k > PINS.length && NUMS.length === 1 && document.querySelector(`.tabs .tab[data-n="${NUMS}"]`) ? 'تاب ' + esc(document.querySelector(`.tabs .tab[data-n="${NUMS}"]`).textContent.replace(/\d/g, '').trim()) : 'ما فيه قناة بهالرقم'}</small>`;
-  box.classList.add('on');
-  NUMT = setTimeout(() => {
-    const s = NUMS; NUMS = ''; box.classList.remove('on');
-    const i = +s - 1; if (PINS[i]) { if (document.body.classList.contains('ambient')) ambient(false); return playChannel(PINS, i); }
-    if (s.length === 1) tabKey(s);
-  }, 1300);
+  if ($('#bedit').classList.contains('on')) return tabKey(n);
+  if ($('#panel').classList.contains('on')) { if (n === '0') { settings(false); return true; } return true; }
+  NUMS = (NUMS + n).slice(0, 4); clearTimeout(NUMT);
+  pinUi(); const box = $('#numIn'), [r, m] = shortFind(NUMS);
+  const what = r ? ((r.name && r.name(m)) || r.l) : 'ما له اختصار';
+  box.innerHTML = `${NUMS}_<small>${esc(what)}</small>`; box.classList.add('on');
+  const fire = () => { const s = NUMS; NUMS = ''; box.classList.remove('on'); window.shortcutGo(s); };
+  NUMT = setTimeout(fire, NUMS.length >= 3 ? 600 : 1300);
   return true;
 }
 function tabKey(n) {

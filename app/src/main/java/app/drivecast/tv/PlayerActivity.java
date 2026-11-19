@@ -563,18 +563,20 @@ public class PlayerActivity extends Activity {
         // ⏭ «التالي» in the bottom-right corner while the channel plays: the next programme's logo (or its name), like a
         // broadcaster's own corner; hidden while the bar, the list or the menu is up
         nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.HORIZONTAL); nextBox.setGravity(Gravity.CENTER_VERTICAL);
-        GradientDrawable nxb = new GradientDrawable(); nxb.setColor(0x99101216); nxb.setCornerRadius(dp(14)); nextBox.setBackground(nxb);
+        nextBox.setBackground(null);   // transparent: the text's shadow keeps it readable
         nextBox.setPadding((int) dp(12), (int) dp(8), (int) dp(12), (int) dp(8));
-        nextTxt = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(4), 0, dp(1), 0xCC000000);
+        nextTxt = text(16, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
         nextImg = new ImageView(this); nextImg.setAdjustViewBounds(true); nextImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
         nextImg.setMaxWidth((int) dp(120)); nextImg.setMaxHeight((int) dp(56));
         LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.leftMargin = (int) dp(10);
         nextBox.addView(nextTxt); nextBox.addView(nextImg, nip);
         FrameLayout.LayoutParams nxp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
-        root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE); nextBox.setAlpha(0.85f);
+        root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE);
         cd.postDelayed(nextTick, 4000);
     }
+    private int nextAt = 1;
+    private final Runnable nextBack = () -> { nextAt = 1; try { nextFill(); } catch (Throwable ignored) { } };
     private LinearLayout nextBox; private TextView nextTxt; private ImageView nextImg; private String nextUrl = "";
     private final Runnable nextTick = new Runnable() { @Override public void run() {
         cd.removeCallbacks(this); cd.postDelayed(this, 20000);
@@ -585,14 +587,14 @@ public class PlayerActivity extends Activity {
         boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
             || (menuPanel != null && menuPanel.getVisibility() == View.VISIBLE) || "off".equals(Access.set(this).getString("pnext", "on"));
         org.json.JSONArray nx = null;
-        try {
-            org.json.JSONArray a = EPG.get(key0(i)); long now = System.currentTimeMillis() / 1000;
-            if (a != null) for (int q = 0; q < a.length(); q++) { org.json.JSONArray r = a.getJSONArray(q); if (r.getLong(0) > now) { nx = r; break; } }
-        } catch (Throwable ignored) { }
+        java.util.List<org.json.JSONArray> ps = progs(i);   // [0] on now, [1] next…
+        if (nextAt >= ps.size()) nextAt = Math.max(0, ps.size() - 1);
+        if (!ps.isEmpty()) nx = ps.get(nextAt);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
         String title = nx.optString(2, ""); if (title.length() > 26) title = title.substring(0, 25) + "…";
-        nextTxt.setText(u.isEmpty() ? "التالي · " + clock(nx.optLong(0)) + "\n" + title : "التالي\n" + clock(nx.optLong(0)));
+        String tag = nextAt == 0 ? "الآن" : nextAt == 1 ? "التالي" : "بعده";
+        nextTxt.setText(u.isEmpty() ? tag + " · " + clock(nx.optLong(0)) + "\n" + title : tag + "\n" + clock(nx.optLong(0)));
         nextBox.setVisibility(View.VISIBLE);
         if (u.equals(nextUrl)) return; nextUrl = u;
         if (u.isEmpty()) { nextImg.setImageDrawable(null); nextImg.setVisibility(View.GONE); return; }
@@ -1071,6 +1073,9 @@ public class PlayerActivity extends Activity {
                 boolean held = lrHeld, right = code == KeyEvent.KEYCODE_DPAD_RIGHT; lrCode = 0; lrHeld = false;
                 if (held) return true;
                 if (listOn) { if (level == 0 && !right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
+                else if (!guideOn && nextBox != null && nextBox.getVisibility() == View.VISIBLE) {
+                    nextAt = Math.max(0, nextAt + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
+                }
                 else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
                 return true;
             }
@@ -1514,8 +1519,13 @@ public class PlayerActivity extends Activity {
 
     // the channel's number on the remote's digits, like a receiver (1.5 s after the last digit)
     private final Runnable jump = () -> {
-        try { int n = Integer.parseInt(digits); if (n >= 1 && n <= urls.length) { i = n - 1; play(); } } catch (Exception ignored) { }
-        digits = "";
+        String d = digits; digits = "";
+        if (d.startsWith("0") || d.equals("999")) {   // 🔢 a shortcut (00 settings, 01 a tab, 061 beIN LIVE EVENT 1…): the home page's list
+            HomeActivity hm = HomeActivity.alive; if (hm == null) return;
+            if (!d.matches("06[1-9]")) finish();
+            hm.run("window.shortcutGo && shortcutGo('" + d + "')"); return;
+        }
+        try { int n = Integer.parseInt(d); if (n >= 1 && n <= urls.length) { i = n - 1; play(); } } catch (Exception ignored) { }
     };
 
     // 👆 touch (a tablet through RustDesk, a touch screen): the same as the remote's keys — swipe ↑ next channel, ↓ the one before,
@@ -1574,7 +1584,7 @@ public class PlayerActivity extends Activity {
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
             num.setText(digits + "_"); showBar(2500);
-            h.removeCallbacks(jump); h.postDelayed(jump, 1200); return true;
+            h.removeCallbacks(jump); h.postDelayed(jump, digits.length() >= 3 ? 600 : 1300); return true;
         }
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
         if (ok) {   // a short OK on release; held ≈ ½ s: the options
