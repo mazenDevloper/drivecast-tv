@@ -4606,6 +4606,15 @@ function m3uvRecentUi() {
 }
 // a playlist's name: the one given in the cloud, else the file's own name (…/sports.m3u → sports), else its site
 function plName(u) { if (M3UNAME[u]) return M3UNAME[u]; try { const x = new URL(u), f = decodeURIComponent(x.pathname.split('/').pop() || '').replace(/\.m3u8?$/i, ''); return f && !/^(get\.php|playlist|index)$/i.test(f) ? f : x.hostname.replace(/^www\./, ''); } catch (e) { return 'قائمتي'; } }
+// 📂 the M3U last opened in «M3U», read quietly 25 s after start (and every 3 h): the matches find their carriers in it too
+async function m3uvQuiet() {
+  try {
+    const u = m3uvRecent()[0]; if (!u || M3UV.all.length) return;
+    const t = await m3uText(u, await m3uResolve(u)), l = parseM3u(t).filter(c => /^(https?|rtmps?|rtsp):/i.test(c.url) && !isVod(c)).map(c => ({ ...c, pl: plName(u) }));
+    if (l.length && !M3UV.all.length) { Object.assign(M3UV, { url: u, all: l }); MIDX = null; if ($('#p-matches').classList.contains('on')) loadMatches(); }
+  } catch (e) {}
+}
+setTimeout(m3uvQuiet, 25e3); setInterval(() => { if (!M3UV.all.length) m3uvQuiet(); }, 3 * 3600e3);
 async function m3uvOpen(u) {
   u = String(u || '').trim(); const say = t => { $('#m3uvSay').textContent = t; };
   if (IPANE !== 'm3uvwrap') iPane('m3uvwrap');
