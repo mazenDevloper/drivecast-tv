@@ -258,7 +258,50 @@ def alkass(guide, lo, hi):
     print(f'  {n:6d}  Shoof Alkass (Al Kass, {nl} with their logo)', flush=True)
     return names
 
-OWN = ('MBC', 'Oman', 'Alkass', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
+# 🏟️ beIN SPORTS MENA from bein.com's own guide (the guide file of epgshare01 went empty): every beIN channel — 1 to 9, MAX,
+# XTRA, 4K, News, English and French — today and tomorrow, in UTC (offset +0); the channel is told by its logo's file name
+def bein(guide, lo, hi):
+    from datetime import datetime, timezone, timedelta
+    names, n = {}, 0
+    days = sorted({datetime.fromtimestamp(t, timezone.utc).strftime('%Y-%m-%d') for t in (lo, time.time(), hi)})
+    def chan(img):
+        f = img.rsplit('/', 1)[-1]
+        m = re.search(r'beIN[_-]?SPORTS?[_-]?(MAX|XTRA)?[_-]?0?(\d+)', f, re.I)
+        if m:
+            lang = ' English' if re.search(r'english|_EN', f, re.I) else ' French' if re.search(r'french|_FR', f, re.I) else ''
+            return 'beIN SPORTS ' + (m.group(1).upper() + ' ' if m.group(1) else '') + m.group(2) + lang
+        if re.search(r'4k', f, re.I): return 'beIN SPORTS 4K'
+        if re.search(r'news', f, re.I): return 'beIN SPORTS News'
+        return None
+    for d in days:
+        seen = set()
+        for li in range(4):
+            u = (f'https://www.bein.com/ar/epg-ajax-template/?action=epg_fetch&offset=%2B0&category=sports&serviceidentity=bein.net'
+                 f'&mins=00&cdate={d}&language=AR&postid=25344&loadindex={li}')
+            try: h = get(u, 60).read().decode('utf-8', 'ignore')
+            except Exception as e: print(f'  bein {d}/{li}: {e}', flush=True); break
+            new = 0
+            for img, cat, title, st, en in re.findall(r"<li[^>]*data-img='([^']*)'[^>]*category='([^']*)'[^>]*>.*?<p class=title>(.*?)</p>.*?data-start='(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)' data-end='(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)'", h, re.S):
+                nm = chan(img)
+                if not nm: continue
+                try:
+                    a = int(datetime.strptime(st, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp())
+                    b = int(datetime.strptime(en, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp())
+                except Exception: continue
+                if (nm, a) in seen: continue
+                seen.add((nm, a)); new += 1
+                if b <= lo or a >= hi or b <= a: continue
+                t = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', title)).replace('&amp;', '&').strip()
+                t = re.split(r'\s+-\s+', t)[0].strip() or cat   # «Real Madrid vs Inter - UEFA Women's Champions League - MD5» → the match
+                gid = re.sub(r'[^A-Za-z0-9]', '', nm) + '.bein.com'
+                guide.setdefault(gid, {})[a] = [a, b, t[:70], '']; n += 1
+                names.setdefault(nm, gid); names.setdefault(nm.replace('beIN SPORTS', 'beIN Sports'), gid)
+                if nm.startswith('beIN SPORTS ') and nm[12:].isdigit(): names.setdefault('beIN ' + nm[12:], gid); names.setdefault('بي ان سبورت ' + nm[12:], gid)
+            if not new: break
+    print(f'  {n:6d}  bein.com (beIN SPORTS MENA, {len(set(names.values()))} channels)', flush=True)
+    return names
+
+OWN = ('MBC', 'Oman', 'Alkass', 'beIN', 'Al', 'AsharqNews', 'SBC', 'Wanasah', 'Spacetoon', 'Saudi', 'Thikrayat', 'BabAlHara', 'Maraya')   # Shahid's and AYN's ids
 PRIO_RE = re.compile(r'mbc|oman|abu.?dhabi|ad.?sport|bein|alkass|al.?kass|quran|dubai|sharjah|saudi|ssc|thmanyah', re.I)
 def prio(i): return bool(PRIO_RE.search(i))
 
@@ -302,7 +345,7 @@ def main(out):
         except Exception as e:
             print(f'  FAILED  {u.rsplit("/", 1)[-1]}: {e}', flush=True)
     names = extra(guide, lo, hi, out)
-    sh = {**shahid(guide, lo, hi), **ayn(guide, lo, hi), **alkass(guide, lo, hi)}; names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
+    sh = {**shahid(guide, lo, hi), **ayn(guide, lo, hi), **alkass(guide, lo, hi), **bein(guide, lo, hi)}; names = {**sh, **{k: v for k, v in names.items() if k not in sh}}   # MBC's own guide first and winning: its channels are found by name before any other guide's
     c = {}
     for i, progs in guide.items():
         rows = [progs[a] for a in sorted(progs)]
