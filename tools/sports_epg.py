@@ -18,7 +18,7 @@ FILES = {   # epgshare01 file → the country its channels are watched in (beIN'
   'ZA1': 'za', 'NG1': 'ng', 'KE1': 'ke', 'SSPORTPLUS1': 'tr', 'THESPORTPLUS1': 'us'}
 BASE = 'https://epgshare01.online/epgshare01/epg_ripper_%s.xml.gz'
 UA = {'User-Agent': 'Mozilla/5.0 (DriveCastTV guide)'}
-SPORTY = re.compile(r'sport|رياض|espn|dazn|\bsky\b|fox ?sport|star ?sports|sony ?(ten|sports)|\bten ?\d|supersport|bein|eleven|tyc|tnt|optus|kayo|setanta|arena ?sport|digi ?sport|canal\+ ?(sport|foot)|movistar|eurosport|\btsn\b|kass|ssc|thmanyah|ad ?sport|dubai ?(sport|racing)|sharjah|premier ?sport|laliga|serie ?a|bundesliga|football|soccer|fútbol|futebol|calcio|stan sport|paramount\+|peacock|fubo|cbs sport|nbc ?sport|bt sport|viaplay|ziggo ?sport|sport ?tv|setanta|polsat ?sport|nova ?sport|cosmote|ert ?sport|s ?sport|tivibu|exxen|astro ?(arena|supersport)|true ?sport|hub ?premier|sportv|premiere|band ?sports|claro ?sport|win sports|directv',
+SPORTY = re.compile(r'sport|رياض|espn|dazn|\bsky\b|fox ?sport|star ?sports|sony ?(ten|sports)|\bten ?\d|supersport|bein|eleven|tyc|tnt|optus|kayo|setanta|arena ?sport|digi ?sport|canal\+ ?(sport|foot)|movistar|eurosport|\btsn\b|kass|ssc|thmanyah|ad ?sport|dubai ?(sport|racing)|sharjah|premier ?sport|laliga|serie ?a|bundesliga|football|soccer|fútbol|futebol|calcio|stan sport|paramount\+|peacock|fubo|cbs sport|nbc ?sport|bt sport|viaplay|ziggo ?sport|sport ?tv|setanta|polsat ?sport|nova ?sport|cosmote|ert ?sport|s ?sport|tivibu|exxen|astro ?(arena|supersport)|true ?sport|hub ?premier|sportv|premiere|globo|sportklub|sport ?klub|bsk ?\d|sport ?digital|sportitalia|band ?sports|claro ?sport|win sports|directv',
                     re.I)
 MATCH = re.compile(r'\S\s+(?:v|vs\.?|x|×|-|–|—|ضد)\s+\S', re.I)
 
@@ -39,7 +39,11 @@ def nice(n, cid):   # some guides name channels by an internal id («4k_DIGITAL_
         if re.search(r'^4k', b, re.I): return 'beIN SPORTS 4K'
         if re.search(r'^NEWS', b, re.I): return 'beIN SPORTS News'
     n = (n or '').strip()
-    if not n or re.search(r'_|^\d|digital|mono', n, re.I): n = re.sub(r'\.[a-z]{2,3}$', '', cid or n).replace('_', ' ').replace('.', ' ')
+    if not n or (re.search(r'_|^\d|digital|mono', n, re.I) and not re.search(r'sport ?digital', n, re.I)): n = re.sub(r'\.[a-z]{2,3}$', '', cid or n).replace('_', ' ').replace('.', ' ')
+    # the Latin American / Brazilian guides' wrappers: «São Paulo/SP SporTV 3 HD ●», «Canal ESPN (Argentina)», «FOX Sports 2 HD(FSP2HD)»
+    n = re.sub(r'^[^/]{2,30}/[A-Z]{2}\s+', '', n); n = re.sub(r'^Canal\s+', '', n)
+    n = re.sub(r'\s*\((?:[A-Z0-9]{3,8}|Argentina|Bolivia|Chile|Colombia|Peru|Perú|Uruguay|Paraguay|Ecuador|Mexico|México)\)\s*$', '', n)
+    n = re.sub(r"[^\w\s+&().'-]+$", '', n)
     return re.sub(r'\s+', ' ', n).strip()[:48]
 STOP = {'fc', 'cf', 'sc', 'ac', 'afc', 'cd', 'club', 'de', 'the', 'united', 'city', 'real', 'sporting', 'athletic', 'w', 'women', 'u21', 'u23', 'u20', 'u19', 'res', 'ii'}
 import unicodedata
