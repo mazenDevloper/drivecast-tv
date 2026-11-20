@@ -2254,7 +2254,28 @@ function dynAppOld(c) {
 // their own YouTube channels, when no server answers (a search for their live stream, the channel's name must match)
 const DYN_YT = { 'أبوظبي': ['أبوظبي الرياضية بث مباشر', /أبوظبي الرياضية|abu ?dhabi sports|ad sports/i], 'دبي': ['دبي الرياضية بث مباشر', /دبي الرياضية|dubai sports/i], 'الكأس': ['قناة الكأس بث مباشر', /الكأس|al ?kass/i] };
 const DYN_SRC = ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8', 'https://iptv-org.github.io/iptv/countries/ae.m3u', 'https://iptv-org.github.io/iptv/countries/qa.m3u', 'https://iptv-org.github.io/iptv/categories/sports.m3u'];
-let DYNCH = DYN.map(([name, , , q, en]) => ({ name, en, url: q ? 'yt-search:' + q : 'dyn:' + name, logo: '', group: '⚡ رياضية متجددة', dyn: 1, st: q ? 'yt' : 'wait' }));
+// ▶️ leagues their owners stream free, worldwide, on YouTube (checked Nov 2026): each a channel in the player while it is live
+// (its /live page gives the stream; nothing when it is off). CazéTV (LaLiga, Ligue 1…) is left out: blocked outside Brazil
+const YTLG = [
+  ['Barclays WSL2', '@BarclaysWSL2', /WSL ?2|championship.*(women|سيدات)|الدرجة الثانية.*سيدات/i],
+  ['Barclays WSL', '@BarclaysWSL', /\bWSL\b|women'?s super league|الدوري الإنجليزي.*(سيدات|للسيدات)/i],
+  ['Liga MX Femenil', '@ligabbvamxfemenil', /liga ?mx ?femenil|المكسيكي.*(سيدات|للسيدات)/i],
+  ['Kings League', '@kingsleague', /kings ?league|دوري الملوك/i],
+];
+let YTLIVE = [], ytlgAt = 0;
+async function ytlgRefresh() {
+  if (Date.now() - ytlgAt < 10 * 60e3) return; ytlgAt = Date.now();
+  const got = await Promise.all(YTLG.map(async ([name, h, re]) => {
+    const t = await getText(`https://www.youtube.com/${h}/live`).catch(() => '');
+    if (!t || !/"isLiveNow":true|"isLive":true/.test(t)) return null;
+    const id = (/"canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/.exec(t) || /"videoId":"([\w-]{11})"/.exec(t) || [])[1];
+    return id ? { name: name + ' · YouTube', url: 'https://www.youtube.com/watch?v=' + id, logo: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, group: '▶️ دوريات على يوتيوب', pl: 'يوتيوب', ytl: re } : null;
+  }));
+  YTLIVE = got.filter(Boolean);
+}
+setTimeout(ytlgRefresh, 30e3); setInterval(ytlgRefresh, 10 * 60e3);
+// ⛔ the «رياضية متجددة» channels are gone (asked 20 Nov): Thmanyah, Alkass, AD/Dubai Sports… come from the M3U lists only
+let DYNCH = [];
 let DYNC = {}, dynAt = 0, dynBusy = false;
 /** does this address answer with a playlist now? (the TV asks with the channel's own site as Referer; a browser through DriveCast's server) */
 async function probe(u) {
@@ -2929,7 +2950,7 @@ async function playChannel(list, i) {
   // picks a group, ▶ again a playlist
   // 📂 from anywhere else too: every channel of every playlist follows, so the player's «القوائم» level has each M3U with ALL its groups
   if (list && list[i]) { const c0 = list[i], seen = new Set(list.map(x => x.url));
-    const rest = [...STARL, ...ILIST].filter(x => x && /^https?:/.test(x.url) && !seen.has(x.url) && !/geo-blocked|radio|\bFM\b/i.test(x.name) && (seen.add(x.url), true));
+    const rest = [...STARL, ...ILIST, ...YTLIVE].filter(x => x && /^https?:/.test(x.url) && !seen.has(x.url) && !/geo-blocked|radio|\bFM\b/i.test(x.name) && (seen.add(x.url), true));
     list = [...(fromHome ? list.map(x => ({ ...x, og: '', group: '🏠 الرئيسية', pl: x.pl || 'الرئيسية' })) : list), ...rest]; i = list.findIndex(x => x.url === c0.url); }
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
@@ -3047,6 +3068,7 @@ const tSame = (a, b) => { a = tKey(a); b = tKey(b); return !!a && !!b && (a === 
 const mSame = (x, y) => Math.abs((x.timestamp || 0) - (y.timestamp || 0)) < 20 * 60 && (tSame(x.home?.name, y.home?.name) || tSame(x.away?.name, y.away?.name) || tSame(x.home?.name, y.away?.name));
 // ⏱ 365Scores' day (the source of DriveCast's own list): the status, score and minute of each match, kept for 40 s
 const S365 = {};
+const L365 = id => `https://imagecache.365scores.com/image/upload/f_png,w_96,h_96,c_limit,q_auto:eco,dpr_2,d_Competitors:default1.png/v1/Competitors/${id}`;
 async function s365Day(plus) {
   const c = S365[plus]; if (c && Date.now() - c.at < 40e3) return c.v;
   const t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3), dd = t.toISOString().slice(0, 10).split('-').reverse().join('/');
@@ -3054,7 +3076,8 @@ async function s365Day(plus) {
   const v = arr(d?.games).filter(g => g && g.homeCompetitor && g.awayCompetitor).map(g => ({ id: '365' + g.id, timestamp: Date.parse(g.startTime) / 1000,
     status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null,
     score: { home: g.homeCompetitor.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor.score >= 0 ? g.awayCompetitor.score : null },
-    home: { name: g.homeCompetitor.name }, away: { name: g.awayCompetitor.name } }));
+    home: { name: g.homeCompetitor.name, logo: L365(g.homeCompetitor.id) }, away: { name: g.awayCompetitor.name, logo: L365(g.awayCompetitor.id) },
+    league: { id: String(g.competitionId || ''), name: g.competitionDisplayName || '' }, channels: [], src365: 1 }));
   if (v.length) S365[plus] = { at: Date.now(), v };
   return v.length ? v : (c && c.v) || [];
 }
@@ -3062,6 +3085,26 @@ function s365Fix(ms, live) {
   for (const m of ms) { const s = live.find(x => mSame(m, x)); if (!s) continue;
     m.status = s.status; if (s.score.home != null) m.score = { home: s.score.home, away: s.score.away }; m.elapsed = s.elapsed; m.s365 = 1; }
   return ms;
+}
+// 📅 the day as DriveCast has it (365Scores, Muscat time): each winwin match takes 365's own kick-off (a match winwin files
+// under the wrong day moves to its real one and leaves today's list), status and score; the channels stay winwin's.
+// The big leagues' matches winwin lacks are added from 365 (no channel: the search finds one by name)
+async function dayFix(d, plus) {
+  const [a, b, c] = await Promise.all([s365Day(plus - 1), s365Day(plus), s365Day(plus + 1)].map(p => p.catch(() => [])));
+  if (!b.length) return d;
+  const all = [...a, ...b, ...c], t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3);
+  const day0 = Date.parse(t.toISOString().slice(0, 10) + 'T01:00:00Z') / 1000;   // 05:00 in Oman
+  const both = (m, x) => (tSame(m.home?.name, x.home?.name) && tSame(m.away?.name, x.away?.name)) || (tSame(m.home?.name, x.away?.name) && tSame(m.away?.name, x.home?.name));
+  const used = new Set();
+  const out = (d && d.matches || []).filter(m => {
+    const x = all.find(x => both(m, x)) || all.find(x => mSame(m, x));
+    if (x) { used.add(x.id); m.timestamp = x.timestamp; m.omanTime = new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
+      m.status = x.status; if (x.score.home != null) m.score = { ...x.score }; m.elapsed = x.elapsed; m.s365 = 1; }
+    return m.timestamp >= day0 && m.timestamp < day0 + 86400;
+  });
+  for (const x of b) if (!used.has(x.id) && BIGL.test(x.league.name) && x.timestamp >= day0 && x.timestamp < day0 + 86400 && !out.some(m => mSame(m, x)))
+    out.push({ ...x, omanTime: new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }) });
+  return { ...(d || {}), matches: out };
 }
 async function mFetch(k) {
   if (mCache[k] && Date.now() - mCache[k].at < (k === 'tom' ? 3 * 60e3 : 40e3)) return mCache[k].d;
@@ -3072,7 +3115,7 @@ async function mFetch(k) {
     // DriveCast's own list when it does not answer
     d = await winwinDay(k === 'tom' ? 1 : k === 'yday' ? -1 : 0);
     if ((!d || !d.matches.length) && k !== 'yday') d = await getJ(DCAPI + '?limit=30&all=1' + (k === 'tom' ? '&day=1' : ''));
-    if (d && d.matches && k !== 'tom') { try { s365Fix(d.matches, await s365Day(k === 'yday' ? -1 : 0)); } catch (e) {} }
+    try { d = await dayFix(d, k === 'tom' ? 1 : k === 'yday' ? -1 : 0); } catch (e) {}
   }
   if (d && d.matches) mCache[k] = { at: Date.now(), d };
   return d || (mCache[k] && mCache[k].d);
@@ -3444,7 +3487,7 @@ function chEn(n) {
 const mChannels = m => { try { const l = matchChannels(m.league || {}, [...(m.det || []), ...(m.channels || [])]); const all = l.concat((m.channels || []).filter(c => !l.includes(c)));
     for (const x of spgFor(m)) if (!all.some(c => sameChannel(x.n, { name: c, cc: ARABCC.has(x.cc) ? x.cc : '' }) || c === x.n)) { all.push(x.n); if (x.logo) { m.chl = m.chl || {}; if (!m.chl[x.n]) m.chl[x.n] = x.logo; } }   /* 🏟️ the guides' carriers */ return all.filter(c => !PLATFORM.test(c)).map((c, i) => [chRank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]); } catch (e) { return (m.channels || []).filter(c => !PLATFORM.test(c)); } };
 // 🔗 every carrier of a match with the best channel of the lists for it (the ⭐ list first, a working one before one not checked)
-const MPOOLS = () => [...STARL, ...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])];   // 📂 the M3U opened in «M3U» too
+const MPOOLS = () => [...YTLIVE, ...STARL, ...PINS, ...DYNCH, ...GSP, ...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])];   // 📂 the M3U opened in «M3U» too
 const wkey = n => chToks(n).w.filter(t => !isNum(t)).sort().join(' ');
 let MIDX = null, MIDXK = '';
 function midx(pools) {
@@ -3520,10 +3563,27 @@ function carrierFind(want, pools) {
   if (c) { F[k] = c.url; jset('mfound', F); } else { M.k.push(k); if (M.k.length > 800) M.k = M.k.slice(-800); jset('mmiss', M); }
   return c;
 }
+// 🔎 «ابحث وشغل» for a carrier no list names the same way: the closest channel name (Arabic ↔ English, by meaning and by sound),
+// in English too (Alkass 1, Thmanyah, AD Sports…); a sports channel that works first; never a news channel
+const SRCH = new Map();
+function srchFor(want) {
+  const k = want + '|' + (RPOOL ? RPOOL.length : 0); if (SRCH.has(k)) return SRCH.get(k);
+  const pool = RPOOL && RPOOL.length ? RPOOL : rPool(); let best = null, bs = 0;
+  for (const q of new Set([want, chEn(want)])) {
+    if (!q || q.length < 2) continue; const t = rMatcher(q);
+    for (const c of pool) { if (NEWSCH.test(c.name)) continue; const sc = t(c.name); if (!sc) continue;
+      const v = sc * 10 + (SPORTY.test(c.name + ' ' + (c.group || '')) ? 4 : 0) + (isOk(c) ? 2 : SCAN[c.url] === 0 ? -3 : 0) + (isFav(c) ? 3 : 0) - Math.min(3, Math.abs(c.name.length - q.length) / 6);
+      if (v > bs) { bs = v; best = c; } }
+  }
+  const r = bs >= 14 ? best : null;   // a sure match (2) or a close one on a sports channel
+  SRCH.set(k, r); return r;
+}
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
   const ok = (want, c) => c && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
-  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); return f ? { want, c: f, found: 1 } : { want, c: null }; });
+  const yt = YTLIVE.filter(c => c.ytl.test(m.league?.name || '')).map(c => ({ want: c.name, c, found: 1 }));   // ▶️ its league live on YouTube
+  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
+  for (const x of yt) if (!v.some(y => y.c && y.c.url === x.c.url)) v.unshift(x);
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
   for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   // ⭐ among a match's own carriers, beIN SPORTS 1, 2, 3 and Live Event come first (the order of the rest stays)
@@ -3626,7 +3686,7 @@ const plOfC = c => c.pl || (c.mine ? 'قوائمي' : c.arl ? 'iptv-org' : c.dyn
 let RPOOL = [];
 function rPool() {
   const seen = new Set();
-  RPOOL = [...STARL, ...ILIST, ...IFAV, ...(MYFAV || [])].filter(c => c && c.url && /^https?:/.test(c.url) && !isVod(c) && !/geo-blocked|radio|\bFM\b/i.test(c.name) && !seen.has(c.url) && (seen.add(c.url), true));
+  RPOOL = [...STARL, ...ILIST, ...IFAV, ...(MYFAV || []), ...YTLIVE].filter(c => c && c.url && /^https?:/.test(c.url) && !isVod(c) && !/geo-blocked|radio|\bFM\b/i.test(c.name) && !seen.has(c.url) && (seen.add(c.url), true));
   return RPOOL;
 }
 const rCh = (c, i) => ({ i, n: c.name, l: c.logo || '', now: epgNow(c) || '', ok: isOk(c) ? 1 : SCAN[c.url] === 0 ? 0 : '' });
