@@ -3593,8 +3593,9 @@ function srchFor(want) {
   SRCH.set(k, r); return r;
 }
 // ✎ a carrier chosen by hand (the pencil on a match card): kept by the carrier's name, used for every match it carries
+const lgKey = m => 'lg:' + String(m.league?.name || '').replace(/\s*[·\-].*$/, '').trim();
 let MPICK = {}; try { MPICK = JSON.parse(localStorage.mpick || '{}') || {}; } catch (e) {}
-const mpKey = w => wkey(String(w || '').replace(/^🌍\s*/, '')) || String(w || '').toLowerCase();
+const mpKey = w => String(w || '').startsWith('lg:') ? String(w) : wkey(String(w || '').replace(/^🌍\s*/, '')) || String(w || '').toLowerCase();
 const THMDYN = c => c && c.dyn && /ثمانية|thmanyah/i.test(c.name || '');
 function mpFind(want, pools) { const p = MPICK[mpKey(want)]; if (!p) return null; return pools.find(c => c && c.url === p.url) || pools.find(c => c && c.name === p.name && !c.dyn) || null; }
 function matchLinks(m) {
@@ -3607,6 +3608,11 @@ function matchLinks(m) {
   for (const c of localChannels(m).filter(c => !THMDYN(c)).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   // ⭐ among a match's own carriers, beIN SPORTS 1, 2, 3 and Live Event come first (the order of the rest stays)
   const pr = x => { const n = x.c ? x.c.name : x.want, i = BEIN_RES.findIndex(r => r.test(n)); return i >= 0 ? i : 9; };
+  // 🏆 a channel chosen for the league (✎ on a match with no carrier): every match of that league with no carrier of its own
+  const lgp = MPICK[lgKey(m)]; if (lgp && !v.some(x => x.c)) { const c = pools.find(c => c && c.url === lgp.url) || pools.find(c => c && c.name === lgp.name && !c.dyn); if (c) v.unshift({ want: '🏆 ' + (m.league?.name || ''), c, hand: 1 }); }
+  // ✎ a carrier picked by hand («Thmanayh-1-4K»): the same brand's other channels that don't play leave the list
+  for (const hx of v.filter(x => x.hand && x.c)) { const fam = chEn(hx.want).replace(/^[🌍🏆]\s*/u, '').replace(/[\s\-_]*\d.*$/, '').trim(); if (fam.length < 3) continue; const t = rMatcher(fam);
+    for (let k = v.length - 1; k >= 0; k--) { const y = v[k]; if (y === hx || y.hand) continue; if ((t(y.want) || (y.c && t(y.c.name))) && (!y.c || !isOk(y.c))) v.splice(k, 1); } }
   v.sort((a, b) => (a.c ? 0 : 1) - (b.c ? 0 : 1) || (b.hand ? 1 : 0) - (a.hand ? 1 : 0) || pr(a) - pr(b));
   m.__lk = { t: Date.now(), v }; return v;
 }
@@ -4228,7 +4234,7 @@ const SHORTS = [
   { c: '0', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
   { c: '00', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
   { c: '000', l: '🛠 إعدادات الأندرويد (البوكس)', go: () => TV.settings() },
-  { c: '999', l: '🔴 حدث الآن — المباريات المباشرة', go: () => tabGo('matches') },
+  { c: '999', l: '⬆️ حدّث التطبيق لآخر إصدار — بدون موافقة ولا زر', go: () => updAuto999() },
   { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
   { c: '002', l: '📺 كل القنوات', go: () => tabGo('iptv') },
   { c: '003', l: '⚽ المباريات', go: () => tabGo('matches') },
@@ -4240,7 +4246,21 @@ const SHORTS = [
     go: m => { const i = +m[1] - 1; if (PINS[i]) { if (document.body.classList.contains('ambient')) ambient(false); return playChannel(PINS, i); } if (m[1].length === 1) tabKey(m[1]); else toast('ما فيه قناة بالرقم ' + m[1]); } },
 ];
 function shortFind(code) { for (const r of SHORTS) { if (typeof r.c === 'string') { if (r.c === code) return [r, null]; } else { const m = code.match(r.c); if (m) return [r, m]; } } return [null, null]; }
-window.shortcutGo = code => { const [r, m] = shortFind(code); if (r) r.go(m); else toast('🔢 ' + code + ' — ما له اختصار'); };
+// 🔢 a channel's own number (set in the player: ☰ → «اختصار لهذه القناة») comes before the rest
+window.chNumPlay = o => { if (!o || !o.url) return; if (document.body.classList.contains('ambient')) ambient(false);
+  const pool = [...STARL, ...ILIST, ...IFAV, ...(MYFAV || [])]; let k = pool.findIndex(c => c.url === o.url); if (k < 0) k = pool.findIndex(c => c.name === o.name);
+  if (k >= 0) playChannel(pool, k); else playChannel([{ name: o.name, url: o.url, logo: '', group: '🔢' }], 0); };
+// ⬆️ 999: the newest build, installed by the TV's own debugging shell (no confirm, no «update» button); the line says how it goes
+function updAuto999() {
+  if (!TV.updAuto) { toast('⬆️ افتح الإعدادات ← تحديث'); return; }
+  TV.updAuto(); toast('⬆️ أدوّر على آخر إصدار…');
+  const say = { check: '⬆️ أدوّر على آخر إصدار…', down: '⬇️ أنزّل', install: '📦 أثبّت — التطبيق بيرجع لحاله', restart: '📦 أثبّت — التطبيق بيرجع لحاله', confirm: '📦 وافق على التثبيت في الشاشة', latest: '✅ عندك آخر إصدار', error: '⚠️ ما قدرت أحدّث' };
+  let n = 0; const t = setInterval(() => { let j = {}; try { j = JSON.parse(TV.updStatus()); } catch (e) {}
+    const m = say[j.stage]; if (m) toast(m + (j.stage === 'down' && j.pct ? ' ' + j.pct + '%' : j.stage === 'error' && j.note ? ' · ' + j.note : ''));
+    if (/latest|error|restart/.test(j.stage) || ++n > 120) clearInterval(t); }, 1500);
+}
+window.shortcutGo = code => { if (/^[1-9]\d\d$/.test(code) && TV.chNum) { let o = null; try { o = JSON.parse(TV.chNum(code) || 'null'); } catch (e) {} if (o) return chNumPlay(o); }
+  const [r, m] = shortFind(code); if (r) r.go(m); else toast('🔢 ' + code + ' — ما له اختصار'); };
 function shortRows() { return [{ i: 'كيف', t: 'اكتب الرقم في الريموت (في الرئيسية أو أثناء القناة). الصفر في البداية له معنى: 1 غير 01 غير 001' }, ...SHORTS.map(r => ({ i: r.s || r.c, t: r.l }))]; }
 function numberKey(n) {
   if ($('#bedit').classList.contains('on')) return tabKey(n);
@@ -4921,10 +4941,11 @@ let MPK = null;
 function mpickOpen(i) {
   const m = MLIST[i]; if (!m) return;
   const wants = [...new Set([...mChannels(m).filter(w => !NEWSCH.test(w)), ...matchLinks(m).map(x => x.want)])].filter(Boolean);
-  MPK = { m, wants, want: wants[0] || '', b: document.activeElement };
+  if (m.league?.name) wants.push(lgKey(m));   // 🏆 «للدوري»: for every match of this league with no carrier
+  MPK = { m, wants, want: matchLinks(m).some(x => x.c && !x.hand) ? wants[0] : lgKey(m), b: document.activeElement };
   CTX = { b: document.activeElement, mpick: 1 };
   $('#ctxName').textContent = '✎ ' + (m.home?.name || '') + ' × ' + (m.away?.name || ''); $('#ctxLogo').src = m.league?.logo || '';
-  mpickDraw(MPK.want.replace(/^🌍\s*/, '').replace(/\s*(HD|FHD|4K)\b/ig, '').trim());
+  mpickDraw(MPK.want.startsWith('lg:') ? '' : MPK.want.replace(/^🌍\s*/, '').replace(/\s*(HD|FHD|4K)\b/ig, '').trim());
   $('#ctx').classList.add('on'); setTimeout(() => $('#ctxBody .f')?.focus(), 0);
 }
 function mpickDraw(q) {
@@ -4933,7 +4954,7 @@ function mpickDraw(q) {
   const hits = !words.length ? [] : pools.filter(c => { const n = (c.name + ' ' + (c.en || '')).toLowerCase(); return words.every(w => n.includes(w)); })
     .filter(c => { const k = c.url; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
   MPK.hits = hits;
-  const tabs = MPK.wants.map((w, k) => `<button class="f" data-mpw="${k}"><i>${w === MPK.want ? '●' : '○'}</i>للناقل: ${esc(chEn(w))}${MPICK[mpKey(w)] ? ' ✎ ' + esc(MPICK[mpKey(w)].name) : ''}</button>`).join('');
+  const tabs = MPK.wants.map((w, k) => `<button class="f" data-mpw="${k}"><i>${w === MPK.want ? '●' : '○'}</i>${w.startsWith('lg:') ? '🏆 للدوري كله: ' + esc(w.slice(3)) : 'للناقل: ' + esc(chEn(w))}${MPICK[mpKey(w)] ? ' ✎ ' + esc(MPICK[mpKey(w)].name) : ''}</button>`).join('');
   $('#ctxBody').innerHTML = `<div class="mpk"><input id="mpkQ" class="f" value="${esc(q || '')}" placeholder="ابحث عن القناة…"></div>${tabs}`
     + (hits.length ? hits.map((c, k) => `<button class="f" data-mpk="${k}"><i>${c.logo ? `<img src="${esc(c.logo)}" alt="" style="height:30px;max-width:60px;object-fit:contain" onerror="this.remove()">` : '📺'}</i>${esc(c.name)}<small style="opacity:.6"> · ${esc(c.group || c.pl || '')}</small></button>`).join('') : `<button class="f" data-mpk="-1"><i>🔎</i>${words.length ? 'ما لقيت — غيّر البحث' : 'اكتب اسم القناة'}</button>`)
     + (MPICK[mpKey(MPK.want)] ? `<button class="f" data-mpk="-2"><i>🗑</i>ارجع للاختيار التلقائي</button>` : '');

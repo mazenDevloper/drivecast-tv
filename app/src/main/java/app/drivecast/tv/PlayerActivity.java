@@ -615,14 +615,18 @@ public class PlayerActivity extends Activity {
         countTick.run();
         // ⏭ «التالي» in the bottom-right corner while the channel plays: the next programme's logo (or its name), like a
         // broadcaster's own corner; hidden while the bar, the list or the menu is up
-        nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.HORIZONTAL); nextBox.setGravity(Gravity.CENTER_VERTICAL);
+        nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.VERTICAL); nextBox.setGravity(Gravity.CENTER_HORIZONTAL);
         nextBox.setBackground(null);   // transparent: the text's shadow keeps it readable
         nextBox.setPadding((int) dp(12), (int) dp(8), (int) dp(12), (int) dp(8));
         nextTxt = text(16, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
         nextImg = new ImageView(this); nextImg.setAdjustViewBounds(true); nextImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
         nextImg.setMaxWidth((int) dp(120)); nextImg.setMaxHeight((int) dp(56));
-        LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.leftMargin = (int) dp(10);
-        nextBox.addView(nextTxt); nextBox.addView(nextImg, nip);
+        LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.topMargin = (int) dp(4);
+        nextName = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextName.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
+        nextName.setGravity(Gravity.CENTER); nextName.setMaxWidth((int) dp(240)); nextName.setMaxLines(2); nextName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        nextTxt.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams nnp = new LinearLayout.LayoutParams(-2, -2); nnp.topMargin = (int) dp(4);
+        nextBox.addView(nextTxt); nextBox.addView(nextImg, nip); nextBox.addView(nextName, nnp);
         FrameLayout.LayoutParams nxp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
         root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE);
@@ -631,7 +635,9 @@ public class PlayerActivity extends Activity {
     }
     private int nextAt = 1;
     private final Runnable nextBack = () -> { nextAt = 1; try { nextFill(); } catch (Throwable ignored) { } };
-    private LinearLayout nextBox; private TextView nextTxt; private ImageView nextImg; private String nextUrl = "";
+    private LinearLayout nextBox; private TextView nextTxt, nextName; private ImageView nextImg; private String nextUrl = "";
+    // ⏱ when the channel settles (its bar gone): «الآن» for 10 s, then «التالي»
+    private void nextNowFirst() { nextAt = 0; nextUrl = "\u0000"; try { nextFill(); } catch (Throwable ignored) { } cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 10_000); }
     private final Runnable nextTick = new Runnable() { @Override public void run() {
         cd.removeCallbacks(this); cd.postDelayed(this, 20000);
         try { nextFill(); } catch (Throwable t) { if (nextBox != null) nextBox.setVisibility(View.GONE); }
@@ -646,9 +652,10 @@ public class PlayerActivity extends Activity {
         if (!ps.isEmpty()) nx = ps.get(nextAt);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
-        String title = nx.optString(2, ""); if (title.length() > 26) title = title.substring(0, 25) + "…";
+        String title = nx.optString(2, ""); if (title.length() > 50) title = title.substring(0, 49) + "…";
         String tag = nextAt == 0 ? "الآن" : nextAt == 1 ? "التالي" : "بعده";
-        nextTxt.setText(u.isEmpty() ? tag + " · " + clock(nx.optLong(0)) + "\n" + title : tag + "\n" + clock(nx.optLong(0)));
+        nextTxt.setText(tag + " · " + clock(nx.optLong(0)));
+        nextName.setText(title); nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
         nextBox.setVisibility(View.VISIBLE);
         if (u.equals(nextUrl)) return; nextUrl = u;
         if (u.isEmpty()) { nextImg.setImageDrawable(null); nextImg.setVisibility(View.GONE); return; }
@@ -990,6 +997,8 @@ public class PlayerActivity extends Activity {
             if (prevI >= 0 && prevI < urls.length && prevI != i) menuRow("recall", "⏮  القناة السابقة: " + label(prevI));
             menuRow("up4k", "🔷  تحسين الصورة: " + (up4k ? "يعمل" : "مطفأ"));
             menuRow("clock", "🕐  الساعة: " + (hang != null && hang.getVisibility() == View.VISIBLE ? "ظاهرة" : "مخفية"));
+            String myNum = chNumOf(ch);
+            menuRow("num", "🔢  اختصار لهذه القناة" + (myNum.isEmpty() ? "  ·  رقم من ٣ خانات" : ":  " + myNum));
             menuRow("ext", "📺  افتح في مشغّل آخر");
         } else if (menuLv == 1) {
             menuHead.setText("⚽  المباريات الآن");
@@ -1113,6 +1122,7 @@ public class PlayerActivity extends Activity {
                 menuFill(); return;
             }
             case "ext": menuShow(false); openOtherPlayer(); return;
+            case "num": menuShow(false); numFor = ch; numBuf = ""; setNote("🔢 اكتب ٣ أرقام لهذه القناة (100 – 998) · ◀ رجوع يلغي"); h.removeCallbacks(clearNote); return;
         }
     }
     /** a name's first letter, for ◀ (the «ال» of Arabic names and «Al »/«The » skipped) */
@@ -1509,7 +1519,7 @@ public class PlayerActivity extends Activity {
         h.removeCallbacks(hide);
         if (ms > 0) h.postDelayed(hide, ms);
     }
-    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> { cd.post(nextTick); scoresFill(); });
+    private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> { nextNowFirst(); scoresFill(); });
 
     private void setNote(String s) { note.setText(s); note.setVisibility(s == null ? View.GONE : View.VISIBLE); }
 
@@ -1583,8 +1593,34 @@ public class PlayerActivity extends Activity {
     }
 
     // the channel's number on the remote's digits, like a receiver (1.5 s after the last digit)
+    // ---- 🔢 a channel's own 3-digit shortcut (☰ → «اختصار لهذه القناة»): typed anywhere, in the player or on the home page
+    private int numFor = -1; private String numBuf = "";
+    static void chNumSet(Context c, String code, String name, String url) {
+        try {
+            org.json.JSONObject j = new org.json.JSONObject(Access.set(c).getString("chnum", "{}"));
+            java.util.Iterator<String> it = j.keys(); java.util.List<String> drop = new java.util.ArrayList<>();
+            while (it.hasNext()) { String k = it.next(); if (url.equals(j.optJSONObject(k) == null ? "" : j.optJSONObject(k).optString("url"))) drop.add(k); }
+            for (String k : drop) j.remove(k);   // one number per channel
+            j.put(code, new org.json.JSONObject().put("name", name).put("url", url));
+            Access.set(c).edit().putString("chnum", j.toString()).apply();
+        } catch (Exception ignored) { }
+    }
+    static org.json.JSONObject chNumGet(Context c, String code) {
+        try { return new org.json.JSONObject(Access.set(c).getString("chnum", "{}")).optJSONObject(code); } catch (Exception e) { return null; }
+    }
+    private String chNumOf(int k) {
+        try { org.json.JSONObject j = new org.json.JSONObject(Access.set(this).getString("chnum", "{}")); java.util.Iterator<String> it = j.keys();
+            while (it.hasNext()) { String c = it.next(); org.json.JSONObject x = j.optJSONObject(c); if (x != null && urls[k].equals(x.optString("url"))) return c; } } catch (Exception ignored) { }
+        return "";
+    }
     private final Runnable jump = () -> {
         String d = digits; digits = "";
+        org.json.JSONObject own = d.length() == 3 ? chNumGet(this, d) : null;
+        if (own != null) {   // 🔢 a channel's own number: here if the list has it, else the home page plays it
+            String u = own.optString("url");
+            for (int k = 0; k < urls.length; k++) if (u.equals(urls[k])) { i = k; play(); return; }
+            HomeActivity hm = HomeActivity.alive; if (hm != null) { finish(); hm.run("window.chNumPlay && chNumPlay(" + own + ")"); } return;
+        }
         if (d.startsWith("0") || d.equals("999")) {   // 🔢 a shortcut (00 settings, 01 a tab, 061 beIN LIVE EVENT 1…): the home page's list
             HomeActivity hm = HomeActivity.alive; if (hm == null) return;
             if (!d.matches("06[1-9]")) finish();
@@ -1647,6 +1683,18 @@ public class PlayerActivity extends Activity {
         if (menuOn && menuKey(code, e)) return true;
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
+        if (numFor >= 0) {   // 🔢 setting this channel's own 3-digit shortcut
+            if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) { numFor = -1; setNote(null); return true; }
+            if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
+                numBuf += (code - KeyEvent.KEYCODE_0); setNote("🔢 " + numBuf + "___".substring(numBuf.length()));
+                if (numBuf.length() == 3) {
+                    if (numBuf.startsWith("0") || numBuf.equals("999")) { setNote("🔢 " + numBuf + " محجوز — اختر من 100 إلى 998"); numBuf = ""; return true; }
+                    chNumSet(this, numBuf, nOf(numFor), urls[numFor]); flash("🔢 " + numBuf + " ← " + label(numFor) + "  ·  اكتبه في أي مكان وتنفتح"); numFor = -1;
+                    h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);
+                }
+                return true;
+            }
+        }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
             num.setText(digits + "_"); setNote("🔢 " + digits + "_"); showBar(2500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);

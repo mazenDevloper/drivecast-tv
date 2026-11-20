@@ -582,6 +582,15 @@ public class HomeActivity extends Activity {
             new Thread(() -> { Adhan.sounds(app); runOnUiThread(() -> Adhan.fire(app, 3, true, "iqama".equals(what))); }, "adhan-try").start();
         }
 
+        /** 🔢 a channel's own 3-digit shortcut: {name, url} or "" */
+        @JavascriptInterface
+        public String chNum(String code) { org.json.JSONObject j = PlayerActivity.chNumGet(HomeActivity.this, code); return j == null ? "" : j.toString(); }
+        /** ⬆️ 999: the newest build installed with nothing to press (the TV's own debugging shell, like the remote's «تحديث تلقائي») */
+        @JavascriptInterface
+        public void updAuto() { Update.auto(getApplicationContext()); }
+        @JavascriptInterface
+        public String updStatus() { return Update.status(getApplicationContext()); }
+
         /** ⬆️ is there a newer build on GitHub? cb(json {have, latest, newer, url}) */
         @JavascriptInterface
         public void updCheck(String cb) {
