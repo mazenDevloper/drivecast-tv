@@ -4945,6 +4945,7 @@ function mpickOpen(i) {
   MPK = { m, wants, want: matchLinks(m).some(x => x.c && !x.hand) ? wants[0] : lgKey(m), b: document.activeElement };
   CTX = { b: document.activeElement, mpick: 1 };
   $('#ctxName').textContent = '✎ ' + (m.home?.name || '') + ' × ' + (m.away?.name || ''); $('#ctxLogo').src = m.league?.logo || '';
+  $('#ctxBody').innerHTML = '';
   mpickDraw(MPK.want.startsWith('lg:') ? '' : MPK.want.replace(/^🌍\s*/, '').replace(/\s*(HD|FHD|4K)\b/ig, '').trim());
   $('#ctx').classList.add('on'); setTimeout(() => $('#ctxBody .f')?.focus(), 0);
 }
@@ -4955,10 +4956,14 @@ function mpickDraw(q) {
     .filter(c => { const k = c.url; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
   MPK.hits = hits;
   const tabs = MPK.wants.map((w, k) => `<button class="f" data-mpw="${k}"><i>${w === MPK.want ? '●' : '○'}</i>${w.startsWith('lg:') ? '🏆 للدوري كله: ' + esc(w.slice(3)) : 'للناقل: ' + esc(chEn(w))}${MPICK[mpKey(w)] ? ' ✎ ' + esc(MPICK[mpKey(w)].name) : ''}</button>`).join('');
-  $('#ctxBody').innerHTML = `<div class="mpk"><input id="mpkQ" class="f" value="${esc(q || '')}" placeholder="ابحث عن القناة…"></div>${tabs}`
-    + (hits.length ? hits.map((c, k) => `<button class="f" data-mpk="${k}"><i>${c.logo ? `<img src="${esc(c.logo)}" alt="" style="height:30px;max-width:60px;object-fit:contain" onerror="this.remove()">` : '📺'}</i>${esc(c.name)}<small style="opacity:.6"> · ${esc(c.group || c.pl || '')}</small></button>`).join('') : `<button class="f" data-mpk="-1"><i>🔎</i>${words.length ? 'ما لقيت — غيّر البحث' : 'اكتب اسم القناة'}</button>`)
+  // ⌨️ the box stays (only the list under it is redrawn): typing keeps its focus and the TV's keyboard stays up
+  const list = tabs + (hits.length ? hits.map((c, k) => `<button class="f" data-mpk="${k}"><i>${c.logo ? `<img src="${esc(c.logo)}" alt="" style="height:30px;max-width:60px;object-fit:contain" onerror="this.remove()">` : '📺'}</i>${esc(c.name)}<small style="opacity:.6"> · ${esc(c.group || c.pl || '')}</small></button>`).join('') : `<button class="f" data-mpk="-1"><i>🔎</i>${words.length ? 'ما لقيت — غيّر البحث' : 'اكتب اسم القناة'}</button>`)
     + (MPICK[mpKey(MPK.want)] ? `<button class="f" data-mpk="-2"><i>🗑</i>ارجع للاختيار التلقائي</button>` : '');
-  const inp = $('#mpkQ'); if (inp) inp.addEventListener('input', () => { clearTimeout(MPK.t); MPK.t = setTimeout(() => { const v = inp.value; mpickDraw(v); const n = $('#mpkQ'); if (n) { n.focus(); n.setSelectionRange(v.length, v.length); } }, 350); });
+  if (!$('#mpkQ') || !$('#mpkR')) {
+    $('#ctxBody').innerHTML = `<div class="mpk"><input id="mpkQ" class="f" value="${esc(q || '')}" placeholder="ابحث عن القناة…"></div><div id="mpkR"></div>`;
+    const inp = $('#mpkQ'); inp.addEventListener('input', () => { clearTimeout(MPK.t); MPK.t = setTimeout(() => mpickDraw(inp.value), 350); });
+  }
+  $('#mpkR').innerHTML = list;
 }
 function mpickDo(b) {
   if (!MPK) return;

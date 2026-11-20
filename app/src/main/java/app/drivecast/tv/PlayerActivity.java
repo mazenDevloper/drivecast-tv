@@ -615,18 +615,21 @@ public class PlayerActivity extends Activity {
         countTick.run();
         // ⏭ «التالي» in the bottom-right corner while the channel plays: the next programme's logo (or its name), like a
         // broadcaster's own corner; hidden while the bar, the list or the menu is up
-        nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.VERTICAL); nextBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        // the programme's logo at the right; to its left «الآن / التالي · 9:30» and the programme's name under it; a little see-through
+        nextBox = new LinearLayout(this); nextBox.setOrientation(LinearLayout.HORIZONTAL); nextBox.setGravity(Gravity.CENTER_VERTICAL);
         nextBox.setBackground(null);   // transparent: the text's shadow keeps it readable
         nextBox.setPadding((int) dp(12), (int) dp(8), (int) dp(12), (int) dp(8));
         nextTxt = text(16, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextTxt.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
         nextImg = new ImageView(this); nextImg.setAdjustViewBounds(true); nextImg.setScaleType(ImageView.ScaleType.FIT_CENTER);
         nextImg.setMaxWidth((int) dp(120)); nextImg.setMaxHeight((int) dp(56));
-        LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.topMargin = (int) dp(4);
+        LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.leftMargin = (int) dp(12);
         nextName = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextName.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
         nextName.setGravity(Gravity.CENTER); nextName.setMaxWidth((int) dp(240)); nextName.setMaxLines(2); nextName.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        nextTxt.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams nnp = new LinearLayout.LayoutParams(-2, -2); nnp.topMargin = (int) dp(4);
-        nextBox.addView(nextTxt); nextBox.addView(nextImg, nip); nextBox.addView(nextName, nnp);
+        nextTxt.setGravity(Gravity.RIGHT); nextName.setGravity(Gravity.RIGHT);
+        LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.RIGHT);
+        LinearLayout.LayoutParams nnp = new LinearLayout.LayoutParams(-2, -2); nnp.topMargin = (int) dp(2);
+        col.addView(nextTxt); col.addView(nextName, nnp);
+        nextBox.addView(col); nextBox.addView(nextImg, nip); nextBox.setAlpha(0.82f);
         FrameLayout.LayoutParams nxp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
         root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE);
@@ -642,6 +645,13 @@ public class PlayerActivity extends Activity {
         cd.removeCallbacks(this); cd.postDelayed(this, 20000);
         try { nextFill(); } catch (Throwable t) { if (nextBox != null) nextBox.setVisibility(View.GONE); }
     } };
+    /** the programme's name alone: no episode, season or part («مسلسل كذا - الحلقة 12» → «مسلسل كذا») */
+    static String progName(String t) {
+        String s = t == null ? "" : t;
+        s = s.replaceAll("(?i)(?:\\s*[-–—:|,،(\\[]\\s*|\\s+)(?:الحلق[ةه]|حلقة|ح|الجزء|ج|الموسم|episode|ep\\.?|season|part|pt)\\s*[.:]?\\s*[0-9٠-٩]+.*$", "");
+        s = s.replaceAll("(?i)\\s*\\bS\\d+\\s*E\\d+.*$", "").replaceAll("\\s*[-–—:|,،]\\s*$", "").trim();
+        return s.isEmpty() ? (t == null ? "" : t.trim()) : s;
+    }
     private void nextFill() {
         if (nextBox == null) return;
         boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
@@ -652,7 +662,7 @@ public class PlayerActivity extends Activity {
         if (!ps.isEmpty()) nx = ps.get(nextAt);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
-        String title = nx.optString(2, ""); if (title.length() > 50) title = title.substring(0, 49) + "…";
+        String title = progName(nx.optString(2, "")); if (title.length() > 50) title = title.substring(0, 49) + "…";
         String tag = nextAt == 0 ? "الآن" : nextAt == 1 ? "التالي" : "بعده";
         nextTxt.setText(tag + " · " + clock(nx.optLong(0)));
         nextName.setText(title); nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
