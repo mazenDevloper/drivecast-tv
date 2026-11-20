@@ -155,6 +155,10 @@ html.tfont h1,html.tfont h2,html.tfont h3,html.tfont .bhead b,html.tfont .spirit
 .mhour .mh small{font-size:19px;color:var(--dim)}.mhour .mh em{font-style:normal;font-size:19px;font-weight:700;color:#06210f;background:var(--accent);padding:4px 14px;border-radius:999px}
 .mhour.live .mh b{color:#ff5a52}.mhour.live .mh i{background:linear-gradient(90deg,rgba(255,90,82,.7),rgba(255,90,82,0))}.mhour.fin{opacity:.55}
 .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.mwrap{position:relative;display:flex;flex-direction:column}.mwrap>.mcard{flex:1}
+.mpen{position:absolute;bottom:16px;left:16px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(20,24,30,.92);color:#ffd23f;font-size:26px;font-family:inherit;z-index:2}
+.mpen:focus{background:#ffd23f;color:#111;transform:scale(1.12)}
+.mpk input{width:100%;box-sizing:border-box;font-size:26px;padding:12px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;margin-bottom:10px}
 .mcard{border-radius:34px;background:rgba(14,16,20,.9);border:1px solid rgba(255,255,255,.09);padding:20px 24px 22px;display:flex;flex-direction:column;gap:12px;color:#fff;font-family:inherit;text-align:center;min-height:300px}
 .mcard .lg{display:flex;align-items:center;gap:10px;font-size:19px;color:#b8bfc9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:flex-start}.mcard .lg img{width:30px;height:30px;object-fit:contain;flex:none}
 .mcard .lg b{margin-inline-start:auto;font-size:18px;font-weight:700;color:#6fe3a0;flex:none}.mcard.live .lg b{color:#ff5a52}
@@ -3162,10 +3166,10 @@ async function loadMatches() {
         const sub = live ? `● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : MTAB === 'yday' ? 'أمس' : 'عُمان') + ' ' + (m.omanTime || '');
         const go = matchRoute(m), lk = matchLinks(m), chs = mChannels(m).slice(0, 3);
         const tm = t => `<div class="tm"><img src="${esc(t?.logo || '')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(t?.name || '')}</span></div>`;
-        return `<button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
+        return `<div class="mwrap"><button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
           <div class="lg">${m.league?.logo ? `<img src="${esc(m.league.logo)}" alt="" onerror="this.remove()">` : '🏆'}<span>${esc(m.league?.name || '')}</span><b>${live ? '● مباشر' : fin ? 'انتهت' : isMine(m) ? '⭐ فريقك' : 'قريباً'}</b></div>
           <div class="row">${tm(m.home)}<div class="mid"><span class="big">${big}</span><small>${sub}</small></div>${tm(m.away)}</div>
-          <div class="chs">${fin ? '<span class="go hl">🎬 ملخص الأهداف</span>' : ''}${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(chEn(x.c.name))}${x.c.star ? ' ⭐' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(chEn(x.want))}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(chEn(go.label))}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(chEn(c))}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>`;
+          <div class="chs">${fin ? '<span class="go hl">🎬 ملخص الأهداف</span>' : ''}${go && go.links ? lk.slice(0, 6).map((x, k) => { const im = m.chl && m.chl[x.want] ? `<img src="${esc(m.chl[x.want])}" alt="" onerror="this.remove()">` : ''; return x.c ? `<span class="${k === lk.findIndex(y => y.c) ? 'go' : 'go2'}">${im}▶ ${esc(chEn(x.c.name))}${x.c.star ? ' ⭐' : ''}${x.hand ? ' ✎' : ''}</span>` : `<span class="nolink">${im || '📺 '}${esc(chEn(x.want))}</span>`; }).join('') + (lk.length > 6 ? `<span>+${AR(lk.length - 6)}</span>` : '') : ''}${go && go.links ? '' : go ? `<span class="go">${go.epg ? '📅 حسب الدليل · ' : go.local ? (go.checked ? '🌍 محلية 🟢 · ' : '🌍 محلية · ') : ''}${go.want && m.chl && m.chl[go.want] ? `<img src="${esc(m.chl[go.want])}" alt="" onerror="this.remove()">` : ''}▶ ${esc(chEn(go.label))}</span>` : ''}${chs.filter(c => !go || (c !== go.want && c !== go.label)).map(c => `<span>${m.chl && m.chl[c] ? `<img src="${esc(m.chl[c])}" alt="" onerror="this.remove()">` : '📺 '}${esc(chEn(c))}</span>`).join('')}${go && go.pool && go.pool.length > 1 ? `<span>+${AR(go.pool.length - 1)} قناة من ${esc(go.local)} · ↑↓ داخل المشغّل</span>` : ''}${!go && !chs.length ? '<span>📺 ما لقيت ناقل ولا قناة محلية في قنواتك</span>' : ''}</div></button>${fin ? '' : `<button class="mpen f" data-mpen="${i}" title="اختر القناة يدوياً">✎</button>`}</div>`;
       };
     box.innerHTML = groups.map(g => `<div class="mhour ${g.k === 'live' ? 'live' : g.k === 'fin' ? 'fin' : ''}"><div class="mh"><b>${g.k === 'live' ? '🔴 الآن' : g.k === 'fin' ? 'انتهت' : hourAr(+g.k.slice(1))}</b><i></i>${g.k !== 'live' && g.k !== 'fin' && +g.k.slice(1) === nowH ? '<em>هذي الساعة</em>' : ''}<small>${AR(g.items.length)} مباراة</small></div><div class="mgrid">${g.items.map(([m, i]) => card(m, i)).join('')}</div></div>`).join('') || `<div class="empty">${MTAB === 'live' ? 'ما فيه مباراة مباشرة الحين' : MTAB === 'mine' ? 'ما فيه مباريات لفرقك اليوم' : 'ما لقيت مباريات'}</div>`;
     const n = $('#mnote'); if (n) n.textContent = MLIST.length ? `${AR(MLIST.length)} مباراة · OK يشغّل القناة الناقلة` : '';
@@ -3588,17 +3592,22 @@ function srchFor(want) {
   const r = bs >= 14 ? best : null;   // a sure match (2) or a close one on a sports channel
   SRCH.set(k, r); return r;
 }
+// ✎ a carrier chosen by hand (the pencil on a match card): kept by the carrier's name, used for every match it carries
+let MPICK = {}; try { MPICK = JSON.parse(localStorage.mpick || '{}') || {}; } catch (e) {}
+const mpKey = w => wkey(String(w || '').replace(/^🌍\s*/, '')) || String(w || '').toLowerCase();
+const THMDYN = c => c && c.dyn && /ثمانية|thmanyah/i.test(c.name || '');
+function mpFind(want, pools) { const p = MPICK[mpKey(want)]; if (!p) return null; return pools.find(c => c && c.url === p.url) || pools.find(c => c && c.name === p.name && !c.dyn) || null; }
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
-  const ok = (want, c) => c && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
+  const ok = (want, c) => c && !THMDYN(c) && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
   const yt = YTLIVE.filter(c => c.ytl.test(m.league?.name || '')).map(c => ({ want: c.name, c, found: 1 }));   // ▶️ its league live on YouTube
-  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
+  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const hp = mpFind(want, pools); if (hp) return { want, c: hp, hand: 1 }; const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
   for (const x of yt) if (!v.some(y => y.c && y.c.url === x.c.url)) v.unshift(x);
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
-  for (const c of localChannels(m).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
+  for (const c of localChannels(m).filter(c => !THMDYN(c)).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
   // ⭐ among a match's own carriers, beIN SPORTS 1, 2, 3 and Live Event come first (the order of the rest stays)
   const pr = x => { const n = x.c ? x.c.name : x.want, i = BEIN_RES.findIndex(r => r.test(n)); return i >= 0 ? i : 9; };
-  v.sort((a, b) => (a.c ? 0 : 1) - (b.c ? 0 : 1) || pr(a) - pr(b));
+  v.sort((a, b) => (a.c ? 0 : 1) - (b.c ? 0 : 1) || (b.hand ? 1 : 0) - (a.hand ? 1 : 0) || pr(a) - pr(b));
   m.__lk = { t: Date.now(), v }; return v;
 }
 // 🌍 no named carrier found in the lists: the sports channels of the two sides' own countries, read from the lists as they are
@@ -4407,6 +4416,8 @@ document.addEventListener('click', e => {
   if (b.dataset.epg) return epgPress(b.dataset.epg);
   if (b.dataset.mt === 'refresh') { for (const k in mCache) delete mCache[k]; for (const k in S365) delete S365[k]; loadMatches.busy = 0; toast('↻ أحدّث المباريات…', 1500); loadNext(); return loadMatches(); }
   if (b.dataset.mt) { if (b.dataset.mt === MTAB) delete mCache[MTAB === 'tom' || MTAB === 'yday' ? MTAB : 'all']; MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
+  if (b.dataset.mpen != null) return mpickOpen(+b.dataset.mpen);
+  if (b.dataset.mpk != null || b.dataset.mpw != null) return mpickDo(b);
   if (b.dataset.mi != null) return playMatch(+b.dataset.mi);
   if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
   if (b.dataset.act === 'm3u-file') return $('#m3uFileIn').click();
@@ -4905,6 +4916,39 @@ function newsMaybe() {
   $('#ctx').classList.add('on'); $('#ctxBody').scrollTop = 0; $('#ctxBody .f')?.focus();
 }
 setTimeout(() => { try { if (window.TV && TV.prefs) newsMaybe(); } catch (e) {} }, 6000);
+// ✎ choose a match's carrier by hand: its carriers, then a search in every list; the choice is kept for that carrier's name
+let MPK = null;
+function mpickOpen(i) {
+  const m = MLIST[i]; if (!m) return;
+  const wants = [...new Set([...mChannels(m).filter(w => !NEWSCH.test(w)), ...matchLinks(m).map(x => x.want)])].filter(Boolean);
+  MPK = { m, wants, want: wants[0] || '', b: document.activeElement };
+  CTX = { b: document.activeElement, mpick: 1 };
+  $('#ctxName').textContent = '✎ ' + (m.home?.name || '') + ' × ' + (m.away?.name || ''); $('#ctxLogo').src = m.league?.logo || '';
+  mpickDraw(MPK.want.replace(/^🌍\s*/, '').replace(/\s*(HD|FHD|4K)\b/ig, '').trim());
+  $('#ctx').classList.add('on'); setTimeout(() => $('#ctxBody .f')?.focus(), 0);
+}
+function mpickDraw(q) {
+  const pools = MPOOLS().filter(c => c && c.name && !THMDYN(c)), qq = String(q || '').toLowerCase().trim(), seen = new Set();
+  const words = qq.split(/\s+/).filter(Boolean);
+  const hits = !words.length ? [] : pools.filter(c => { const n = (c.name + ' ' + (c.en || '')).toLowerCase(); return words.every(w => n.includes(w)); })
+    .filter(c => { const k = c.url; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
+  MPK.hits = hits;
+  const tabs = MPK.wants.map((w, k) => `<button class="f" data-mpw="${k}"><i>${w === MPK.want ? '●' : '○'}</i>للناقل: ${esc(chEn(w))}${MPICK[mpKey(w)] ? ' ✎ ' + esc(MPICK[mpKey(w)].name) : ''}</button>`).join('');
+  $('#ctxBody').innerHTML = `<div class="mpk"><input id="mpkQ" class="f" value="${esc(q || '')}" placeholder="ابحث عن القناة…"></div>${tabs}`
+    + (hits.length ? hits.map((c, k) => `<button class="f" data-mpk="${k}"><i>${c.logo ? `<img src="${esc(c.logo)}" alt="" style="height:30px;max-width:60px;object-fit:contain" onerror="this.remove()">` : '📺'}</i>${esc(c.name)}<small style="opacity:.6"> · ${esc(c.group || c.pl || '')}</small></button>`).join('') : `<button class="f" data-mpk="-1"><i>🔎</i>${words.length ? 'ما لقيت — غيّر البحث' : 'اكتب اسم القناة'}</button>`)
+    + (MPICK[mpKey(MPK.want)] ? `<button class="f" data-mpk="-2"><i>🗑</i>ارجع للاختيار التلقائي</button>` : '');
+  const inp = $('#mpkQ'); if (inp) inp.addEventListener('input', () => { clearTimeout(MPK.t); MPK.t = setTimeout(() => { const v = inp.value; mpickDraw(v); const n = $('#mpkQ'); if (n) { n.focus(); n.setSelectionRange(v.length, v.length); } }, 350); });
+}
+function mpickDo(b) {
+  if (!MPK) return;
+  if (b.dataset.mpw != null) { MPK.want = MPK.wants[+b.dataset.mpw]; mpickDraw($('#mpkQ')?.value || MPK.want); $(`#ctxBody [data-mpw="${b.dataset.mpw}"]`)?.focus(); return; }
+  const k = +b.dataset.mpk; if (k === -1) { $('#mpkQ')?.focus(); return; }
+  if (k === -2) delete MPICK[mpKey(MPK.want)];
+  else { const c = MPK.hits[k]; if (!c) return; MPICK[mpKey(MPK.want)] = { url: c.url, name: c.name }; toast('✎ ' + chEn(MPK.want) + ' ← ' + c.name + ' (محفوظ للمرات الجاية)', 3000); }
+  try { localStorage.mpick = JSON.stringify(MPICK); } catch (e) {}
+  for (const m of MLIST || []) delete m.__lk;
+  ctxClose(); MPK = null; loadMatches();
+}
 function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; CTX = null; if (b && document.body.contains(b)) b.focus(); }
 async function ctxDo(k) {
   const x = CTX; if (!x) return; ctxClose();
