@@ -4962,7 +4962,7 @@ function mpickDraw(q) {
 }
 function mpickDo(b) {
   if (!MPK) return;
-  if (b.dataset.mpw != null) { MPK.want = MPK.wants[+b.dataset.mpw]; mpickDraw($('#mpkQ')?.value || MPK.want); $(`#ctxBody [data-mpw="${b.dataset.mpw}"]`)?.focus(); return; }
+  if (b.dataset.mpw != null) { MPK.want = MPK.wants[+b.dataset.mpw]; mpickDraw($('#mpkQ')?.value || (MPK.want.startsWith('lg:') ? '' : MPK.want)); $(`#ctxBody [data-mpw="${b.dataset.mpw}"]`)?.focus(); return; }
   const k = +b.dataset.mpk; if (k === -1) { $('#mpkQ')?.focus(); return; }
   if (k === -2) delete MPICK[mpKey(MPK.want)];
   else { const c = MPK.hits[k]; if (!c) return; MPICK[mpKey(MPK.want)] = { url: c.url, name: c.name }; toast('✎ ' + chEn(MPK.want) + ' ← ' + c.name + ' (محفوظ للمرات الجاية)', 3000); }
