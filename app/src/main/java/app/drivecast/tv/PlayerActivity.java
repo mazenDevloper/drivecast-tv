@@ -1595,7 +1595,7 @@ public class PlayerActivity extends Activity {
     // the channel's number on the remote's digits, like a receiver (1.5 s after the last digit)
     // ---- 🔢 a channel's own 3-digit shortcut (☰ → «اختصار لهذه القناة»): typed anywhere, in the player or on the home page
     private int numFor = -1; private String numBuf = "";
-    static void chNumSet(Context c, String code, String name, String url) {
+    static void chNumSet(android.content.Context c, String code, String name, String url) {
         try {
             org.json.JSONObject j = new org.json.JSONObject(Access.set(c).getString("chnum", "{}"));
             java.util.Iterator<String> it = j.keys(); java.util.List<String> drop = new java.util.ArrayList<>();
@@ -1605,7 +1605,7 @@ public class PlayerActivity extends Activity {
             Access.set(c).edit().putString("chnum", j.toString()).apply();
         } catch (Exception ignored) { }
     }
-    static org.json.JSONObject chNumGet(Context c, String code) {
+    static org.json.JSONObject chNumGet(android.content.Context c, String code) {
         try { return new org.json.JSONObject(Access.set(c).getString("chnum", "{}")).optJSONObject(code); } catch (Exception e) { return null; }
     }
     private String chNumOf(int k) {
