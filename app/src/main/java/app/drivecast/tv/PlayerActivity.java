@@ -599,7 +599,7 @@ public class PlayerActivity extends Activity {
         // 🕒 the clock hung at the top centre, half see-through (50%), all the time; setting «pclock» = off hides it
         hang = text(30, Typeface.create("sans-serif-medium", Typeface.NORMAL), 0xFFFFFFFF);
         hang.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
-        hang.setAlpha(0.5f);
+        hang.setAlpha(0.38f);   // a bit more see-through (asked 20 Nov)
         FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         tp.setMargins(0, (int) dp(22), 0, 0);
         root.addView(hang, tp);
@@ -629,41 +629,38 @@ public class PlayerActivity extends Activity {
         LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.RIGHT);
         LinearLayout.LayoutParams nnp = new LinearLayout.LayoutParams(-2, -2); nnp.topMargin = (int) dp(2);
         col.addView(nextTxt); col.addView(nextName, nnp);
-        nextBox.addView(col); nextBox.addView(nextImg, nip); nextBox.setAlpha(0.82f);
+        nextBox.addView(col); nextBox.addView(nextImg, nip); nextBox.setAlpha(0.7f);
         FrameLayout.LayoutParams nxp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
         nxp.setMargins(0, 0, (int) dp(36), (int) dp(30));
         root.addView(nextBox, nxp); nextBox.setVisibility(View.GONE);
         cd.postDelayed(nextTick, 4000);
         goalBuild(root);
     }
-    private int nextAt = 1;
-    private final Runnable nextBack = () -> { nextAt = 1; try { nextFill(); } catch (Throwable ignored) { } };
+    // -1: by itself — «الآن» until 15 min before it ends, then «التالي»; ◀ ▶ choose one for 8 s
+    private int nextAt = -1, nextShown = 0;
+    private final Runnable nextBack = () -> { nextAt = -1; try { nextFill(); } catch (Throwable ignored) { } };
     private LinearLayout nextBox; private TextView nextTxt, nextName; private ImageView nextImg; private String nextUrl = "";
     // ⏱ when the channel settles (its bar gone): «الآن» for 10 s, then «التالي»
-    private void nextNowFirst() { nextAt = 0; nextUrl = "\u0000"; try { nextFill(); } catch (Throwable ignored) { } cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 10_000); }
+    private void nextNowFirst() { nextAt = -1; nextUrl = "\u0000"; try { nextFill(); } catch (Throwable ignored) { } }
     private final Runnable nextTick = new Runnable() { @Override public void run() {
         cd.removeCallbacks(this); cd.postDelayed(this, 20000);
         try { nextFill(); } catch (Throwable t) { if (nextBox != null) nextBox.setVisibility(View.GONE); }
     } };
-    /** the programme's name alone: no episode, season or part («مسلسل كذا - الحلقة 12» → «مسلسل كذا») */
-    static String progName(String t) {
-        String s = t == null ? "" : t;
-        s = s.replaceAll("(?i)(?:\\s*[-–—:|,،(\\[]\\s*|\\s+)(?:الحلق[ةه]|حلقة|ح|الجزء|ج|الموسم|episode|ep\\.?|season|part|pt)\\s*[.:]?\\s*[0-9٠-٩]+.*$", "");
-        s = s.replaceAll("(?i)\\s*\\bS\\d+\\s*E\\d+.*$", "").replaceAll("\\s*[-–—:|,،]\\s*$", "").trim();
-        return s.isEmpty() ? (t == null ? "" : t.trim()) : s;
-    }
     private void nextFill() {
         if (nextBox == null) return;
         boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
             || (menuPanel != null && menuPanel.getVisibility() == View.VISIBLE) || "off".equals(Access.set(this).getString("pnext", "on"));
         org.json.JSONArray nx = null;
         java.util.List<org.json.JSONArray> ps = progs(i);   // [0] on now, [1] next…
-        if (nextAt >= ps.size()) nextAt = Math.max(0, ps.size() - 1);
-        if (!ps.isEmpty()) nx = ps.get(nextAt);
+        int at = nextAt;
+        if (at < 0) { at = 0; try { if (ps.size() > 1 && ps.get(0).getLong(1) - System.currentTimeMillis() / 1000 <= 15 * 60) at = 1; } catch (Throwable ignored) { } }
+        if (at >= ps.size()) at = Math.max(0, ps.size() - 1);
+        nextShown = at;
+        if (!ps.isEmpty()) nx = ps.get(at);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
-        String title = progName(nx.optString(2, "")); if (title.length() > 50) title = title.substring(0, 49) + "…";
-        String tag = nextAt == 0 ? "الآن" : nextAt == 1 ? "التالي" : "بعده";
+        String title = nx.optString(2, "").trim();   // with its episode, as the guide writes it if (title.length() > 50) title = title.substring(0, 49) + "…";
+        String tag = at == 0 ? "الآن" : at == 1 ? "التالي" : "بعده";
         nextTxt.setText(tag + " · " + clock(nx.optLong(0)));
         nextName.setText(title); nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
         nextBox.setVisibility(View.VISIBLE);
@@ -1159,7 +1156,7 @@ public class PlayerActivity extends Activity {
                 if (held) return true;
                 if (listOn) { if (level == 0 && !right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
                 else if (!guideOn && nextBox != null && nextBox.getVisibility() == View.VISIBLE) {
-                    nextAt = Math.max(0, nextAt + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
+                    nextAt = Math.max(0, nextShown + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
                 }
                 else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
                 return true;
