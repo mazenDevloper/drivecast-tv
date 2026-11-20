@@ -1,0 +1,42 @@
+<title>Couch TV Trial</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--bg:#f3f4f7;--fg:#15171c;--mut:#5d6370;--card:#fff;--line:#d9dce3;--acc:#3b4cca;--accfg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1015;--fg:#eceef3;--mut:#9aa1b0;--card:#171a22;--line:#2a2f3b;--acc:#8c98ff;--accfg:#0e1015;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1015;--fg:#eceef3;--mut:#9aa1b0;--card:#171a22;--line:#2a2f3b;--acc:#8c98ff;--accfg:#0e1015;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 Inter,system-ui,sans-serif;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:980px;margin:0 auto;display:grid;gap:14px}
+h1{font-size:22px;margin:0}p{margin:0;color:var(--mut)}
+.tv{position:relative;aspect-ratio:16/9;width:100%;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px}
+button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,56px);gap:6px;justify-content:center}
+.pad button{padding:0;font-size:20px}
+.u{grid-area:1/2}.l{grid-area:2/1}.ok{grid-area:2/2}.r{grid-area:2/3}.d{grid-area:3/2}.b{grid-area:3/1}.m{grid-area:3/3}
+small{color:var(--mut)}
+</style>
+<main>
+<h1>Couch TV Trial</h1>
+<p>The couch-tv TV home (option A) running in the browser with sample data. Pick a look, then use the pad as the TV remote.</p>
+<div class="tv"><iframe id="f" title="TV home" allow="autoplay"></iframe></div>
+<div class="row" id="presets"></div>
+<div class="pad" aria-label="Remote">
+<button class="u" data-k="ArrowUp" aria-label="Up">&#9650;</button><button class="l" data-k="ArrowLeft" aria-label="Left">&#9664;</button>
+<button class="ok" data-k="Enter">OK</button><button class="r" data-k="ArrowRight" aria-label="Right">&#9654;</button>
+<button class="d" data-k="ArrowDown" aria-label="Down">&#9660;</button><button class="b" data-k="Escape">Back</button><button class="m" data-k="ContextMenu">Menu</button>
+</div>
+<small>Shows and the weather are sample data. Source: couch-tv by Seagey, MIT licence.</small>
+</main>
+<script>
+var P=[["Glass + Mac dock","glass=on&icons=glass&dock=mac&clockstyle=liquid&amount=4"],["Night","look=night"],["OLED","look=oled"],["Classic","look=classic"],["Lighter","lighter=1"],["Kids (6 people)","people=6&glass=on"]];
+var f=document.getElementById('f'),box=document.getElementById('presets');
+function go(i){[].forEach.call(box.children,function(b,j){b.classList.toggle('on',i===j)});f.src='tv-home/web/index.html?mock=1&'+P[i][1]}
+P.forEach(function(p,i){var b=document.createElement('button');b.textContent=p[0];b.onclick=function(){go(i)};box.appendChild(b)});
+document.querySelectorAll('.pad button').forEach(function(b){b.onclick=function(){
+ var k=b.dataset.k,codes={ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39,Enter:13,Escape:27,ContextMenu:93};
+ try{var d=f.contentDocument;['keydown','keyup'].forEach(function(t){var e=new KeyboardEvent(t,{key:k,keyCode:codes[k],which:codes[k],bubbles:true});d.dispatchEvent(e)})}catch(x){}}});
+go(0);
+</script>
