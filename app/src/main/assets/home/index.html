@@ -3108,7 +3108,9 @@ async function dayFix(d, plus) {
       m.status = x.status; if (x.score.home != null) m.score = { ...x.score }; m.elapsed = x.elapsed; m.s365 = 1; }
     return m.timestamp >= day0 && m.timestamp < day0 + 86400;
   });
-  for (const x of b) if (!used.has(x.id) && BIGL.test(x.league.name) && x.timestamp >= day0 && x.timestamp < day0 + 86400 && !out.some(m => mSame(m, x)))
+  // only the top flights (365's «الدوري الألماني الدرجة الثانية», «تحت 17», women's, third tiers… are not «big» though they name the country)
+  const LOW = /الدرجة|الثاني[ةه]|الثالث[ةه]|تحت ?\d|سيدات|للسيدات|نسائي|regular season|رديف|احتياط|شباب|ناشئين|أولمبي|ودي/i;
+  for (const x of b) if (!used.has(x.id) && BIGL.test(x.league.name) && !LOW.test(x.league.name) && x.timestamp >= day0 && x.timestamp < day0 + 86400 && !out.some(m => mSame(m, x)))
     out.push({ ...x, omanTime: new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }) });
   return { ...(d || {}), matches: out };
 }
