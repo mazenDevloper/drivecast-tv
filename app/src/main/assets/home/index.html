@@ -2267,9 +2267,13 @@ async function ytlgRefresh() {
   if (Date.now() - ytlgAt < 10 * 60e3) return; ytlgAt = Date.now();
   const got = await Promise.all(YTLG.map(async ([name, h, re]) => {
     const t = await getText(`https://www.youtube.com/${h}/live`).catch(() => '');
-    if (!t || !/"isLiveNow":true|"isLive":true/.test(t)) return null;
+    if (!t) return null;
+    const live = /"isLiveNow":true/.test(t), at = +((/"scheduledStartTime":"(\d+)"/.exec(t) || [])[1] || 0);
+    if (!live && !(at && at * 1000 - Date.now() < 48 * 3600e3 && at * 1000 > Date.now() - 3 * 3600e3)) return null;   // live, or a stream set within 2 days
+    const title = ((/<title>([^<]*)/.exec(t) || [])[1] || '').replace(/&amp;/g, '&').replace(/^LIVE:\s*/, '').replace(/\s*-\s*YouTube$/, '').split('|')[0].trim();
     const id = (/"canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/.exec(t) || /"videoId":"([\w-]{11})"/.exec(t) || [])[1];
-    return id ? { name: name + ' · YouTube', url: 'https://www.youtube.com/watch?v=' + id, logo: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, group: '▶️ دوريات على يوتيوب', pl: 'يوتيوب', ytl: re } : null;
+    const when = live ? '🔴 مباشر' : '⏰ ' + new Date(at * 1000).toLocaleString('ar', { weekday: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Muscat' });
+    return id ? { name: `${name} · ${title || 'YouTube'} · ${when}`, at, live, url: 'https://www.youtube.com/watch?v=' + id, logo: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, group: '▶️ دوريات على يوتيوب', pl: 'يوتيوب', ytl: re } : null;
   }));
   YTLIVE = got.filter(Boolean);
 }
@@ -2497,6 +2501,8 @@ function epgPick(c, b) {
 function keepFocus(fn) {
   const a = document.activeElement, sel = a && (a.dataset?.ilist ? `[data-ilist="${a.dataset.ilist}"][data-i="${a.dataset.i}"]` : a.id ? '#' + CSS.escape(a.id) : '');
   fn();
+// the phone's match times as DriveCast shows them: 24 h, Muscat (15:35, not a bare «3:35»)
+const hm24 = t => new Date(t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
   if (sel && !document.body.contains(a)) { const n = document.querySelector(sel); if (n) n.focus({ preventScroll: true }); }
 }
 const epgRows = c => { const now = Date.now() / 1000; return ((c && EPG[epgId(c)]) || []).filter(r => r[1] > now); };
@@ -3132,7 +3138,9 @@ async function loadMatches() {
     const mm = (mine && mine.matches) || [];
     let ms = ((all && all.matches) || []).slice();
     for (const m of ms) { const y = mm.find(y => mSame(m, y)); if (y) { m.mine = 1; if (String(y.id).startsWith('365')) m.id365 = y; } }   // the user's teams, marked on the day's list
-    if (MTAB !== 'tom' && MTAB !== 'yday') for (const m of mm) if (!ms.some(x => mSame(x, m))) ms.push(m);
+    // your teams' matches (DriveCast's server lists the next 36 h): only this football day's join today (Man City–Fulham, Saturday's, showed on Friday)
+    const d0 = Date.parse(new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3).toISOString().slice(0, 10) + 'T01:00:00Z') / 1000;
+    if (MTAB !== 'tom' && MTAB !== 'yday') for (const m of mm) if (m.timestamp >= d0 && m.timestamp < d0 + 86400 && !ms.some(x => mSame(x, m))) ms.push(m);
     if (MTAB === 'live') ms = ms.filter(m => m.status === 'live');
     if (MTAB === 'mine') ms = ms.filter(m => m.mine);
     const isMine = m => !!m.mine;
@@ -3676,7 +3684,7 @@ window.remoteMatches = () => {
   const out = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished').slice(0, 40).map(([m, i]) => {
     let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
     return { i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
-      t: m.timestamp ? hm(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => chEn(x.c.name)), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
+      t: m.timestamp ? hm24(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => chEn(x.c.name)), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
   });
   return JSON.stringify({ loading: !MLIST || !MLIST.length, m: out });
 };
@@ -3765,7 +3773,7 @@ window.remoteCall = q => {
     case 'search': {
       const t = rMatcher(a.q), pool = rPool();
       const ms = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished' && (t(m.home?.name) || t(m.away?.name) || t(m.league?.name)))
-        .slice(0, 6).map(([m, i]) => { let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {} return { i, h: m.home?.name || '', a: m.away?.name || '', st: m.status, s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', t: m.timestamp ? hm(m.timestamp) : '', ch: v.slice(0, 6).map(x => chEn(x.c.name)) }; });
+        .slice(0, 6).map(([m, i]) => { let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {} return { i, h: m.home?.name || '', a: m.away?.name || '', st: m.status, s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', t: m.timestamp ? hm24(m.timestamp) : '', ch: v.slice(0, 6).map(x => chEn(x.c.name)) }; });
       const cs = pool.map((c, i) => [c, i, t(c.name)]).filter(x => x[2]).sort((x, y) => y[2] - x[2] || (isOk(y[0]) - isOk(x[0]))).slice(0, 60).map(([c, i]) => rCh(c, i));
       return out({ m: ms, c: cs });
     }
@@ -3776,7 +3784,7 @@ window.remoteCall = q => {
       const BIG = m => BIGL.test(m.league?.name || '') ? 1 : 0;
       const l = arr(c.d?.matches).filter(m => m.status === 'finished').sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp)).slice(0, 60);
       return out({ m: l.map(m => ({ h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', lg: m.league?.name || '',
-        s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`, t: m.timestamp ? hm(m.timestamp) : '' })) });
+        s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`, t: m.timestamp ? hm24(m.timestamp) : '' })) });
     }
     case 'goals': { if (!a.h || !a.a) return out({ ok: 0 }); goals({ home: { name: String(a.h) }, away: { name: String(a.a) } }); return out({ ok: 1 }); }   // 🎬 the summary, played here
     case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(); return out({ on: r.includes(k) ? 1 : 0 }); }
