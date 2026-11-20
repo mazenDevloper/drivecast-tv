@@ -1,0 +1,72 @@
+11-20 17:03:58.942  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:03:58.942  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:03:58.943  2476  2511 E chromium: [2476:2511:ERROR:cert_util.cc(174)] Certs missing,
+11-20 17:03:58.943  2476  2511 E chromium: [2476:2511:ERROR:client_auth_signer.cc(205)] Cast certificate verification: CastCertError::ERR_CERTS_MISSING
+11-20 17:03:58.944  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:03:58.944  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:03:59.016  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 403 for message_id = d0af0269-8f46-4df6-a39e-1ce70e842702 - 
+11-20 17:03:59.108  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 401 for message_id = bea66dd7-4cc9-4308-b4d1-f251f0acf7f3 - 
+11-20 17:03:59.108  2476  2546 E chromium: [2476:2546:ERROR:structure_info_from_trusted_devices.cc(379)] Failed to get trusted devices from HDS.
+11-20 17:04:01.440  3254  3254 E pp.drivecast.t: Not starting debugger since process cannot load the jdwp agent.
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: Process: com.google.android.tvlauncher, PID: 3538
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: java.lang.RuntimeException: Unable to create application com.google.android.tvlauncher.application.TvLauncherApplication: java.lang.IllegalArgumentException: No such service ComponentInfo{com.google.android.tvlauncher/com.google.android.tvlauncher.util.DailyCheckInService}
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:6717)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.ActivityThread.access$1300(ActivityThread.java:237)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1913)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:106)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:223)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:7656)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:592)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:947)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: Caused by: java.lang.IllegalArgumentException: No such service ComponentInfo{com.google.android.tvlauncher/com.google.android.tvlauncher.util.DailyCheckInService}
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Parcel.createExceptionOrNull(Parcel.java:2378)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Parcel.createException(Parcel.java:2358)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Parcel.readException(Parcel.java:2341)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Parcel.readException(Parcel.java:2283)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.job.IJobScheduler$Stub$Proxy.schedule(IJobScheduler.java:308)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.JobSchedulerImpl.schedule(JobSchedulerImpl.java:47)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at com.google.android.tvlauncher.application.TvLauncherApplication.onCreate(PG:97)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1192)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:6712)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	... 8 more
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: Caused by: android.os.RemoteException: Remote stack trace:
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at com.android.server.job.JobSchedulerService$JobSchedulerStub.enforceValidJobRequest(JobSchedulerService.java:2565)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at com.android.server.job.JobSchedulerService$JobSchedulerStub.schedule(JobSchedulerService.java:2627)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.app.job.IJobScheduler$Stub.onTransact(IJobScheduler.java:153)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Binder.execTransactInternal(Binder.java:1154)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 	at android.os.Binder.execTransact(Binder.java:1123)
+11-20 17:04:10.478  3538  3538 E AndroidRuntime: 
+11-20 17:04:17.679  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:04:17.679  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:04:17.731  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 401 for message_id = 20b04282-f2de-412a-8c8b-3fc30d3da467 - 
+11-20 17:04:17.731  2476  2546 E chromium: [2476:2546:ERROR:structure_info_from_trusted_devices.cc(379)] Failed to get trusted devices from HDS.
+11-20 17:04:53.513  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:04:53.513  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:04:53.570  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 401 for message_id = ea55ffa4-da2c-4065-b758-d1cf64bd872b - 
+11-20 17:04:53.570  2476  2546 E chromium: [2476:2546:ERROR:structure_info_from_trusted_devices.cc(379)] Failed to get trusted devices from HDS.
+11-20 17:04:54.448  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:04:54.448  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:04:54.520  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 403 for message_id = 4e4c2ed7-06d6-44f5-9a03-d9e5568b6253 - 
+11-20 17:05:07.432  1140  4705 E chromium: [FTL:1140:4705:ERROR:action_processor.cc(537)] Module "feedback" tried to
+11-20 17:05:07.432  1140  4705 E chromium: shadow action_path "feedback.UPLOAD_CRASH_REPORT", but it is already registered
+11-20 17:05:07.432  1140  4705 E chromium: by "android_feedback"
+11-20 17:05:08.858  1140  4705 E chromium: [FTL:1140:4705:ERROR:action_processor.cc(537)] Module "feedback" tried to
+11-20 17:05:08.858  1140  4705 E chromium: shadow action_path "feedback.UPLOAD_CRASH_REPORT", but it is already registered
+11-20 17:05:08.858  1140  4705 E chromium: by "android_feedback"
+11-20 17:05:42.245  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:05:42.245  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:05:42.422  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 401 for message_id = d70b0e63-fb27-4d9a-bbdb-a340df8868c3 - 
+11-20 17:05:42.422  2476  2546 E chromium: [2476:2546:ERROR:structure_info_from_trusted_devices.cc(379)] Failed to get trusted devices from HDS.
+11-20 17:06:06.604  6189  6224 E Finsky  : [326] ItemStore: getItems RPC failed for item app.drivecast.tv
+11-20 17:06:54.366  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:06:54.366  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:06:54.440  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 403 for message_id = 41a53cd4-8871-48d3-8963-8ef72489ba2a - 
+11-20 17:07:40.190  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:07:40.190  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:07:40.245  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 401 for message_id = cd9371ce-c9db-4e58-8ba7-9d6bac34fd71 - 
+11-20 17:07:40.245  2476  2546 E chromium: [2476:2546:ERROR:structure_info_from_trusted_devices.cc(379)] Failed to get trusted devices from HDS.
+11-20 17:10:54.229  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1198)] CreateAndSignJwtAsync() returned invalid JWT. Not attaching to headers.
+11-20 17:10:54.229  2476  2476 E chromium: [2476:2476:ERROR:cast_auth_headers.cc(169)] Unable to update signature header
+11-20 17:10:54.298  2476  2476 E chromium: [2476:2476:ERROR:ccs_transport_https.cc(1846)] Received response code 403 for message_id = b8e00b08-2c35-49a3-81fc-ee5692cf3322 - 
