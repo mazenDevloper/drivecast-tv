@@ -8,6 +8,12 @@ body{background:var(--bg);color:var(--fg);font:15px/1.5 Inter,system-ui,sans-ser
 main{max-width:980px;margin:0 auto;display:grid;gap:14px}
 h1{font-size:22px;margin:0}p{margin:0;color:var(--mut)}
 .tv{position:relative;aspect-ratio:16/9;width:100%;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+#ov{position:absolute;inset:0;pointer-events:none}
+.box{position:absolute;border:2px dashed var(--acc);background:rgba(120,140,255,.14);border-radius:6px;pointer-events:auto;touch-action:none;cursor:move}
+.box.sel{border-style:solid;background:rgba(120,140,255,.26)}
+.box b{position:absolute;left:0;top:-20px;font:600 11px/1 Inter,system-ui,sans-serif;background:var(--acc);color:var(--accfg);padding:3px 6px;border-radius:4px;white-space:nowrap}
+.box i{position:absolute;right:-9px;bottom:-9px;width:20px;height:20px;border-radius:50%;background:var(--acc);border:2px solid #fff;cursor:nwse-resize;touch-action:none}
+#info{color:var(--mut);font-size:13px;min-height:20px}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .row{display:flex;flex-wrap:wrap;gap:8px}
 button{font:inherit;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-height:44px}
@@ -21,8 +27,10 @@ small{color:var(--mut)}
 <main>
 <h1>Couch TV Trial</h1>
 <p>The couch-tv TV home (option A) running in the browser with sample data. Pick a look, then use the pad as the TV remote.</p>
-<div class="tv"><iframe id="f" title="TV home" allow="autoplay"></iframe></div>
+<div class="tv" id="tv"><iframe id="f" title="TV home" allow="autoplay"></iframe><div id="ov"></div></div>
 <div class="row" id="presets"></div>
+<div class="row"><button id="edit" aria-pressed="false">Edit layout (drag &amp; scale)</button><button id="reset">Reset layout</button><button id="copy">Copy design JSON</button></div>
+<div id="info">Edit layout: drag a box to move it, drag the round handle to scale it, or use the mouse wheel on a box.</div>
 <div class="pad" aria-label="Remote">
 <button class="u" data-k="ArrowUp" aria-label="Up">&#9650;</button><button class="l" data-k="ArrowLeft" aria-label="Left">&#9664;</button>
 <button class="ok" data-k="Enter">OK</button><button class="r" data-k="ArrowRight" aria-label="Right">&#9654;</button>
@@ -33,10 +41,44 @@ small{color:var(--mut)}
 <script>
 var P=[["Glass + Mac dock","glass=on&icons=glass&dock=mac&clockstyle=liquid&amount=4"],["Night","look=night"],["OLED","look=oled"],["Classic","look=classic"],["Lighter","lighter=1"],["Kids (6 people)","people=6&glass=on"]];
 var f=document.getElementById('f'),box=document.getElementById('presets');
-function go(i){[].forEach.call(box.children,function(b,j){b.classList.toggle('on',i===j)});f.src='tv-home/web/index.html?mock=1&'+P[i][1]}
+var cur=0,editing=false,D={};
+try{D=JSON.parse(localStorage.getItem('tvdesigner.design')||'{}')||{}}catch(x){D={}}
+if(!D.elements)D.elements={};
+function save(){try{localStorage.setItem('tvdesigner.design',JSON.stringify(D))}catch(x){}}
+function go(i){cur=i;[].forEach.call(box.children,function(b,j){b.classList.toggle('on',i===j)});f.src='tv-home/web/index.html?mock=1&design=local&'+P[i][1]}
 P.forEach(function(p,i){var b=document.createElement('button');b.textContent=p[0];b.onclick=function(){go(i)};box.appendChild(b)});
 document.querySelectorAll('.pad button').forEach(function(b){b.onclick=function(){
  var k=b.dataset.k,codes={ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39,Enter:13,Escape:27,ContextMenu:93};
  try{var d=f.contentDocument;['keydown','keyup'].forEach(function(t){var e=new KeyboardEvent(t,{key:k,keyCode:codes[k],which:codes[k],bubbles:true});d.dispatchEvent(e)})}catch(x){}}});
+
+var PARTS=[["clock","Clock","#scenes .gclock, #time","50% 50%"],["date","Date","#date","50% 0"],["weather","Weather","#cd-weather","50% 0"],["people","People",".people-wrap","0 0"],["quick","Quick buttons","#quick","100% 0"],["keep_watching","Keep watching","#shelf-section","0 0"],["dock","Dock","#apps-section","50% 100%"]];
+var ov=document.getElementById('ov'),tvb=document.getElementById('tv'),info=document.getElementById('info'),sel=null;
+function el(k){var e=D.elements[k];if(!e)e=D.elements[k]={};return e}
+function rects(){var d=f.contentDocument,out=[];if(!d)return out;var fr=tvb.getBoundingClientRect();
+ PARTS.forEach(function(p){var n=null;p[2].split(',').forEach(function(q){if(n)return;var c=d.querySelector(q.trim());if(c){var r=c.getBoundingClientRect();if(r.width>8&&r.height>8)n=r}});
+  if(n)out.push({k:p[0],name:p[1],o:p[3],l:n.left,t:n.top,w:n.width,h:n.height})});return out}
+function draw(){ov.innerHTML='';if(!editing)return;var K=1920/tvb.clientWidth;
+ rects().forEach(function(r){var b=document.createElement('div');b.className='box'+(sel===r.k?' sel':'');
+  b.style.cssText+='left:'+r.l+'px;top:'+r.t+'px;width:'+r.w+'px;height:'+r.h+'px';
+  b.innerHTML='<b>'+r.name+'</b><i title="Scale"></i>';ov.appendChild(b);
+  var e=el(r.k);
+  b.addEventListener('pointerdown',function(ev){if(ev.target.tagName==='I')return;ev.preventDefault();sel=r.k;b.setPointerCapture(ev.pointerId);
+   var sx=ev.clientX,sy=ev.clientY,x0=e.x||0,y0=e.y||0;
+   b.onpointermove=function(m){var dx=m.clientX-sx,dy=m.clientY-sy;b.style.transform='translate('+dx+'px,'+dy+'px)';e.x=Math.round(x0+dx*K);e.y=Math.round(y0+dy*K)};
+   b.onpointerup=function(){b.onpointermove=null;b.onpointerup=null;commit()}});
+  b.querySelector('i').addEventListener('pointerdown',function(ev){ev.preventDefault();ev.stopPropagation();sel=r.k;var h=ev.target;h.setPointerCapture(ev.pointerId);
+   var sx=ev.clientX,s0=e.scale||1;
+   h.onpointermove=function(m){var f2=Math.max(.3,Math.min(3,(r.w+(m.clientX-sx))/r.w));var ns=Math.round(s0*f2*100)/100;e.scale=ns;
+    var o=r.o.split(' ');b.style.transformOrigin=o[0]+' '+o[1];b.style.transform='scale('+(ns/s0)+')';info.textContent=r.name+': scale '+ns};
+   h.onpointerup=function(){h.onpointermove=null;h.onpointerup=null;commit()}});
+  b.addEventListener('wheel',function(ev){ev.preventDefault();var s=Math.round(Math.max(.3,Math.min(3,(e.scale||1)*(ev.deltaY<0?1.06:.94)))*100)/100;e.scale=s;info.textContent=r.name+': scale '+s;clearTimeout(window.wt);window.wt=setTimeout(commit,250)},{passive:false});
+ })}
+function commit(){save();f.src=f.src}
+f.addEventListener('load',function(){setTimeout(draw,600)});
+window.addEventListener('resize',draw);
+document.getElementById('edit').onclick=function(){editing=!editing;this.setAttribute('aria-pressed',editing);this.classList.toggle('on',editing);draw()};
+document.getElementById('reset').onclick=function(){D={elements:{}};save();info.textContent='Layout reset.';f.src=f.src};
+document.getElementById('copy').onclick=function(){var t=JSON.stringify({design:D},null,1),n=document.getElementById('copy');
+ try{navigator.clipboard.writeText(t).then(function(){info.textContent='Copied. Paste it into config.json as the top-level "design" key.'},function(){info.textContent=t})}catch(x){info.textContent=t}};
 go(0);
 </script>
