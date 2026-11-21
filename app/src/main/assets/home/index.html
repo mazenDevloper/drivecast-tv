@@ -4388,10 +4388,10 @@ window.chNumPlay = o => { if (!o || !o.url) return; if (document.body.classList.
 function updAuto999() {
   if (!TV.updAuto) { toast('⬆️ افتح الإعدادات ← تحديث'); return; }
   TV.updAuto(); toast('⬆️ أدوّر على آخر إصدار…');
-  const say = { check: '⬆️ أدوّر على آخر إصدار…', down: '⬇️ أنزّل', install: '📦 أثبّت — التطبيق بيرجع لحاله', restart: '📦 أثبّت — التطبيق بيرجع لحاله', confirm: '📦 وافق على التثبيت في الشاشة', latest: '✅ عندك آخر إصدار', error: '⚠️ ما قدرت أحدّث' };
+  const say = { check: '⬆️ أدوّر على آخر إصدار…', down: '⬇️ أنزّل', install: '📦 أثبّت — التطبيق بيرجع لحاله', restart: '📦 أثبّت — التطبيق بيرجع لحاله', confirm: '📦 وافق على التثبيت في الشاشة', latest: '✅ عندك آخر إصدار', error: '⚠️ ما قدرت أحدّث', noadb: '⚠️ يحتاج «تصحيح الشبكة» مرة وحدة: من الريموت ← المزيد ← ⚙️ التلفزيون ← 🔧' };
   let n = 0; const t = setInterval(() => { let j = {}; try { j = JSON.parse(TV.updStatus()); } catch (e) {}
-    const m = say[j.stage]; if (m) toast(m + (j.stage === 'down' && j.pct ? ' ' + j.pct + '%' : j.stage === 'error' && j.note ? ' · ' + j.note : ''));
-    if (/latest|error|restart/.test(j.stage) || ++n > 120) clearInterval(t); }, 1500);
+    const m = say[j.stage]; if (m) toast(m + (j.stage === 'down' && j.pct ? ' ' + j.pct + '%' : j.stage === 'error' && j.note ? ' · ' + j.note : '') + (j.stage === 'install' || j.stage === 'restart' ? ' — يتثبّت في الخلفية، التطبيق يرجع لحاله' : ''));
+    if (/latest|error|restart|noadb/.test(j.stage) || ++n > 400) clearInterval(t); }, 1500);
 }
 window.shortcutGo = code => { if (/^[1-9]\d\d$/.test(code) && TV.chNum) { let o = null; try { o = JSON.parse(TV.chNum(code) || 'null'); } catch (e) {} if (o) return chNumPlay(o); }
   const [r, m] = shortFind(code); if (r) r.go(m); else toast('🔢 ' + code + ' — ما له اختصار'); };

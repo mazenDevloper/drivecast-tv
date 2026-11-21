@@ -126,7 +126,9 @@ public class Update extends BroadcastReceiver {
         } catch (Exception e) { return "{}"; }
     }
 
-    static void auto(Context c) {
+    static void auto(Context c) { auto(c, false); }
+    /** quiet: the debugging shell only (999) — never Android's installer screen over what is playing */
+    static void auto(Context c, boolean quiet) {
         if (running) return;
         running = true; note = ""; stage = "check"; pct = 0;
         new Thread(() -> {
@@ -147,6 +149,7 @@ public class Update extends BroadcastReceiver {
                     if (out.contains("started")) { stage = "restart"; return; }
                     note = out.trim();
                 } catch (Exception e) { Crash.note(c, "update adb: " + e.getMessage()); }
+                if (quiet && Build.VERSION.SDK_INT < 31) { stage = "noadb"; if (note.isEmpty()) note = SelfAdb.last; return; }
                 // 2) Android's installer (Android 12+: no confirm; older: its confirm screen on the TV)
                 stage = Build.VERSION.SDK_INT >= 31 ? "install" : "confirm";
                 commit(c, f);

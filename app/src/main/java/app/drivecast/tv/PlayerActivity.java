@@ -1671,6 +1671,19 @@ public class PlayerActivity extends Activity {
             while (it.hasNext()) { String c = it.next(); org.json.JSONObject x = j.optJSONObject(c); if (x != null && urls[k].equals(x.optString("url"))) return c; } } catch (Exception ignored) { }
         return "";
     }
+    // ⬆️ 999 over a channel: the newest build fetched and installed by the TV's own debugging shell while this keeps playing;
+    // only the install's last seconds restart the app (Android replaces it), and the home comes back by itself
+    private void updQuiet() {
+        Update.auto(getApplicationContext(), true);
+        final long t0 = System.currentTimeMillis();
+        h.post(new Runnable() { @Override public void run() {
+            String st = Update.stage, msg = "check".equals(st) ? "⬆️ أدوّر على آخر إصدار…" : "down".equals(st) ? "⬇️ أنزّل التحديث " + Update.pct + "٪ — القناة شغّالة"
+                : "install".equals(st) || "restart".equals(st) ? "📦 يتثبّت في الخلفية — التطبيق يرجع لحاله بعد ثواني" : "latest".equals(st) ? "✅ عندك آخر إصدار"
+                : "noadb".equals(st) ? "⚠️ التحديث بدون موافقة يحتاج «تصحيح الشبكة»: من الريموت ← المزيد ← ⚙️ التلفزيون ← 🔧" : "error".equals(st) ? "⚠️ ما قدرت أحدّث: " + Update.note : null;
+            if (msg != null) flash(msg);
+            if (!"latest".equals(st) && !"error".equals(st) && !"noadb".equals(st) && !"restart".equals(st) && System.currentTimeMillis() - t0 < 10 * 60_000) h.postDelayed(this, 1500);
+        } });
+    }
     private final Runnable jump = () -> {
         String d = digits; digits = "";
         org.json.JSONObject own = d.length() == 3 ? chNumGet(this, d) : null;
@@ -1679,7 +1692,8 @@ public class PlayerActivity extends Activity {
             for (int k = 0; k < urls.length; k++) if (u.equals(urls[k])) { i = k; play(); return; }
             HomeActivity hm = HomeActivity.alive; if (hm != null) { finish(); hm.run("window.chNumPlay && chNumPlay(" + own + ")"); } return;
         }
-        if (d.startsWith("0") || d.equals("999")) {   // 🔢 a shortcut (00 settings, 01 a tab, 061 beIN LIVE EVENT 1…): the home page's list
+        if (d.equals("999")) { updQuiet(); return; }   // ⬆️ the update in the background; the channel keeps playing
+        if (d.startsWith("0")) {   // 🔢 a shortcut (00 settings, 01 a tab, 061 beIN LIVE EVENT 1…): the home page's list
             HomeActivity hm = HomeActivity.alive; if (hm == null) return;
             if (!d.matches("06[1-9]")) finish();
             hm.run("window.shortcutGo && shortcutGo('" + d + "')"); return;

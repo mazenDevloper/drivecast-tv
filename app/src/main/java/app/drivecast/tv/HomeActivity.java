@@ -587,7 +587,7 @@ public class HomeActivity extends Activity {
         public String chNum(String code) { org.json.JSONObject j = PlayerActivity.chNumGet(HomeActivity.this, code); return j == null ? "" : j.toString(); }
         /** ⬆️ 999: the newest build installed with nothing to press (the TV's own debugging shell, like the remote's «تحديث تلقائي») */
         @JavascriptInterface
-        public void updAuto() { Update.auto(getApplicationContext()); }
+        public void updAuto() { Update.auto(getApplicationContext(), true); }
         @JavascriptInterface
         public String updStatus() { return Update.status(getApplicationContext()); }
 
