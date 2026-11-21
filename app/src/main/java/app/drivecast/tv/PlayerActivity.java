@@ -77,23 +77,51 @@ public class PlayerActivity extends Activity {
         SCORES = json == null ? "[]" : json;
         PlayerActivity p = live; if (p != null) p.scoresFill();
     }
+    // ✕ hides the corner till it is shown again (☰ → «النتائج في الزاوية»)
+    static boolean scoresOff = false;
     private void scoresFill() {
         if (sbox == null) return;
         sbox.removeAllViews();
-        boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
+        boolean busy = scoresOff || (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
             || (menuPanel != null && menuPanel.getVisibility() == View.VISIBLE) || (gbox != null && gbox.getVisibility() == View.VISIBLE);
         try {
             org.json.JSONArray a = new org.json.JSONArray(SCORES);
             for (int k = 0; k < a.length() && k < 3; k++) {
-                TextView t = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
-                t.setText(a.optString(k)); t.setSingleLine(true); t.setTextDirection(View.TEXT_DIRECTION_RTL);
-                GradientDrawable b = new GradientDrawable(); b.setColor(0xCC101216); b.setCornerRadius(dp(14)); b.setStroke((int) dp(1), 0x33FFFFFF); t.setBackground(b);
-                t.setPadding((int) dp(14), (int) dp(7), (int) dp(14), (int) dp(7));
+                org.json.JSONObject o = a.optJSONObject(k);
+                LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+                GradientDrawable b = new GradientDrawable(); b.setColor(0xB8101216); b.setCornerRadius(dp(18)); b.setStroke((int) dp(1), 0x33FFFFFF); row.setBackground(b);
+                row.setPadding((int) dp(10), (int) dp(5), (int) dp(8), (int) dp(5));
+                if (o == null) { TextView t = text(16, Typeface.DEFAULT_BOLD, 0xFFFFFFFF); t.setText(a.optString(k)); row.addView(t); }
+                else {
+                    // the home's logo, the score, the away's logo (logos, not names: a narrow corner), the minute
+                    ImageView hl = new ImageView(this), al = new ImageView(this); int L = (int) dp(30);
+                    TextView sc = text(19, Typeface.create("sans-serif-condensed", Typeface.BOLD), 0xFFFFFFFF); sc.setText(o.optString("s")); sc.setPadding((int) dp(8), 0, (int) dp(8), 0);
+                    TextView mi = text(13, Typeface.DEFAULT_BOLD, 0xFFFF7B7B); mi.setText(o.optString("t")); mi.setPadding((int) dp(8), 0, 0, 0);
+                    row.addView(hl, new LinearLayout.LayoutParams(L, L)); row.addView(sc); row.addView(al, new LinearLayout.LayoutParams(L, L)); row.addView(mi);
+                    logoInto(hl, o.optString("hl"), o.optString("h")); logoInto(al, o.optString("al"), o.optString("a"));
+                }
+                TextView x = text(14, Typeface.DEFAULT_BOLD, 0x99FFFFFF); x.setText("✕"); x.setPadding((int) dp(10), 0, (int) dp(2), 0);
+                x.setOnClickListener(v -> { scoresOff = true; scoresFill(); flash("⚽ النتائج انخفت · ☰ ← «النتائج في الزاوية» ترجعها"); });
+                row.addView(x);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.topMargin = (int) dp(6);
-                sbox.addView(t, lp);
+                sbox.addView(row, lp);
             }
         } catch (Throwable ignored) { }
         sbox.setVisibility(busy || sbox.getChildCount() == 0 ? View.GONE : View.VISIBLE);
+    }
+    private void logoInto(ImageView v, String u, String name) {
+        v.setContentDescription(name);
+        if (u == null || u.isEmpty()) return;
+        Bitmap c0 = LOGOS.get(u); if (c0 != null) { v.setImageBitmap(c0); return; }
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(u).openConnection();
+                con.setConnectTimeout(6000); con.setReadTimeout(8000);
+                Bitmap bm = small(con.getInputStream(), 96);
+                if (bm != null) { LOGOS.put(u, bm); runOnUiThread(() -> v.setImageBitmap(bm)); }
+            } catch (Exception ignored) { }
+        }, "slogo").start();
     }
     // ---- ⚽ a goal in a 🔔 match: a card with «حوّل للقناة» ready for OK; untouched, it goes after 6 s
     private LinearLayout gbox; private TextView gtxt;
@@ -1007,6 +1035,7 @@ public class PlayerActivity extends Activity {
             String myNum = chNumOf(ch);
             menuRow("num", myNum.isEmpty() ? "🔢  اختصار لهذه القناة  ·  رقم من ٣ خانات" : "🔢  اختصار هذه القناة: " + myNum + "  ·  غيّره");
             if (!myNum.isEmpty()) menuRow("numdel", "🗑  احذف الاختصار " + myNum);
+            if (!"[]".equals(SCORES)) menuRow("sc", scoresOff ? "⚽  النتائج في الزاوية: أظهرها" : "⚽  النتائج في الزاوية: أخفها");
             menuRow("ext", "📺  افتح في مشغّل آخر");
         } else if (menuLv == 1) {
             menuHead.setText("⚽  المباريات الآن");
@@ -1131,6 +1160,7 @@ public class PlayerActivity extends Activity {
             }
             case "ext": menuShow(false); openOtherPlayer(); return;
             case "num": menuShow(false); numOpen(ch); return;
+            case "sc": scoresOff = !scoresOff; menuShow(false); scoresFill(); return;
             case "numdel": { String c0 = chNumOf(ch); if (!c0.isEmpty()) { chNumDel(this, c0); flash("🗑 انحذف الاختصار " + c0); } menuShow(false); return; }
         }
     }

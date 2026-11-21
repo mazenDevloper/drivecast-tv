@@ -3237,7 +3237,7 @@ async function dayFix(d, plus) {
   const used = new Set();
   const out = (d && d.matches || []).filter(m => {
     const x = all.find(x => both(m, x)) || all.find(x => mSame(m, x));
-    if (x) { used.add(x.id); m.timestamp = x.timestamp; m.omanTime = new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
+    if (x) { used.add(x.id); m.id365 = x.id; m.timestamp = x.timestamp; m.omanTime = new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
       m.status = x.status; if (x.score.home != null) m.score = { ...x.score }; m.elapsed = x.elapsed; m.s365 = 1; }
     return m.timestamp >= day0 && m.timestamp < day0 + 86400;
   });
@@ -3887,16 +3887,29 @@ function rOffer(t, logo, f, goal) {
 }
 const rPush = (title, body) => fetch('https://studio.c-p.workers.dev/push/notify', { method: 'POST', body: JSON.stringify({ title, body: body || '' }) }).catch(() => {});
 let RSTATE = {};
+// ⚽ your 🔔 matches and your teams', live: each one's own 365Scores page every 20 s (as quick as DriveCast's goal
+// notifications) — the minute and the score in the player's corner, and the goal card the moment it lands
+async function g365(id) {
+  const j = await getJ(`https://webws.365scores.com/web/game/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&gameId=${String(id).replace(/^365/, '')}&_=${Date.now() / 20e3 | 0}`).catch(() => null);
+  const g = j && j.game; if (!g) return null;
+  return { status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null, st: g.shortStatusText || g.statusText || '',
+    score: { home: g.homeCompetitor?.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor?.score >= 0 ? g.awayCompetitor.score : null } };
+}
+let RWW = { at: 0, d: null };
 async function remindLoop() {
   const rem = REMIND();
   const mineOf = m => (MLIST || []).some(x => x.mine && mSame(x, m));
   if (!rem.length && !(TV.playerScores && (MLIST || []).some(x => x.mine))) { if (TV.playerScores) TV.playerScores('[]'); return; }
-  const d = await winwinDay(0).catch(() => null); if (!d || !d.matches) return;
-  // ⚽ the player's bottom-left corner: the live 🔔 matches (and your teams'), with the minute
-  if (TV.playerScores) try { TV.playerScores(JSON.stringify(d.matches.filter(m => m.status === 'live' && (rem.includes(mKey(m)) || mineOf(m))).slice(0, 3)
-    .map(m => `⚽ ${m.home?.name || ''} ${m.score?.home ?? 0} - ${m.score?.away ?? 0} ${m.away?.name || ''}${m.elapsed != null ? '  ·  ' + m.elapsed + '′' : ''}`))); } catch (e) {}
+  // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
+  if (!(MLIST || []).length && Date.now() - RWW.at > 60e3) { RWW = { at: Date.now(), d: await winwinDay(0).catch(() => null) }; }
+  const list = (MLIST || []).length ? MLIST : (RWW.d?.matches || []);
+  const watch = list.filter(m => (rem.includes(mKey(m)) || mineOf(m)) && (m.status === 'live' || (m.status === 'upcoming' && m.timestamp - Date.now() / 1000 < 15 * 60) || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600)));
+  await Promise.all(watch.filter(m => m.id365 && m.status !== 'finished').map(async m => { const x = await g365(m.id365); if (x) Object.assign(m, { status: x.status, elapsed: x.elapsed, score: x.score, st365: x.st }); }));
+  if (TV.playerScores) try { TV.playerScores(JSON.stringify(watch.filter(m => m.status === 'live').slice(0, 3).map(m => ({
+    hl: m.home?.logo || '', al: m.away?.logo || '', h: m.home?.name || '', a: m.away?.name || '', s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`,
+    t: m.st365 && !/^\d/.test(m.st365) ? m.st365 : m.elapsed != null ? m.elapsed + '′' : '' })))); } catch (e) {}
   const now = {};
-  for (const m of d.matches) {
+  for (const m of watch) {
     const k = mKey(m); if (!rem.includes(k)) continue;
     const g = (m.score?.home ?? 0) + (m.score?.away ?? 0), p = RSTATE[k]; now[k] = { st: m.status, g };
     const title = `${m.home?.name || ''} ${m.status === 'upcoming' ? '×' : (m.score?.home ?? 0) + ' - ' + (m.score?.away ?? 0)} ${m.away?.name || ''}`;
@@ -3908,7 +3921,7 @@ async function remindLoop() {
   }
   RSTATE = { ...RSTATE, ...now };
 }
-setInterval(() => remindLoop(), 60e3);
+setInterval(() => remindLoop(), 20e3);
 window.remoteCall = q => {
   let a = {}; try { a = JSON.parse(q || '{}'); } catch (e) {}
   const out = o => JSON.stringify(o);
