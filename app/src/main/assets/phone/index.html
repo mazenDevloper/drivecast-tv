@@ -484,7 +484,7 @@ document.addEventListener('click', e => {
 // 🏟️ the TV's look, edited from here: the mode, the glass clock's place and size, which shelves show
 const LOOK = [['mode', 'الوضع', [['couch', '🏟️ ساعة زجاج خلف المسجد'], ['sport', '⚽ الرياضة'], ['series', '📺 المسلسلات']]],
   ['cclkx', 'مكان الساعة', [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']]], ['cclks', 'حجم الساعة', [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']]],
-  ['c-mt', 'مباريات اليوم', [['on', 'تظهر'], ['off', 'مخفية']]], ['c-vod', 'الأفلام', [['on', 'تظهر'], ['off', 'مخفية']]],
+  ['c-mt', 'مباريات اليوم', [['on', 'تظهر'], ['off', 'مخفية']]], ['c-vod', 'الأفلام', [['off', 'مخفية'], ['on', 'تظهر']]],
   ['h-prayer', 'الصلاة القادمة', [['on', 'تظهر'], ['off', 'مخفية']]], ['h-live', 'القنوات المباشرة', [['on', 'تظهر'], ['off', 'مخفية']]], ['h-apps', 'التطبيقات', [['on', 'تظهر'], ['off', 'مخفية']]]];
 async function lookLoad() {
   let cur = {}; try { cur = (await rc({ f: 'look' })).v || {}; } catch (e) {}
