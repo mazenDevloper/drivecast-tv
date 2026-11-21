@@ -155,8 +155,14 @@ public class Update extends BroadcastReceiver {
                 String p = f.getAbsolutePath().replace("'", "");
                 try {
                     // setsid: the install runs in its own session, so closing this shell (or the app being replaced) can't stop it
+                    // after the install the new build is not ready at once (the screen stayed black): start it again every 2 s until
+                    // its process is up (≤ 30 s), then the HOME screen as a last resort; what am says goes to the log
+                    String pkg = c.getPackageName(), home = pkg + "/app.drivecast.tv.HomeActivity";
                     String job = "sleep 1; pm install -r -d /data/local/tmp/dctv.apk > /data/local/tmp/dctv.log 2>&1; "
-                            + "am start -n " + c.getPackageName() + "/app.drivecast.tv.HomeActivity > /dev/null 2>&1 || am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1; rm -f /data/local/tmp/dctv.apk";
+                            + "for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do sleep 2; am start -n " + home + " >> /data/local/tmp/dctv.log 2>&1; "
+                            + "sleep 1; pidof " + pkg + " > /dev/null 2>&1 && break; done; "
+                            + "pidof " + pkg + " > /dev/null 2>&1 || am start -a android.intent.action.MAIN -c android.intent.category.HOME >> /data/local/tmp/dctv.log 2>&1; "
+                            + "rm -f /data/local/tmp/dctv.apk";
                     String out = SelfAdb.shell(c, "rm -f /data/local/tmp/dctv.log; cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
                             + "( (setsid sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) || (nohup sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) ) && echo started",
                             60000, 15000);

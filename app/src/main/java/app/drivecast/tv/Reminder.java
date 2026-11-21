@@ -43,7 +43,10 @@ public class Reminder extends BroadcastReceiver {
             Adhan.schedule(c);
             MessageServer.start(c);
             Access.keep(c);
-            if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction())) { Context ac = c.getApplicationContext(); final PendingResult pr = goAsync(); new Thread(() -> { try { Thread.sleep(3000); Access.rebind(ac); } catch (Throwable ignored) { } finally { pr.finish(); } }, "rebind").start(); }
+            if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction())) { Context ac = c.getApplicationContext(); final PendingResult pr = goAsync(); new Thread(() -> { try { Thread.sleep(3000); Access.rebind(ac); Thread.sleep(1500);
+                // ⬆️ just updated: the home comes back by itself (a black screen stayed after a background install)
+                if (HomeActivity.alive == null) ac.startActivity(new Intent(ac, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            } catch (Throwable ignored) { } finally { pr.finish(); } }, "rebind").start(); }
             if (Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { unstickBoot(c.getApplicationContext()); remoteUp(c.getApplicationContext()); }
             return;
         }
