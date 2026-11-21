@@ -4312,7 +4312,7 @@ function updCheck() {
   if (!TV.updCheck || TV === FAKE) return;
   TV.updCheck('__updOk');
 }
-window.__updOk = j => { UPD = j; const b = $('#updBadge'); if (b) { b.hidden = !(j && j.newer); b.textContent = j && j.newer ? `⬆️ تحديث ${AR(j.latest)} — اضغط للتثبيت` : ''; } if ($('#panel')?.classList.contains('on')) setsBody(); };
+window.__updOk = j => { UPD = j; if (UPDST === 'أتحقق…') UPDST = ''; const b = $('#updBadge'); if (b) { b.hidden = !(j && j.newer); b.textContent = j && j.newer ? `⬆️ تحديث ${AR(j.latest)} — اضغط للتثبيت` : ''; } if ($('#panel')?.classList.contains('on')) setsBody(); };
 window.__updGo = (st, pct) => {
   UPDST = st === 'down' ? `ينزل ${AR(pct)}٪` : st === 'install' ? 'يفتح شاشة التثبيت — اختر «تثبيت»' : st === 'allow' ? 'اسمح لـ DriveCast TV بتثبيت التطبيقات (في الشاشة اللي انفتحت)، وبعدها اضغط «حدّث الآن» مرة ثانية' : st === 'error' ? 'تعذّر التنزيل — جرّب بعد شوي' : '';
   const b = $('#updBadge'); if (b && !b.hidden) b.textContent = '⬆️ ' + UPDST;
@@ -4327,7 +4327,7 @@ setTimeout(() => { const f = TV.updFail && TV.updFail(); if (f) UPDST = f === 'k
 function setAct(a) {
   if (/^km/.test(a)) return keyAct(a);
   if (a === 'upd-check') { UPDST = 'أتحقق…'; updCheck(); setsBody(); return; }
-  if (a === 'upd-go') { updGo(); return; }
+  if (a === 'upd-go') { if (TV.updAuto) { settings(false); return updAuto999(); } updGo(); return; }   // ⬆️ the same background install as 999
   if (/^sim-/.test(a)) { simAct(a).then(() => { if ($('#panel').classList.contains('on')) { const all = [...document.querySelectorAll('#sbody .f')], at = all.indexOf(document.activeElement); setsBody(); (document.querySelectorAll('#sbody .f')[at] || $('#sbody .f'))?.focus(); } }); return; }
   if (/^(adhan|iqama|stop)$/.test(a)) return TV.tryAdhan && TV.tryAdhan(a);
   if (a === 'reload') { listsAt = 0; return loadLists(); }

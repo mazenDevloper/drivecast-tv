@@ -127,6 +127,18 @@ public class Update extends BroadcastReceiver {
     }
 
     static void auto(Context c) { auto(c, false); }
+    /** after a background install: did it take? pm's own words go to «آخر مشكلة» when it did not */
+    static void afterStart(Context c) {
+        android.content.SharedPreferences sp = c.getSharedPreferences("upd", Context.MODE_PRIVATE);
+        long at = sp.getLong("pending", 0), from = sp.getLong("from", 0); if (at == 0) return;
+        sp.edit().remove("pending").apply();
+        if (have(c) > from) return;   // ✅ it is the new build
+        new Thread(() -> {
+            String log = "";
+            try { log = SelfAdb.shell(c, "cat /data/local/tmp/dctv.log 2>&1", 3000, 4000).trim(); } catch (Exception e) { log = String.valueOf(e.getMessage()); }
+            Crash.note(c, "update (background) did not install: " + (log.isEmpty() ? "no answer from pm" : log));
+        }, "upd-after").start();
+    }
     /** quiet: the debugging shell only (999) — never Android's installer screen over what is playing */
     static void auto(Context c, boolean quiet) {
         if (running) return;
@@ -142,11 +154,16 @@ public class Update extends BroadcastReceiver {
                 // 1) the TV's own debugging shell: installs with no screen at all, then brings the home screen back
                 String p = f.getAbsolutePath().replace("'", "");
                 try {
-                    String out = SelfAdb.shell(c, "cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
-                            + "(nohup sh -c 'sleep 1; pm install -r /data/local/tmp/dctv.apk > /data/local/tmp/dctv.log 2>&1; "
-                            + "am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1; rm -f /data/local/tmp/dctv.apk' > /dev/null 2>&1 &); echo started",
+                    // setsid: the install runs in its own session, so closing this shell (or the app being replaced) can't stop it
+                    String job = "sleep 1; pm install -r -d /data/local/tmp/dctv.apk > /data/local/tmp/dctv.log 2>&1; "
+                            + "am start -n " + c.getPackageName() + "/app.drivecast.tv.HomeActivity > /dev/null 2>&1 || am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1; rm -f /data/local/tmp/dctv.apk";
+                    String out = SelfAdb.shell(c, "rm -f /data/local/tmp/dctv.log; cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
+                            + "( (setsid sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) || (nohup sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) ) && echo started",
                             60000, 15000);
-                    if (out.contains("started")) { stage = "restart"; return; }
+                    if (out.contains("started")) {
+                        c.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("pending", System.currentTimeMillis()).putLong("from", have(c)).apply();
+                        stage = "restart"; return;
+                    }
                     note = out.trim();
                 } catch (Exception e) { Crash.note(c, "update adb: " + e.getMessage()); }
                 if (quiet && Build.VERSION.SDK_INT < 31) { stage = "noadb"; if (note.isEmpty()) note = SelfAdb.last; return; }

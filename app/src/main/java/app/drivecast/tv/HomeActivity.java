@@ -52,6 +52,7 @@ public class HomeActivity extends Activity {
         Iptv.init(this);
         Crash.install(this);
         alive = this;
+        Update.afterStart(getApplicationContext());
         Reminder.schedule(this);
         Adhan.schedule(this);
         MessageServer.start(this);
