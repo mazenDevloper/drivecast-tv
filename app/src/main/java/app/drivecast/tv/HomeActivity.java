@@ -245,7 +245,22 @@ public class HomeActivity extends Activity {
     }
 
     /** a line of the page's script (the phone remote's Quran) */
-    private final Runnable watch = new Runnable() { public void run() { if (hasWindowFocus()) Reminder.remoteWatch(HomeActivity.this); h2.postDelayed(this, 60_000); } };
+    private final Runnable watch = new Runnable() { public void run() { if (hasWindowFocus()) { Reminder.remoteWatch(HomeActivity.this); pageCheck(); } h2.postDelayed(this, 60_000); } };
+    /** ⬛ a black screen: the page's renderer was stopped for memory and the new one never came up (the page left blank,
+     *  no second callback). Every minute while in front: no page code → the page made again */
+    private int blank;
+    private void pageCheck() {
+        if (web == null) { makeWeb(); return; }
+        try {
+            web.evaluateJavascript("typeof loadMatches", v -> {
+                if (v != null && v.contains("function")) { blank = 0; return; }
+                if (++blank < 2) return;   // twice in a row (a page still starting is not blank)
+                blank = 0; Crash.note(this, "page blank (" + v + ") — made again");
+                try { android.view.ViewGroup p = (android.view.ViewGroup) web.getParent(); if (p != null) p.removeView(web); web.destroy(); } catch (Throwable ignored) { }
+                web = null; makeWeb();
+            });
+        } catch (Throwable t) { }
+    }
     private final android.os.Handler h2 = new android.os.Handler(android.os.Looper.getMainLooper());
     @Override public void onWindowFocusChanged(boolean f) { super.onWindowFocusChanged(f); h2.removeCallbacks(watch); if (f) h2.postDelayed(watch, 20_000); }
     void run(String js) { if (web != null) web.evaluateJavascript(js, null); }
