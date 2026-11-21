@@ -4270,7 +4270,7 @@ async function chByName(re, label) {
 }
 const SHORTS = [
   { c: '0', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
-  { c: '00', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
+  { c: '00', l: '⚙️ إعدادات DriveCast', go: () => { SEC = 0; settings(true); } },   // always from the first section
   { c: '000', l: '🛠 إعدادات الأندرويد (البوكس)', go: () => TV.settings() },
   { c: '999', l: '⬆️ حدّث التطبيق لآخر إصدار — بدون موافقة ولا زر', go: () => updAuto999() },
   { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
@@ -4811,6 +4811,28 @@ function move(dir) {
   const sel = () => pg ? [...document.querySelectorAll('.tabs .f'), ...(pane ? [...document.querySelectorAll('#iRail .f'), ...pane.querySelectorAll('.f')] : pg.querySelectorAll('.f'))] : [...scope.querySelectorAll('.f')];
   const all = focusables(fkey, () => sel().filter(visible));
   if (!all.includes(cur)) return all[0]?.focus();
+  // ⚙️ the settings: ▲▼ stay in their own column (the sections, or the section's choices), ◀ from a section goes into its
+  // choices, ▶ from the choices back to that section (a ▼ in the choices jumped back to the sections)
+  if (scope.id === 'panel' && cur.closest) {
+    const inNav = cur.closest('#snav'), inBody = cur.closest('#sbody'), vis = el => visible(el) && !el.disabled;
+    if (inNav || inBody) {
+      const col = [...(inNav ? $('#snav') : $('#sbody')).querySelectorAll('.f')].filter(vis);
+      const go = el => { if (!el) return; el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); };
+      if (inNav && dir === 'left') return go([...$('#sbody').querySelectorAll('.f')].find(vis));
+      if (inBody && dir === 'right') { const r = cur.getBoundingClientRect(); const row = col.filter(el => { const q = el.getBoundingClientRect(); return el !== cur && q.left > r.right - 2 && Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 0.4 * Math.min(q.height, r.height); });
+        if (row.length) return go(row.reduce((a, b) => b.getBoundingClientRect().left < a.getBoundingClientRect().left ? b : a)); return go($(`#snav [data-sec="${SEC}"]`)); }
+      if (inBody && dir === 'left') { const r = cur.getBoundingClientRect(); const row = col.filter(el => { const q = el.getBoundingClientRect(); return el !== cur && q.right < r.left + 2 && Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 0.4 * Math.min(q.height, r.height); });
+        if (row.length) return go(row.reduce((a, b) => b.getBoundingClientRect().right > a.getBoundingClientRect().right ? b : a)); return; }
+      if (dir === 'up' || dir === 'down') {
+        const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2;
+        const c = col.filter(el => { const q = el.getBoundingClientRect(); return dir === 'down' ? q.top >= r.bottom - 4 : q.bottom <= r.top + 4; });
+        if (!c.length) return;
+        const gap = el => { const q = el.getBoundingClientRect(); return dir === 'down' ? q.top - r.bottom : r.top - q.bottom; };
+        const g0 = Math.min(...c.map(gap)), lvl = c.filter(el => gap(el) - g0 <= 20);
+        return go(lvl.reduce((a, b) => { const qa = a.getBoundingClientRect(), qb = b.getBoundingClientRect(); return Math.abs(qb.left + qb.width / 2 - cx) < Math.abs(qa.left + qa.width / 2 - cx) ? b : a; }));
+      }
+    }
+  }
   const inRail = cur.closest && cur.closest('#iRail'), inPane = !inRail && cur.closest && cur.closest('#iPanes');
   if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) { const c = LITE && $('#s-ilist [data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'center' }); return; } return iRailFocus(); }
   if (inRail && scope === document) {   // the side menu: ▲▼ go through it (the list beside shows at once), ◀ goes into the list

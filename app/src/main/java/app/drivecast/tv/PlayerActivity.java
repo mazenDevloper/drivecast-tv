@@ -1005,7 +1005,8 @@ public class PlayerActivity extends Activity {
             menuRow("up4k", "🔷  تحسين الصورة: " + (up4k ? "يعمل" : "مطفأ"));
             menuRow("clock", "🕐  الساعة: " + (hang != null && hang.getVisibility() == View.VISIBLE ? "ظاهرة" : "مخفية"));
             String myNum = chNumOf(ch);
-            menuRow("num", "🔢  اختصار لهذه القناة" + (myNum.isEmpty() ? "  ·  رقم من ٣ خانات" : ":  " + myNum));
+            menuRow("num", myNum.isEmpty() ? "🔢  اختصار لهذه القناة  ·  رقم من ٣ خانات" : "🔢  اختصار هذه القناة: " + myNum + "  ·  غيّره");
+            if (!myNum.isEmpty()) menuRow("numdel", "🗑  احذف الاختصار " + myNum);
             menuRow("ext", "📺  افتح في مشغّل آخر");
         } else if (menuLv == 1) {
             menuHead.setText("⚽  المباريات الآن");
@@ -1129,7 +1130,8 @@ public class PlayerActivity extends Activity {
                 menuFill(); return;
             }
             case "ext": menuShow(false); openOtherPlayer(); return;
-            case "num": menuShow(false); numFor = ch; numBuf = ""; setNote("🔢 اكتب ٣ أرقام لهذه القناة (100 – 998) · ◀ رجوع يلغي"); h.removeCallbacks(clearNote); return;
+            case "num": menuShow(false); numOpen(ch); return;
+            case "numdel": { String c0 = chNumOf(ch); if (!c0.isEmpty()) { chNumDel(this, c0); flash("🗑 انحذف الاختصار " + c0); } menuShow(false); return; }
         }
     }
     /** a name's first letter, for ◀ (the «ال» of Arabic names and «Al »/«The » skipped) */
@@ -1602,6 +1604,55 @@ public class PlayerActivity extends Activity {
     // the channel's number on the remote's digits, like a receiver (1.5 s after the last digit)
     // ---- 🔢 a channel's own 3-digit shortcut (☰ → «اختصار لهذه القناة»): typed anywhere, in the player or on the home page
     private int numFor = -1; private String numBuf = "";
+    // the box: three big boxes in the middle of the screen; digits type straight in, ▲▼ change the digit under the cursor and
+    // ◀ ▶ move it (for a remote with no digits), OK saves, back cancels
+    private LinearLayout numBox; private TextView numDigits, numHint; private int numPos = 0; private char[] numD = { '1', '0', '0' };
+    private void numOpen(int ch) {
+        numFor = ch; String old = chNumOf(ch);
+        numD = (old.length() == 3 ? old : "100").toCharArray(); numPos = 0; numBuf = "";
+        if (numBox == null) {
+            numBox = new LinearLayout(this); numBox.setOrientation(LinearLayout.VERTICAL); numBox.setGravity(Gravity.CENTER_HORIZONTAL);
+            GradientDrawable b = new GradientDrawable(); b.setColor(0xF0101216); b.setCornerRadius(dp(28)); b.setStroke((int) dp(2), 0x40FFFFFF); numBox.setBackground(b);
+            numBox.setPadding((int) dp(36), (int) dp(24), (int) dp(36), (int) dp(24));
+            TextView t = text(22, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); t.setText("🔢 اختصار لهذه القناة"); t.setGravity(Gravity.CENTER);
+            numDigits = text(64, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); numDigits.setGravity(Gravity.CENTER); numDigits.setLetterSpacing(0.3f);
+            numDigits.setTextDirection(View.TEXT_DIRECTION_LTR);
+            numHint = text(17, Typeface.DEFAULT, 0xCCFFFFFF); numHint.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2); lp.topMargin = (int) dp(10);
+            numBox.addView(t); numBox.addView(numDigits, lp); numBox.addView(numHint, lp);
+            ((FrameLayout) bar.getParent()).addView(numBox, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+        }
+        numDraw(null); numBox.setVisibility(View.VISIBLE); numBox.bringToFront();
+    }
+    private void numDraw(String warn) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder();
+        for (int k = 0; k < 3; k++) { int a = sb.length(); sb.append(numD[k]);
+            if (k == numPos) { sb.setSpan(new android.text.style.UnderlineSpan(), a, a + 1, 0); sb.setSpan(new android.text.style.ForegroundColorSpan(0xFF34C759), a, a + 1, 0); } }
+        numDigits.setText(sb);
+        numHint.setText(warn != null ? warn : label(numFor) + "\nاكتب الأرقام، أو ▲▼ للرقم و ◀ ▶ للخانة · OK احفظ · رجوع إلغاء");
+    }
+    private void numClose() { numFor = -1; if (numBox != null) numBox.setVisibility(View.GONE); }
+    private boolean numKey(int code) {
+        if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) { numClose(); return true; }
+        if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) { numD[numPos] = (char) ('0' + code - KeyEvent.KEYCODE_0); if (numPos < 2) { numPos++; numDraw(null); return true; } return numSave(); }
+        if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) { int d = numD[numPos] - '0'; d = (d + (code == KeyEvent.KEYCODE_DPAD_UP ? 1 : 9)) % 10; numD[numPos] = (char) ('0' + d); numDraw(null); return true; }
+        // the digits read left to right: ◀ the one before, ▶ the next
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT) { numPos = Math.max(0, numPos - 1); numDraw(null); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_RIGHT) { numPos = Math.min(2, numPos + 1); numDraw(null); return true; }
+        if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER) return numSave();
+        return true;
+    }
+    private boolean numSave() {
+        String c = new String(numD);
+        if (c.startsWith("0") || c.equals("999")) { numPos = 0; numDraw("⚠️ " + c + " محجوز — اختر من 100 إلى 998"); return true; }
+        org.json.JSONObject o = chNumGet(this, c);
+        if (o != null && !urls[numFor].equals(o.optString("url"))) { numDraw("⚠️ " + c + " لـ «" + o.optString("name") + "» — اضغط OK مرة ثانية تبدّله"); if (!c.equals(numBuf)) { numBuf = c; return true; } }
+        chNumSet(this, c, nOf(numFor), urls[numFor]); flash("🔢 " + c + " ← " + label(numFor) + "  ·  اكتبه في أي مكان وتنفتح"); numClose();
+        return true;
+    }
+    static void chNumDel(android.content.Context c, String code) {
+        try { org.json.JSONObject j = new org.json.JSONObject(Access.set(c).getString("chnum", "{}")); j.remove(code); Access.set(c).edit().putString("chnum", j.toString()).apply(); } catch (Exception ignored) { }
+    }
     static void chNumSet(android.content.Context c, String code, String name, String url) {
         try {
             org.json.JSONObject j = new org.json.JSONObject(Access.set(c).getString("chnum", "{}"));
@@ -1683,6 +1734,7 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onKeyDown(int code, KeyEvent e) { try { boolean w = zzWarned; sleepArm(); if (w && code != KeyEvent.KEYCODE_BACK) { showBar(3000); return true; } return key(code, e); } catch (Throwable t) { Crash.note(this, "player key: " + t); return true; } }
     private boolean key(int code, KeyEvent e) {
+        if (numFor >= 0) return numKey(code);   // 🔢 the shortcut box takes every key while it is open
         if (gbox != null && gbox.getVisibility() == View.VISIBLE && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) { h.removeCallbacks(goalHide); goalHide.run(); return true; }
         if (code == KeyEvent.KEYCODE_SEARCH) { HomeActivity.voice(this, 78); return true; }   // 🎙️
         if (listOn && listKey(code, e)) return true;
@@ -1690,18 +1742,6 @@ public class PlayerActivity extends Activity {
         if (menuOn && menuKey(code, e)) return true;
         if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_CHANNEL_UP) { i = (i + 1) % urls.length; play(); return true; }
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
-        if (numFor >= 0) {   // 🔢 setting this channel's own 3-digit shortcut
-            if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) { numFor = -1; setNote(null); return true; }
-            if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
-                numBuf += (code - KeyEvent.KEYCODE_0); setNote("🔢 " + numBuf + "___".substring(numBuf.length()));
-                if (numBuf.length() == 3) {
-                    if (numBuf.startsWith("0") || numBuf.equals("999")) { setNote("🔢 " + numBuf + " محجوز — اختر من 100 إلى 998"); numBuf = ""; return true; }
-                    chNumSet(this, numBuf, nOf(numFor), urls[numFor]); flash("🔢 " + numBuf + " ← " + label(numFor) + "  ·  اكتبه في أي مكان وتنفتح"); numFor = -1;
-                    h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);
-                }
-                return true;
-            }
-        }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
             num.setText(digits + "_"); setNote("🔢 " + digits + "_"); showBar(2500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);
