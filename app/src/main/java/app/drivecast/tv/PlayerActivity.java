@@ -97,7 +97,7 @@ public class PlayerActivity extends Activity {
                     // the home's logo, the score, the away's logo (logos, not names: a narrow corner), the minute
                     ImageView hl = new ImageView(this), al = new ImageView(this); int L = (int) dp(30);
                     TextView sc = text(19, Typeface.create("sans-serif-condensed", Typeface.BOLD), 0xFFFFFFFF); sc.setText(o.optString("s")); sc.setPadding((int) dp(8), 0, (int) dp(8), 0);
-                    TextView mi = text(13, Typeface.DEFAULT_BOLD, 0xFFFF7B7B); mi.setText(o.optString("t")); mi.setPadding((int) dp(8), 0, 0, 0);
+                    TextView mi = text(13, Typeface.DEFAULT_BOLD, 0xFFFF7B7B); mi.setText(minuteOf(o)); mi.setPadding((int) dp(8), 0, 0, 0);
                     row.addView(hl, new LinearLayout.LayoutParams(L, L)); row.addView(sc); row.addView(al, new LinearLayout.LayoutParams(L, L)); row.addView(mi);
                     logoInto(hl, o.optString("hl"), o.optString("h")); logoInto(al, o.optString("al"), o.optString("a"));
                 }
@@ -110,6 +110,23 @@ public class PlayerActivity extends Activity {
         } catch (Throwable ignored) { }
         sbox.setVisibility(busy || sbox.getChildCount() == 0 ? View.GONE : View.VISIBLE);
     }
+    /** ⏱ the minute, moving between two answers: 365's minute (e) + the minutes since it was read (at), never past the half's
+     *  end (45 / 90 / 120); a word instead of a minute («استراحة») as it came */
+    static String minuteOf(org.json.JSONObject o) {
+        int e = o.optInt("e", 0); long at = o.optLong("at", 0);
+        if (e <= 0 || at <= 0) return o.optString("t");
+        int cap = e <= 45 ? 45 : e <= 90 ? 90 : 120;
+        long since = Math.max(0, (System.currentTimeMillis() - at) / 60_000L);
+        return Math.max(e, (int) Math.min(cap, e + since)) + "′";
+    }
+    // ⚽ with a channel in front the home page sleeps (its timers wait while it is hidden), so the corner froze on the minute and
+    // the score it had when the channel opened: the player asks the page for fresh scores itself every 20 s, and moves the minute
+    private final Handler sk = new Handler(Looper.getMainLooper());
+    private final Runnable scoresKick = new Runnable() { public void run() {
+        try { HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.evaluateJavascript("window.remindLoop && remindLoop()", null); } catch (Throwable ignored) { }
+        scoresFill();
+        sk.postDelayed(this, 20_000);
+    } };
     private void logoInto(ImageView v, String u, String name) {
         v.setContentDescription(name);
         if (u == null || u.isEmpty()) return;
@@ -150,6 +167,7 @@ public class PlayerActivity extends Activity {
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT); sp.setMargins((int) dp(36), 0, 0, (int) dp(30));
         root.addView(sbox, sp); sbox.setVisibility(View.GONE);
         scoresFill();
+        sk.removeCallbacks(scoresKick); sk.postDelayed(scoresKick, 1500);
     }
     static void offer(String text) {
         PlayerActivity p = live; if (p == null) return;
@@ -1899,7 +1917,7 @@ public class PlayerActivity extends Activity {
         super.onStop();
         tally();
         if (live == this) live = null;
-        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null);
+        net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null); sk.removeCallbacksAndMessages(null);
         Scan.paused = false;
         try { if (yt != null) { yt.loadUrl("about:blank"); yt.destroy(); yt = null; } } catch (Throwable ignored) { }
         try { if (player != null) { player.release(); } } catch (Throwable ignored) { }

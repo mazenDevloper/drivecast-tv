@@ -890,7 +890,7 @@ function couchRows() {
         <div>${m.home?.logo ? `<img src="${esc(m.home.logo)}" alt="" loading="lazy">` : ''}${esc(m.home?.name || '')}</div>
         <span class="sc">${live || m.status === 'finished' ? `${m.score?.home ?? 0}-${m.score?.away ?? 0}` : hm24(m.timestamp)}</span>
         <div>${m.away?.logo ? `<img src="${esc(m.away.logo)}" alt="" loading="lazy">` : ''}${esc(m.away?.name || '')}</div></div>
-        <div class="ch">${live ? '🔴 ' + (m.elapsed != null ? m.elapsed + '′ · ' : '') : ''}${go ? '▶ ' + esc(chEn(go.name)) : ''}</div></button>`; }).join(''); }
+        <div class="ch">${live ? '🔴 ' + (mMin(m) != null ? mMin(m) + '′ · ' : '') : ''}${go ? '▶ ' + esc(chEn(go.name)) : ''}</div></button>`; }).join(''); }
   if (vd) { vd.style.display = S('c-vod', 'off') === 'off' || !VODL.length ? 'none' : '';
     $('#s-vod').innerHTML = VODL.slice(0, 60).map((c, k) => `<button class="vcard f" data-vod="${k}"><div class="po" ${c.logo ? `style="background-image:url('${esc(c.logo)}')"` : ''}>${c.logo ? '' : '🎬'}</div><b>${esc(c.name)}</b><small>${esc(c.group || '')}</small></button>`).join(''); }
 }
@@ -2994,7 +2994,7 @@ async function loadNext(tries = 0) {
         .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))[0];
       if (g) m = { status: g.statusGroup === 3 ? 'live' : 'upcoming', timestamp: Date.parse(g.startTime) / 1000, league: { name: g.competitionDisplayName || '' },
         home: { name: g.homeCompetitor.name, logo: LOGO(g.homeCompetitor.id) }, away: { name: g.awayCompetitor.name, logo: LOGO(g.awayCompetitor.id) },
-        score: { home: g.homeCompetitor.score, away: g.awayCompetitor.score }, elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null };
+        score: { home: g.homeCompetitor.score, away: g.awayCompetitor.score }, elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null, elAt: Date.now() };
     }
     if (!m) m = arr(now?.matches).find(x => x.favorite && x.status === 'upcoming');
   } catch (e) { m = null; }
@@ -3044,7 +3044,7 @@ function nextUi() {
   const today = NOW(), tom = NOW(); tom.setDate(tom.getDate() + 1);
   const day = d.toDateString() === today.toDateString() ? 'اليوم' : d.toDateString() === tom.toDateString() ? 'غداً' : d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
   const mins = Math.round((d - today) / 60000);
-  const mid = live ? `${AR(m.score?.home ?? 0)} - ${AR(m.score?.away ?? 0)}<i>● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}</i>`
+  const mid = live ? `${AR(m.score?.home ?? 0)} - ${AR(m.score?.away ?? 0)}<i>● مباشر ${mMin(m) != null ? AR(mMin(m)) + '′' : ''}</i>`
     : `${AR(fmtD(d))}<i>${day}${mins > 0 && mins < 600 ? ' · بعد ' + (mins < 60 ? AR(mins) + ' د' : AR(Math.floor(mins / 60)) + ' س') : ''}</i>`;
   const tm = t => `<div class="tm"><img src="${esc(t.logo)}" alt="">${esc(t.name)}</div>`;
   $('#miniM').innerHTML = `<img src="${esc(m.home?.logo)}" alt=""><b>${live ? AR(m.score?.home ?? 0) + ' - ' + AR(m.score?.away ?? 0) : AR(fmtD(d))}</b><img src="${esc(m.away?.logo)}" alt=""><div class="tx"><span>${esc(m.home?.name)} × ${esc(m.away?.name)} · ${live ? '● مباشر' : day}</span><span class="gold">📺 ${rule ? rule[1] : ''}</span></div>`;
@@ -3196,14 +3196,23 @@ async function winwinDay(plus) {
     out.push({ id: 'ww' + m.id, ww: 1, league: { id: '', name: (m.league?.name || '') + (m.leagueStage && !/الجولة|المنتظم/.test(m.leagueStage) ? ' · ' + m.leagueStage : ''), logo: m.league?.logo || '' },
       home: { name: m.team1.name, logo: (m.team1.logo || '').replace('fps_60x60', 'fps_200x200') }, away: { name: m.team2.name, logo: (m.team2.logo || '').replace('fps_60x60', 'fps_200x200') },
       timestamp: ts, omanTime: new Date(ts * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }),
-      status: st, elapsed: st === 'live' ? (m.minuteTotal ?? m.progress ?? null) : null, score: { home: st === 'upcoming' ? null : m.team1Score, away: st === 'upcoming' ? null : m.team2Score },
+      status: st, elapsed: st === 'live' ? (m.minuteTotal ?? m.progress ?? null) : null, elAt: Date.now(), score: { home: st === 'upcoming' ? null : m.team1Score, away: st === 'upcoming' ? null : m.team2Score },
       channels: Object.keys(chl), chl });
   }
   return { matches: out };
 }
 // a team's name, to tell the same team across sources («جمهورية التشيك» = «التشيك»)
 const tKey = n => String(n || '').toLowerCase().replace(/[ً-ْ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/جمهوريه|نادي|\bfc\b|\bcf\b/g, '').replace(/(^|\s)ال/g, '$1').replace(/[^a-z0-9؀-ۿ]+/g, '');
-const tSame = (a, b) => { a = tKey(a); b = tKey(b); return !!a && !!b && (a === b || (a.length > 3 && b.length > 3 && (a.includes(b) || b.includes(a)))); };
+// + the consonants only (no ا و ي ه): 365 and winwin spell some names apart — «فاينورد / فينورد», «أكسيلسيور / أكسلسيور» — and
+// such a match never took 365's id, so its minute and score stayed where the list first had them
+const tSkel = k => k.replace(/[اويهءئؤ]/g, '');
+const tSame = (a, b) => { a = tKey(a); b = tKey(b); if (!a || !b) return false; if (a === b || (a.length > 3 && b.length > 3 && (a.includes(b) || b.includes(a)))) return true;
+  const x = tSkel(a), y = tSkel(b); return x.length >= 4 && x === y; };
+// ⏱ the minute, moving: 365 gives a whole minute at the moment it was asked (elAt); between two asks it goes on by the clock
+// (never past the half's end: 45, 90, 120 — the next answer brings the stoppage time and the break)
+const ID365 = m => { const v = m && m.id365; return v == null ? '' : typeof v === 'object' ? String(v.id || '') : String(v); };
+const mMin = m => { if (!m || m.elapsed == null || m.elapsed === '') return null; const e = +m.elapsed; if (m.status !== 'live' || !m.elAt || !(e > 0)) return e;
+  const cap = e <= 45 ? 45 : e <= 90 ? 90 : 120; return Math.max(e, Math.min(cap, e + Math.floor((Date.now() - m.elAt) / 60e3))); };
 const mSame = (x, y) => Math.abs((x.timestamp || 0) - (y.timestamp || 0)) < 20 * 60 && (tSame(x.home?.name, y.home?.name) || tSame(x.away?.name, y.away?.name) || tSame(x.home?.name, y.away?.name));
 // ⏱ 365Scores' day (the source of DriveCast's own list): the status, score and minute of each match, kept for 40 s
 const S365 = {};
@@ -3213,16 +3222,31 @@ async function s365Day(plus) {
   const t = new Date(Date.now() + 4 * 3600e3 - 5 * 3600e3 + plus * 86400e3), dd = t.toISOString().slice(0, 10).split('-').reverse().join('/');
   const d = await getJ(`https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&sports=1&startDate=${dd}&endDate=${dd}&showOdds=false`);
   const v = arr(d?.games).filter(g => g && g.homeCompetitor && g.awayCompetitor).map(g => ({ id: '365' + g.id, timestamp: Date.parse(g.startTime) / 1000,
-    status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null,
+    status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null, elAt: Date.now(),
     score: { home: g.homeCompetitor.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor.score >= 0 ? g.awayCompetitor.score : null },
     home: { name: g.homeCompetitor.name, logo: L365(g.homeCompetitor.id) }, away: { name: g.awayCompetitor.name, logo: L365(g.awayCompetitor.id) },
     league: { id: String(g.competitionId || ''), name: g.competitionDisplayName || '' }, channels: [], src365: 1 }));
   if (v.length) S365[plus] = { at: Date.now(), v };
   return v.length ? v : (c && c.v) || [];
 }
+// 🔴 365's games on now (the live ones only, a sixth of the day's size), kept for 15 s: the phone's and the corner's minutes
+const S365L = { at: 0, v: null };
+async function s365Live() {
+  if (S365L.v && Date.now() - S365L.at < 15e3) return S365L.v;
+  const d = await getJ(`https://webws.365scores.com/web/games/current/?appTypeId=5&langId=27&timezoneName=Asia/Muscat&userCountryId=1&sports=1&onlyLiveGames=true&_=${Date.now() / 15e3 | 0}`);
+  if (!d || !Array.isArray(d.games)) return S365L.v;   // no answer: the last list (null the first time → the day's list)
+  const at = Date.now();
+  S365L.v = d.games.filter(g => g && g.homeCompetitor && g.awayCompetitor).map(g => ({ id: '365' + g.id, timestamp: Date.parse(g.startTime) / 1000,
+    status: g.statusGroup === 3 ? 'live' : g.statusGroup === 4 ? 'finished' : 'upcoming', elapsed: g.gameTime > 0 ? Math.floor(g.gameTime) : null, elAt: at,
+    st: g.shortStatusText || g.statusText || '',
+    score: { home: g.homeCompetitor.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor.score >= 0 ? g.awayCompetitor.score : null },
+    home: { name: g.homeCompetitor.name }, away: { name: g.awayCompetitor.name } }));
+  S365L.at = at;
+  return S365L.v;
+}
 function s365Fix(ms, live) {
   for (const m of ms) { const s = live.find(x => mSame(m, x)); if (!s) continue;
-    m.status = s.status; if (s.score.home != null) m.score = { home: s.score.home, away: s.score.away }; m.elapsed = s.elapsed; m.s365 = 1; }
+    m.status = s.status; if (s.score.home != null) m.score = { home: s.score.home, away: s.score.away }; m.elapsed = s.elapsed; m.elAt = s.elAt; m.s365 = 1; }
   return ms;
 }
 // 📅 the day as DriveCast has it (365Scores, Muscat time): each winwin match takes 365's own kick-off (a match winwin files
@@ -3238,7 +3262,7 @@ async function dayFix(d, plus) {
   const out = (d && d.matches || []).filter(m => {
     const x = all.find(x => both(m, x)) || all.find(x => mSame(m, x));
     if (x) { used.add(x.id); m.id365 = x.id; m.timestamp = x.timestamp; m.omanTime = new Date(x.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
-      m.status = x.status; if (x.score.home != null) m.score = { ...x.score }; m.elapsed = x.elapsed; m.s365 = 1; }
+      m.status = x.status; if (x.score.home != null) m.score = { ...x.score }; m.elapsed = x.elapsed; m.elAt = x.elAt; m.s365 = 1; }
     return m.timestamp >= day0 && m.timestamp < day0 + 86400;
   });
   // only the top flights (365's «الدوري الألماني الدرجة الثانية», «تحت 17», women's, third tiers… are not «big» though they name the country)
@@ -3296,7 +3320,7 @@ async function loadMatches() {
     const card = (m, i) => {
       const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
         const big = live || fin ? `${AR(sc.home ?? 0)} - ${AR(sc.away ?? 0)}` : (m.omanTime || '');
-        const sub = live ? `● مباشر ${m.elapsed != null ? AR(m.elapsed) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : MTAB === 'yday' ? 'أمس' : 'عُمان') + ' ' + (m.omanTime || '');
+        const sub = live ? `● مباشر ${mMin(m) != null ? AR(mMin(m)) + '′' : ''}` : fin ? 'انتهت' : (MTAB === 'tom' ? 'بكرة' : MTAB === 'yday' ? 'أمس' : 'عُمان') + ' ' + (m.omanTime || '');
         const go = matchRoute(m), lk = matchLinks(m), chs = mChannels(m).slice(0, 3);
         const tm = t => `<div class="tm"><img src="${esc(t?.logo || '')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(t?.name || '')}</span></div>`;
         return `<div class="mwrap"><button class="mcard f ${live ? 'live' : ''} ${fin ? 'fin' : ''} ${isMine(m) ? 'mine' : ''}" data-mi="${i}">
@@ -3834,22 +3858,28 @@ let MATCHPLAY = false;
 // and your teams' matches from DriveCast's Cloudflare worker (/now) — so the phone's scores and minutes move while it looks
 async function liveFix(ms, plus = 0) {
   if (!ms || !ms.length) return ms;
-  const [d, mine] = await Promise.all([s365Day(plus).catch(() => []), mFetch('mine').catch(() => null)]);
-  const mm = (mine && mine.matches) || [];
+  const [lv, mine] = await Promise.all([plus === 0 ? s365Live().catch(() => null) : null, mFetch('mine').catch(() => null)]);
+  const mm = (mine && mine.matches) || [], nowS = Date.now() / 1000;
+  const find = (l, m) => (ID365(m) && l.find(x => x.id === ID365(m))) || l.find(x => mSame(m, x));
+  // a match not in 365's live list that should be: live till now (ended?) or past its kick-off (started?) → the day's list for it
+  const need = !lv || ms.some(m => m.status !== 'finished' && !find(lv, m) && (m.status === 'live' || (m.timestamp && m.timestamp < nowS && nowS - m.timestamp < 4 * 3600)));
+  const d = need ? await s365Day(plus).catch(() => []) : [];
   for (const m of ms) {
-    const x = (m.id365 && d.find(x => x.id === m.id365)) || d.find(x => mSame(m, x)) || mm.find(x => mSame(m, x));
+    const x = (lv && find(lv, m)) || find(d, m) || mm.find(x => mSame(m, x));
     if (!x) continue;
-    if (x.status) m.status = x.status; if (x.score && x.score.home != null) m.score = { home: x.score.home, away: x.score.away }; m.elapsed = x.elapsed ?? m.elapsed;
+    if (x.id && String(x.id).startsWith('365') && !m.id365) m.id365 = x.id;
+    if (x.status) m.status = x.status; if (x.score && x.score.home != null) m.score = { home: x.score.home, away: x.score.away };
+    if (x.elapsed != null || x.status !== 'live') { m.elapsed = x.elapsed ?? m.elapsed; m.elAt = x.elAt || Date.now(); }
   }
   return ms;
 }
-const rmRow = (m, i) => ({ i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
+const rmRow = (m, i) => ({ i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: mMin(m) || '',
   t: m.timestamp ? hm24(m.timestamp) : '', s: (m.status === 'live' || m.status === 'finished') && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '',
   lg: m.league?.name || '', k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0, mine: m.mine ? 1 : 0,
   dy: m.timestamp ? new Date(m.timestamp * 1000).toLocaleDateString('ar', { weekday: 'long', timeZone: 'Asia/Muscat' }) : '' });
 window.remoteMatches = () => {
   if ((!MLIST || !MLIST.length) && Date.now() - (window.__rmAt || 0) > 60e3) { window.__rmAt = Date.now(); try { loadMatches(); } catch (e) {} }
-  if ((MLIST || []).length && Date.now() - (window.__rmFix || 0) > 25e3) { window.__rmFix = Date.now(); liveFix(MLIST).catch(() => {}); }   // the next ask carries the new scores
+  if ((MLIST || []).length && Date.now() - (window.__rmFix || 0) > 15e3) { window.__rmFix = Date.now(); liveFix(MLIST).catch(() => {}); }   // the next ask carries the new scores
   const ord = m => m.status === 'live' ? 0 : m.status === 'upcoming' ? 1 : 2;
   const out = (MLIST || []).map((m, i) => [m, i]).sort((x, y) => ord(x[0]) - ord(y[0]) || (ord(x[0]) === 2 ? y[0].timestamp - x[0].timestamp : 0)).slice(0, 50).map(([m, i]) => {
     let v = []; if (m.status !== 'finished') try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
@@ -3914,17 +3944,28 @@ async function g365(id) {
     score: { home: g.homeCompetitor?.score >= 0 ? g.homeCompetitor.score : null, away: g.awayCompetitor?.score >= 0 ? g.awayCompetitor.score : null } };
 }
 let RWW = { at: 0, d: null };
-async function remindLoop() {
+let RLBUSY = 0, RLAT = 0;
+async function remindLoop(force) {
+  if (RLBUSY && Date.now() - RLBUSY < 25e3) return;
+  if (!force && Date.now() - RLAT < 15e3) return;
+  RLBUSY = RLAT = Date.now();
+  try { await remindRun(); } finally { RLBUSY = 0; }
+}
+window.remindLoop = remindLoop;
+async function remindRun() {
   const rem = REMIND();
   if (!rem.length) { if (TV.playerScores) TV.playerScores('[]'); return; }
   // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
   if (!(MLIST || []).length && Date.now() - RWW.at > 60e3) { RWW = { at: Date.now(), d: await winwinDay(0).catch(() => null) }; }
   const list = (MLIST || []).length ? MLIST : (RWW.d?.matches || []);
   const watch = list.filter(m => rem.includes(mKey(m)) && (m.status === 'live' || (m.status === 'upcoming' && m.timestamp - Date.now() / 1000 < 15 * 60) || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600)));
-  await Promise.all(watch.filter(m => m.id365 && m.status !== 'finished').map(async m => { const x = await g365(m.id365); if (x) Object.assign(m, { status: x.status, elapsed: x.elapsed, score: x.score, st365: x.st }); }));
+  const noId = watch.filter(m => !ID365(m) && m.status !== 'finished');
+  if (noId.length) await liveFix(noId).catch(() => {});   // its 365 id found by the teams (the live list), then its own page from now on
+  await Promise.all(watch.filter(m => ID365(m) && m.status !== 'finished').map(async m => { const x = await g365(ID365(m)); if (x) Object.assign(m, { status: x.status, elapsed: x.elapsed, elAt: Date.now(), score: x.score, st365: x.st }); }));
   if (TV.playerScores) try { TV.playerScores(JSON.stringify(watch.filter(m => m.status === 'live').slice(0, 3).map(m => ({
     hl: m.home?.logo || '', al: m.away?.logo || '', h: m.home?.name || '', a: m.away?.name || '', s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`,
-    t: m.st365 && !/^\d/.test(m.st365) ? m.st365 : m.elapsed != null ? m.elapsed + '′' : '' })))); } catch (e) {}
+    t: m.st365 && !/^\d/.test(m.st365) ? m.st365 : m.elapsed != null ? m.elapsed + '′' : '',
+    e: m.st365 && !/^\d/.test(m.st365) ? 0 : +m.elapsed || 0, at: m.elAt || Date.now() })))); } catch (e) {}
   const now = {};
   for (const m of watch) {
     const k = mKey(m); if (!rem.includes(k)) continue;
@@ -3938,7 +3979,7 @@ async function remindLoop() {
   }
   RSTATE = { ...RSTATE, ...now };
 }
-setInterval(() => remindLoop(), 20e3);
+setInterval(() => remindLoop(), 20e3);   // (with a channel in front the page sleeps: the player itself calls remindLoop every 20 s)
 window.remoteCall = q => {
   let a = {}; try { a = JSON.parse(q || '{}'); } catch (e) {}
   const out = o => JSON.stringify(o);
@@ -3973,11 +4014,11 @@ window.remoteCall = q => {
       if (k === 'yday') l = l.filter(m => m.status === 'finished').sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp));
       else if (k === 'tom') l.sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp));
       else { const ord = m => m.status === 'live' ? 0 : m.status === 'upcoming' ? 1 : 2; l.sort((x, y) => ord(x) - ord(y) || x.timestamp - y.timestamp);
-        if (l.some(m => m.status !== 'finished') && Date.now() - (window.__mfFix || 0) > 25e3) { window.__mfFix = Date.now(); liveFix(l).catch(() => {}); } }
+        if (l.some(m => m.status !== 'finished') && Date.now() - (window.__mfFix || 0) > 15e3) { window.__mfFix = Date.now(); liveFix(l).catch(() => {}); } }
       return out({ m: l.slice(0, 60).map(m => rmRow(m, -1)) });
     }
     case 'goals': { if (!a.h || !a.a) return out({ ok: 0 }); goals({ home: { name: String(a.h) }, away: { name: String(a.a) } }); return out({ ok: 1 }); }   // 🎬 the summary, played here
-    case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(); return out({ on: r.includes(k) ? 1 : 0 }); }
+    case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(true); return out({ on: r.includes(k) ? 1 : 0 }); }
   }
   return out({});
 };
