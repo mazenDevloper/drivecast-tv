@@ -875,7 +875,7 @@ function couchApply() {
 }
 function couchTick() {
   if (!couchOn()) return; const d = NOW();
-  const t = d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: S('clock', '12') !== '24' }).replace(/\s?(am|pm)$/i, '');
+  const t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hourCycle: S('clock', '12') !== '24' ? 'h12' : 'h23' }).replace(/\s?(am|pm)$/i, '');   // 12:05 at noon (en-GB's 12-hour clock says 0:05)
   const g = $('#gClock'); if (g && g.dataset.t !== t) { g.dataset.t = t; g.querySelectorAll('span').forEach(x => x.textContent = t); }
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long' }); } catch (e) {}
   const c = $('#cDate'); if (c) c.textContent = d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' }) + (hijri ? ' · ' + hijri : '') + (S('clock', '12') !== '24' ? (d.getHours() < 12 ? ' · ص' : ' · م') : '');
@@ -2389,8 +2389,9 @@ const YTLG = [
   ['Barclays WSL', '@BarclaysWSL', /\bWSL\b|women'?s super league|الدوري الإنجليزي.*(سيدات|للسيدات)/i],
   ['Liga MX Femenil', '@ligabbvamxfemenil', /liga ?mx ?femenil|المكسيكي.*(سيدات|للسيدات)/i],
   ['Kings League', '@kingsleague', /kings ?league|دوري الملوك/i],
-  ['A-Leagues', 'channel/UCzRogd_oK3bzKvAW-4aLuPQ', /الأسترالي|A-League/i],   // every game on YouTube outside Australia/NZ (where allowed)
-  ['J.LEAGUE International', '@JLEAGUEInternational', /الدوري الياباني الممتاز|J1 League|J\.?LEAGUE/i],
+  ['A-Leagues', '@aleagues', /الأسترالي|A-League/i],   // every game on YouTube outside Australia/NZ (where allowed)
+  ['J.LEAGUE International', '@JLEAGUEInternational', /الدوري الياباني|J1 League|J\.?LEAGUE/i],
+  ['K LEAGUE International', '@KLEAGUEInternational', /الكوري|K League/i],
 ];
 let YTLIVE = [], ytlgAt = 0;
 async function ytlgRefresh() {
@@ -2674,6 +2675,8 @@ async function loadLists() {
   // the other lists: a channel Free-TV lacks is added; one it has becomes another source for it, tried when the first fails
   texts.forEach((t, k) => parseM3u(t).forEach(c => { if (seen.has(c.url)) return; seen.add(c.url); alt(c); if (names.has(chKey(c.name))) return; names.add(chKey(c.name)); ILIST.push(LISTS[k][1] ? { ...c, group: LISTS[k][1], arl: 1 } : { ...c, arl: 1 }); }));
   if (LITE) ILIST = ILIST.filter(liteOk);
+  // ▶️ the leagues' own YouTube channels, always listed (OK opens whatever they stream live then)
+  ILIST.push(...YTLG.map(([name, h]) => ({ name: name + ' · YouTube', url: 'yt-live:' + h, logo: '', group: '▶️ دوريات على يوتيوب', pl: 'يوتيوب' })));
   LISTSOK = Date.now(); MIDX = null; LIDX = null;
   iptvHdrSend(ILIST);
   lead(); liveUi(); setTimeout(homeScan, 20000); iptvUi(); mostUi(); epgUi(); scanMaybe(); loadDyn(); loadGarden(); loadEpg(); loadSpg(); loadK4(); loadLogos();
@@ -3731,7 +3734,8 @@ function mpFind(want, pools) { const p = MPICK[mpKey(want)]; if (!p) return null
 function matchLinks(m) {
   if (m.__lk && m.__lk.t > Date.now() - 20e3) return m.__lk.v;
   const ok = (want, c) => c && !THMDYN(c) && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
-  const yt = YTLIVE.filter(c => c.ytl.test(m.league?.name || '')).map(c => ({ want: c.name, c, found: 1 }));   // ▶️ its league live on YouTube
+  let yt = YTLIVE.filter(c => c.ytl.test(m.league?.name || '')).map(c => ({ want: c.name, c, found: 1 }));   // ▶️ its league live on YouTube
+  if (!yt.length) yt = YTLG.filter(([, , re]) => re.test(m.league?.name || '')).map(([name, h]) => ({ want: name + ' · YouTube', c: { name: name + ' · YouTube', url: 'yt-live:' + h, logo: '', group: '▶️ دوريات على يوتيوب' }, found: 1 }));
   const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const hp = mpFind(want, pools); if (hp) return { want, c: hp, hand: 1 }; const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
   for (const x of yt) if (!v.some(y => y.c && y.c.url === x.c.url)) v.unshift(x);
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
