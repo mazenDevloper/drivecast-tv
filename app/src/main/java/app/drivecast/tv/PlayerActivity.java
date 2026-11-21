@@ -699,14 +699,19 @@ public class PlayerActivity extends Activity {
         org.json.JSONArray nx = null;
         java.util.List<org.json.JSONArray> ps = progs(i);   // [0] on now, [1] next…
         int at = nextAt;
-        if (at < 0) { at = 0; try { if (ps.size() > 1 && ps.get(0).getLong(1) - System.currentTimeMillis() / 1000 <= 15 * 60) at = 1; } catch (Throwable ignored) { } }
+        // the guide's first programme still to end may not have begun (a gap in the guide: the one on air is missing) — then it is
+        // «التالي» with its start, never «الآن» with a time that is really the end of what plays
+        long nowS = System.currentTimeMillis() / 1000;
+        boolean onAir = false; try { onAir = !ps.isEmpty() && ps.get(0).getLong(0) <= nowS; } catch (Throwable ignored) { }
+        if (at < 0) { at = 0; try { if (onAir && ps.size() > 1 && ps.get(0).getLong(1) - nowS <= 15 * 60) at = 1; } catch (Throwable ignored) { } }
         if (at >= ps.size()) at = Math.max(0, ps.size() - 1);
         nextShown = at;
         if (!ps.isEmpty()) nx = ps.get(at);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
         String title = nx.optString(2, "").trim();   // with its episode, as the guide writes it if (title.length() > 50) title = title.substring(0, 49) + "…";
-        String tag = at == 0 ? "الآن" : at == 1 ? "التالي" : "بعده";
+        int step = onAir ? at : at + 1;   // 0 on air, 1 next, 2+ after it
+        String tag = step == 0 ? "الآن" : step == 1 ? "التالي" : "بعده";
         nextTxt.setText(tag + " · " + clock(nx.optLong(0)));
         nextName.setText(title); nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
         nextBox.setVisibility(View.VISIBLE);
