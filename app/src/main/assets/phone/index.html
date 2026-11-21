@@ -249,6 +249,8 @@ body.simple .kids{display:grid}
 
 <section id="d" class="hide"><canvas id="cv"></canvas><div class="row" id="colors"></div><div class="row"><button id="clr">امسح</button></div></section>
 <section id="sx" class="hide">
+  <label>🏟️ واجهة التلفزيون (تتغيّر على الشاشة على طول)</label>
+  <div id="look" style="display:grid;gap:8px;margin-top:8px"></div>
   <button class="big" id="upd" style="margin-top:14px">⬆️ حدّث التلفزيون لآخر نسخة</button>
   <div id="updS" style="text-align:center;margin:8px 0;color:var(--dim);min-height:1.4em"></div>
   <button id="adbs" style="width:100%;font-size:14px;opacity:.85">🔧 خلّ التحديث بدون موافقة (مرة وحدة وأنت عند التلفزيون)</button>
@@ -274,6 +276,7 @@ $('subnav').innerHTML = MORE.map(([t, l]) => `<button data-more="${t}">${l}</but
 function go(t) {
   if (t === 'x') t = moreAt;
   const more = MORE.some(m => m[0] === t); if (more) moreAt = t;
+  if (t === 'sx') lookLoad();
   cur = t;
   ALLS.forEach(s => $(s).classList.toggle('hide', s !== t));
   $('subnav').classList.toggle('hide', !more);
@@ -478,6 +481,16 @@ document.addEventListener('click', e => {
   const g = e.target.closest('[data-gh]');
   if (g) { buzz(); rc({ f: 'goals', h: g.dataset.gh, a: g.dataset.ga }).catch(() => {}); $('s').textContent = '🎬 أدوّر الملخص — على التلفزيون'; }
 });
+// 🏟️ the TV's look, edited from here: the mode, the glass clock's place and size, which shelves show
+const LOOK = [['mode', 'الوضع', [['couch', '🏟️ ساعة زجاج خلف المسجد'], ['sport', '⚽ الرياضة'], ['series', '📺 المسلسلات']]],
+  ['cclkx', 'مكان الساعة', [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']]], ['cclks', 'حجم الساعة', [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']]],
+  ['c-mt', 'مباريات اليوم', [['on', 'تظهر'], ['off', 'مخفية']]], ['c-vod', 'الأفلام', [['on', 'تظهر'], ['off', 'مخفية']]],
+  ['h-prayer', 'الصلاة القادمة', [['on', 'تظهر'], ['off', 'مخفية']]], ['h-live', 'القنوات المباشرة', [['on', 'تظهر'], ['off', 'مخفية']]], ['h-apps', 'التطبيقات', [['on', 'تظهر'], ['off', 'مخفية']]]];
+async function lookLoad() {
+  let cur = {}; try { cur = (await rc({ f: 'look' })).v || {}; } catch (e) {}
+  $('look').innerHTML = LOOK.map(([k, l, o]) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="min-width:110px">${l}</b>${o.map(([v, t]) => `<button data-lk="${k}" data-lv="${v}" style="flex:1;min-height:44px;border-radius:14px;${cur[k] === v ? 'background:var(--acc);color:#fff' : ''}">${t}</button>`).join('')}</div>`).join('');
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-lk]'); if (!b) return; buzz(); rc({ f: 'look', k: b.dataset.lk, v: b.dataset.lv }).then(lookLoad).catch(() => {}); });
 // 👶 the simple remote, kept on this phone
 function simpleSet(on) { document.body.classList.toggle('simple', on); try { localStorage.simple = on ? '1' : ''; } catch (e) {} }
 $('simpleT').onclick = () => { buzz(); simpleSet(!document.body.classList.contains('simple')); };
