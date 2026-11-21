@@ -585,7 +585,7 @@ body.couch.cdeep .cScene .cScrim{background:rgba(8,10,24,.62)}
 .gclock .rim,.gclock .sheen{position:absolute;inset:0;padding:0 6vw}
 .gclock .rim{color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.88)}
 .gclock .sheen{color:transparent;-webkit-background-clip:text;background-clip:text;background-image:linear-gradient(165deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,0) 30%,rgba(255,255,255,0) 75%,rgba(255,255,255,.10) 100%)}
-.cDate{position:absolute;top:calc(var(--ct,13vh) - 7.5vh);left:0;right:0;text-align:center;font-size:30px;font-weight:600;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.3)}
+.cDate{position:absolute;top:calc(var(--ct,13vh) - 9.5vh);left:0;right:0;text-align:center;font-size:30px;font-weight:600;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.3)}
 .cDate span{display:inline-block;padding:6px 24px;border-radius:28px;background:rgba(30,20,28,.28);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,220,230,.18)}
 body.couch #homeScroll{padding-top:var(--cpad,60vh)!important}
 body.couch #p-home .glass,body.couch .mrow .mc,body.couch .vcard{background:rgba(30,20,28,.32)!important;-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
@@ -869,7 +869,7 @@ function couchOn() { return S('mode', MODE0) === 'couch'; }
 function couchApply() {
   const on = couchOn(), st = document.documentElement.style; document.body.classList.toggle('couch', on); if (!on) return;
   // the clock's bottom stays under the mosque's roofline (its top 60 % clear): the bigger the clock, the higher it starts
-  const cs = +S('cclks', '34') || 34; st.setProperty('--cs', cs + 'vh'); st.setProperty('--ct', (50 - cs * 0.62).toFixed(1) + 'vh');
+  const cs = +S('cclks', '34') || 34; st.setProperty('--cs', cs + 'vh'); st.setProperty('--ct', (44 - cs * 0.62).toFixed(1) + 'vh');   // a little higher (asked 21 Nov)
   st.setProperty('--cx', S('cclkx', 'center'));
   couchTick();
 }
@@ -2389,6 +2389,8 @@ const YTLG = [
   ['Barclays WSL', '@BarclaysWSL', /\bWSL\b|women'?s super league|الدوري الإنجليزي.*(سيدات|للسيدات)/i],
   ['Liga MX Femenil', '@ligabbvamxfemenil', /liga ?mx ?femenil|المكسيكي.*(سيدات|للسيدات)/i],
   ['Kings League', '@kingsleague', /kings ?league|دوري الملوك/i],
+  ['A-Leagues', 'channel/UCzRogd_oK3bzKvAW-4aLuPQ', /الأسترالي|A-League/i],   // every game on YouTube outside Australia/NZ (where allowed)
+  ['J.LEAGUE International', '@JLEAGUEInternational', /الدوري الياباني الممتاز|J1 League|J\.?LEAGUE/i],
 ];
 let YTLIVE = [], ytlgAt = 0;
 async function ytlgRefresh() {
@@ -2961,6 +2963,7 @@ const LOGO = id => 'https://imagecache.365scores.com/image/upload/f_png,w_96,h_9
 const TVRULES = [   // the same rights as DriveCast's match-channels.ts (2026/27), by the league's Arabic name
   [/كأس ألمانيا|كأس إيطاليا/, 'أبوظبي الرياضية', /abu ?dhabi sports?/i],
   [/السعودي|روشن|خادم الحرمين/, 'ثمانية', /thmanyah/i],
+  [/الأسترالي|A-League/i, 'Dubai Sports', /dubai ?sports?|دبي الرياضي/i],   // the A-League in the Middle East: Dubai Sports, 6 games a round (aleagues.com.au)
   [/الألماني|بوندسليغا/, 'MBC Action · شاهد', /mbc action/i],
   [/الإيطالي/, 'STARZPLAY Sport', /starz/i],
   [/أدنوك|الإماراتي|رئيس الدولة|الخليج العربي/, 'أبوظبي الرياضية · دبي الرياضية', /abu ?dhabi sports?|dubai sports?/i],
