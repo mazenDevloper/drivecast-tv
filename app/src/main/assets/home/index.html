@@ -3830,12 +3830,30 @@ function matchPool(m, r) {
 }
 let MATCHPLAY = false;
 // 📱 the phone remote's «المباريات»: today's matches (live first) with the channels that carry them; a tap plays one here
+// 🔄 the scores on a list, fresh: 365Scores' day (DriveCast's own source, 40 s cache) by the match's 365 id or its teams,
+// and your teams' matches from DriveCast's Cloudflare worker (/now) — so the phone's scores and minutes move while it looks
+async function liveFix(ms, plus = 0) {
+  if (!ms || !ms.length) return ms;
+  const [d, mine] = await Promise.all([s365Day(plus).catch(() => []), mFetch('mine').catch(() => null)]);
+  const mm = (mine && mine.matches) || [];
+  for (const m of ms) {
+    const x = (m.id365 && d.find(x => x.id === m.id365)) || d.find(x => mSame(m, x)) || mm.find(x => mSame(m, x));
+    if (!x) continue;
+    if (x.status) m.status = x.status; if (x.score && x.score.home != null) m.score = { home: x.score.home, away: x.score.away }; m.elapsed = x.elapsed ?? m.elapsed;
+  }
+  return ms;
+}
+const rmRow = (m, i) => ({ i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
+  t: m.timestamp ? hm24(m.timestamp) : '', s: (m.status === 'live' || m.status === 'finished') && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '',
+  lg: m.league?.name || '', k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0, mine: m.mine ? 1 : 0,
+  dy: m.timestamp ? new Date(m.timestamp * 1000).toLocaleDateString('ar', { weekday: 'long', timeZone: 'Asia/Muscat' }) : '' });
 window.remoteMatches = () => {
   if ((!MLIST || !MLIST.length) && Date.now() - (window.__rmAt || 0) > 60e3) { window.__rmAt = Date.now(); try { loadMatches(); } catch (e) {} }
-  const out = (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished').slice(0, 40).map(([m, i]) => {
-    let v = []; try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
-    return { i, h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', st: m.status, min: m.elapsed || '',
-      t: m.timestamp ? hm24(m.timestamp) : '', s: m.status === 'live' && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '', lg: m.league?.name || '', ch: v.slice(0, 8).map(x => chEn(x.c.name)), k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0 };
+  if ((MLIST || []).length && Date.now() - (window.__rmFix || 0) > 25e3) { window.__rmFix = Date.now(); liveFix(MLIST).catch(() => {}); }   // the next ask carries the new scores
+  const ord = m => m.status === 'live' ? 0 : m.status === 'upcoming' ? 1 : 2;
+  const out = (MLIST || []).map((m, i) => [m, i]).sort((x, y) => ord(x[0]) - ord(y[0]) || (ord(x[0]) === 2 ? y[0].timestamp - x[0].timestamp : 0)).slice(0, 50).map(([m, i]) => {
+    let v = []; if (m.status !== 'finished') try { v = matchLinks(m).filter(x => x.c); } catch (e) {}
+    return { ...rmRow(m, i), ch: v.slice(0, 8).map(x => chEn(x.c.name)) };
   });
   return JSON.stringify({ loading: !MLIST || !MLIST.length, m: out });
 };
@@ -3898,12 +3916,11 @@ async function g365(id) {
 let RWW = { at: 0, d: null };
 async function remindLoop() {
   const rem = REMIND();
-  const mineOf = m => (MLIST || []).some(x => x.mine && mSame(x, m));
-  if (!rem.length && !(TV.playerScores && (MLIST || []).some(x => x.mine))) { if (TV.playerScores) TV.playerScores('[]'); return; }
+  if (!rem.length) { if (TV.playerScores) TV.playerScores('[]'); return; }
   // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
   if (!(MLIST || []).length && Date.now() - RWW.at > 60e3) { RWW = { at: Date.now(), d: await winwinDay(0).catch(() => null) }; }
   const list = (MLIST || []).length ? MLIST : (RWW.d?.matches || []);
-  const watch = list.filter(m => (rem.includes(mKey(m)) || mineOf(m)) && (m.status === 'live' || (m.status === 'upcoming' && m.timestamp - Date.now() / 1000 < 15 * 60) || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600)));
+  const watch = list.filter(m => rem.includes(mKey(m)) && (m.status === 'live' || (m.status === 'upcoming' && m.timestamp - Date.now() / 1000 < 15 * 60) || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600)));
   await Promise.all(watch.filter(m => m.id365 && m.status !== 'finished').map(async m => { const x = await g365(m.id365); if (x) Object.assign(m, { status: x.status, elapsed: x.elapsed, score: x.score, st365: x.st }); }));
   if (TV.playerScores) try { TV.playerScores(JSON.stringify(watch.filter(m => m.status === 'live').slice(0, 3).map(m => ({
     hl: m.home?.logo || '', al: m.away?.logo || '', h: m.home?.name || '', a: m.away?.name || '', s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`,
@@ -3947,13 +3964,17 @@ window.remoteCall = q => {
       return out({ v: Object.fromEntries(K.map(k => [k, S(k, k === 'mode' ? MODE0 : k === 'cclkx' ? 'center' : k === 'cclks' ? '34' : k === 'c-vod' ? 'off' : 'on')])) });
     }
     case 'reciters': { loadReciters(); return out({ r: RECITERS.map(r => [r[0], r[1]]), cur: (() => { try { return localStorage.rec || ''; } catch (e) { return ''; } })() }); }   // 📖 every reciter the TV has (DriveCast's + quran.com's)
-    case 'yday': {   // 📅 yesterday's matches with their results (the phone asks again while «loading»)
-      const c = mCache.yday;
-      if (!c || Date.now() - c.at > 30 * 60e3) { if (!window.__ydBusy) { window.__ydBusy = 1; mFetch('yday').finally(() => { window.__ydBusy = 0; }); } if (!c) return out({ loading: 1, m: [] }); }
+    case 'day': case 'yday': {   // 📅 أمس · الغد · فرقي for the phone (it asks again while «loading»); the scores refreshed live
+      const k = a.f === 'yday' ? 'yday' : ({ y: 'yday', m: 'tom', f: 'mine' })[a.k] || 'yday', c = mCache[k];
+      const ttl = k === 'yday' ? 30 * 60e3 : k === 'tom' ? 5 * 60e3 : 30e3;
+      if (!c || Date.now() - c.at > ttl) { const bk = '__dBusy' + k; if (!window[bk]) { window[bk] = 1; mFetch(k).finally(() => { window[bk] = 0; }); } if (!c) return out({ loading: 1, m: [] }); }
       const BIG = m => BIGL.test(m.league?.name || '') ? 1 : 0;
-      const l = arr(c.d?.matches).filter(m => m.status === 'finished').sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp)).slice(0, 60);
-      return out({ m: l.map(m => ({ h: m.home?.name || '', a: m.away?.name || '', hl: m.home?.logo || '', al: m.away?.logo || '', lg: m.league?.name || '',
-        s: `${m.score?.home ?? 0} - ${m.score?.away ?? 0}`, t: m.timestamp ? hm24(m.timestamp) : '' })) });
+      let l = arr(c.d?.matches).slice();
+      if (k === 'yday') l = l.filter(m => m.status === 'finished').sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp));
+      else if (k === 'tom') l.sort((x, y) => (BIG(y) - BIG(x)) || (x.timestamp - y.timestamp));
+      else { const ord = m => m.status === 'live' ? 0 : m.status === 'upcoming' ? 1 : 2; l.sort((x, y) => ord(x) - ord(y) || x.timestamp - y.timestamp);
+        if (l.some(m => m.status !== 'finished') && Date.now() - (window.__mfFix || 0) > 25e3) { window.__mfFix = Date.now(); liveFix(l).catch(() => {}); } }
+      return out({ m: l.slice(0, 60).map(m => rmRow(m, -1)) });
     }
     case 'goals': { if (!a.h || !a.a) return out({ ok: 0 }); goals({ home: { name: String(a.h) }, away: { name: String(a.a) } }); return out({ ok: 1 }); }   // 🎬 the summary, played here
     case 'remind': { const k = a.k; let r = REMIND(); r = r.includes(k) ? r.filter(x => x !== k) : [...r, k].slice(-20); try { localStorage.setItem('mremind', JSON.stringify(r)); } catch (e) {} if (r.length) remindLoop(); return out({ on: r.includes(k) ? 1 : 0 }); }

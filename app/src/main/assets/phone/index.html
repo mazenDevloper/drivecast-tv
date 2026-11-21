@@ -179,7 +179,7 @@ body.simple .kids{display:grid}
 
 <section id="mt" class="hide">
   <div id="pushBox" class="hide"><button id="pushOn" class="big" style="margin-bottom:12px">🔔 فعّل تنبيهات المباريات على هذا الجوال</button></div>
-  <div class="mseg" id="mseg"><button data-md="t" class="on">اليوم</button><button data-md="y">أمس · النتائج</button></div>
+  <div class="mseg" id="mseg"><button data-md="y">أمس</button><button data-md="t" class="on">اليوم</button><button data-md="m">الغد</button><button data-md="f">⭐ فرقي</button></div>
   <div id="mtl"><p class="s">أجيب المباريات…</p></div>
 </section>
 
@@ -449,29 +449,29 @@ $('adbs').onclick = async () => {
 // the score with the home team's goals on its side (an Arabic page: the right)
 const scoreH = s => { const [h, a] = String(s || '').split(/\s*-\s*/); return `<span style="display:inline-flex;gap:8px;direction:rtl"><b>${h ?? ''}</b><i style="font-style:normal">-</i><b>${a ?? ''}</b></span>`; };
 let MDAY = 't';
-// 📅 yesterday: the finished matches with their results, and «🎬 الملخص» plays the goals' summary on the TV
+// 📅 أمس · الغد · فرقي: the TV's lists for those days; a finished match shows its result and «🎬 الملخص» plays the goals on the TV,
+// a live one its score and minute (refreshed every 30 s), one to come its time and 🔔
+const EH = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mCard = (m, day) => { const E = EH, L = m.st === 'live', F = m.st === 'finished';
+  return `<div class="mc${L ? ' live' : ''}"><div class="lg"><span>${E(m.lg)}</span><span>${L ? '🔴 مباشر' : F ? 'انتهت' : '🕒 ' + (day && m.dy ? E(m.dy) + ' ' : '') + E(m.t)}${F ? '' : ` <button class="bell${m.rem ? ' on' : ''}" data-rk="${E(m.k)}" title="نبّهني">🔔</button>`}</span></div>
+    <div class="tm"><div>${m.hl ? `<img src="${E(m.hl)}" alt="">` : ''}${E(m.h)}</div><span class="sc${L || F ? '' : ' up'}">${L || F ? scoreH(m.s) + (L && m.min ? `<small>${E(m.min)}'</small>` : '') : E(m.t)}</span><div>${m.al ? `<img src="${E(m.al)}" alt="">` : ''}${E(m.a)}</div></div>
+    ${F ? `<button class="hlb" data-gh="${E(m.h)}" data-ga="${E(m.a)}">🎬 الملخص على التلفزيون</button>` : ''}${m.ch ? (m.ch.length ? `<div class="chs">${m.ch.map((c, k) => `<button data-mi="${m.i}" data-mk="${k}">▶ ${E(c)}</button>`).join('')}</div>` : F ? '' : '<div class="none">ما لقيت قناة تنقلها في قوائمك</div>') : ''}</div>`; };
 async function yday() {
-  const box = $('mtl');
+  const box = $('mtl'), md = MDAY, nm = { y: 'أمس', m: 'الغد', f: 'فرقك' }[md];
   try {
-    const j = await rc({ f: 'yday' }); if (MDAY !== 'y') return;
-    if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب مباريات أمس…' : 'ما فيه نتائج لأمس'}</p>`; if (j.loading) setTimeout(yday, 2500); return; }
-    const E = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = j.m.map(m => `<div class="mc"><div class="lg"><span>${E(m.lg)}</span><span>انتهت</span></div>
-      <div class="tm"><div>${m.hl ? `<img src="${E(m.hl)}" alt="">` : ''}${E(m.h)}</div><span class="sc">${scoreH(m.s)}</span><div>${m.al ? `<img src="${E(m.al)}" alt="">` : ''}${E(m.a)}</div></div>
-      <button class="hlb" data-gh="${E(m.h)}" data-ga="${E(m.a)}">🎬 الملخص على التلفزيون</button></div>`).join('');
+    const j = await rc({ f: 'day', k: md }); if (MDAY !== md) return;
+    if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب مباريات ' + nm + '…' : 'ما فيه مباريات ' + nm}</p>`; if (j.loading) setTimeout(yday, 2500); return; }
+    box.innerHTML = j.m.map(m => mCard(m, md === 'f')).join('');
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
 }
 async function matches() {
-  if (MDAY === 'y') return yday();
+  if (MDAY !== 't') return yday();
   const box = $('mtl');
   try {
     const j = await (await fetch('/matches')).json();
     if (j.off) { box.innerHTML = '<p class="s">افتح الشاشة الرئيسية في التلفزيون مرة وحدة</p>'; return; }
     if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب المباريات…' : 'ما فيه مباريات اليوم'}</p>`; if (j.loading) setTimeout(matches, 2500); return; }
-    const E = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = j.m.map(m => `<div class="mc${m.st === 'live' ? ' live' : ''}"><div class="lg"><span>${E(m.lg)}</span><span>${m.st === 'live' ? '🔴 مباشر' : '🕒 ' + E(m.t)} <button class="bell${m.rem ? ' on' : ''}" data-rk="${E(m.k)}" title="نبّهني">🔔</button></span></div>
-      <div class="tm"><div>${m.hl ? `<img src="${E(m.hl)}" alt="">` : ''}${E(m.h)}</div><span class="sc${m.st === 'live' ? '' : ' up'}">${m.st === 'live' ? scoreH(m.s) + (m.min ? `<small>${E(m.min)}'</small>` : '') : E(m.t)}</span><div>${m.al ? `<img src="${E(m.al)}" alt="">` : ''}${E(m.a)}</div></div>
-      ${m.ch.length ? `<div class="chs">${m.ch.map((c, k) => `<button data-mi="${m.i}" data-mk="${k}">▶ ${E(c)}</button>`).join('')}</div>` : '<div class="none">ما لقيت قناة تنقلها في قوائمك</div>'}</div>`).join('');
+    box.innerHTML = j.m.map(m => mCard(m)).join('');
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-mi]'); if (!b) return; buzz(); post('/matchplay', b.dataset.mi + ' ' + b.dataset.mk); $('s').textContent = '▶ ' + b.textContent.replace('▶ ', '') + ' — على التلفزيون'; });
