@@ -4,6 +4,8 @@ name: TV test
 on:
   workflow_run: { workflows: [APK], types: [completed] }
   workflow_dispatch:
+    inputs:
+      apk: { description: 'DriveCastTV.apk or DriveCastTVLite.apk (🪶 Lite: app.drivecast.tv.lite)', default: 'DriveCastTV.apk' }
 permissions:
   contents: write
 jobs:
@@ -21,7 +23,7 @@ jobs:
         with: { node-version: 22 }
       - name: The latest APK
         env: { GH_TOKEN: '${{ github.token }}' }
-        run: gh release download latest -p DriveCastTV.apk
+        run: gh release download latest -p "${{ inputs.apk || 'DriveCastTV.apk' }}" -O app.apk
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -30,7 +32,7 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: bash tools/tv-test.sh DriveCastTV.apk emulator-5554 || touch tv-test/FAILED
+          script: PKG=${{ inputs.apk == 'DriveCastTVLite.apk' && 'app.drivecast.tv.lite' || 'app.drivecast.tv' }} bash tools/tv-test.sh app.apk emulator-5554 || touch tv-test/FAILED
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: tv-test, path: tv-test/ }

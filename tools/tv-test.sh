@@ -4,7 +4,7 @@
 #   bash tools/tv-test.sh [DriveCastTV.apk] [device-serial]
 set -u
 APK=${1:-DriveCastTV.apk}; D=${2:-$(adb devices | awk 'NR>1 && $2=="device"{print $1; exit}')}
-PKG=app.drivecast.tv; OUT=tv-test; mkdir -p "$OUT"; : > "$OUT/report.md"
+PKG=${PKG:-app.drivecast.tv}; OUT=tv-test; mkdir -p "$OUT"; : > "$OUT/report.md"
 a() { adb -s "$D" "$@"; }
 key() { a shell input keyevent "$1"; sleep "${2:-0.7}"; }
 shot() { a exec-out screencap -p > "$OUT/$1.png"; echo "- $1.png: $2" >> "$OUT/report.md"; }
@@ -15,8 +15,8 @@ echo "# DriveCast TV test ($(date -u +%F' '%H:%MZ), device $D, $(a shell getprop
 a install -r -g "$APK" >/dev/null && ok "installed" || { bad "install failed"; exit 1; }
 a shell appops set $PKG SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
 a shell cmd alarm set-timezone Asia/Muscat >/dev/null 2>&1 || a shell setprop persist.sys.timezone Asia/Muscat >/dev/null 2>&1
-a shell settings put secure enabled_accessibility_services $PKG/$PKG.MouseService; a shell settings put secure accessibility_enabled 1
-a shell cmd role add-role-holder --user 0 android.app.role.HOME $PKG >/dev/null 2>&1 || a shell cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
+a shell settings put secure enabled_accessibility_services $PKG/app.drivecast.tv.MouseService; a shell settings put secure accessibility_enabled 1
+a shell cmd role add-role-holder --user 0 android.app.role.HOME $PKG >/dev/null 2>&1 || a shell cmd package set-home-activity $PKG/app.drivecast.tv.HomeActivity >/dev/null 2>&1 || true
 a logcat -c
 key KEYCODE_HOME 8
 if [ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ]; then ok "HOME opens DriveCast TV"
@@ -26,7 +26,7 @@ else
     key KEYCODE_HOME 8
   fi
   if [ "$(a shell dumpsys activity activities | grep -m1 -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -c $PKG)" = 1 ]; then ok "HOME opens DriveCast TV once the stock launcher is off"
-  else bad "HOME opens another launcher"; a shell am start -n $PKG/.HomeActivity >/dev/null; sleep 8; fi
+  else bad "HOME opens another launcher"; a shell am start -n $PKG/app.drivecast.tv.HomeActivity >/dev/null; sleep 8; fi
 fi
 shot 01-home "the home page after HOME"
 
@@ -72,7 +72,7 @@ curl -fsS -m 10 http://127.0.0.1:18080/adhan-log > "$OUT/adhan-log.txt"
 grep -q 'iqama المغرب — iqama' "$OUT/adhan-log.txt" && ok "iqamah at its time after the adhan: played" || bad "iqamah: $(head -4 "$OUT/adhan-log.txt" | tr '\n' ' ')"
 shot 10b-iqama "the iqamah"
 curl -fsS -m 10 -X POST --data 'stop' http://127.0.0.1:18080/adhan >/dev/null
-a shell dumpsys alarm | grep -q 'app.drivecast.tv.ADHAN' && ok "next prayer's adhan is set: $(head -1 "$OUT/adhan-log.txt")" || bad "no adhan alarm set for the next prayer"
+a shell dumpsys alarm | grep -q "$PKG.ADHAN\|app.drivecast.tv.ADHAN" && ok "next prayer's adhan is set: $(head -1 "$OUT/adhan-log.txt")" || bad "no adhan alarm set for the next prayer"
 a shell media volume --stream 3 --set 10 >/dev/null 2>&1
 curl -fsS -m 10 -X POST --data $'m 300 120\nt' http://127.0.0.1:18080/mouse >/dev/null; sleep 1; shot 10-mouse "phone mouse: pointer moved + tap"
 
