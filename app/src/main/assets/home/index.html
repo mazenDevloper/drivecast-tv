@@ -491,6 +491,14 @@ body.ambient .day{display:flex}
 .qAyah.l .qt{font-size:44px}.qAyah.xl .qt{font-size:36px;line-height:1.7}
 .qAyah .qn{font-family:"Amiri Quran TV","Amiri Quran",serif;font-size:60px;line-height:1.5;margin-top:0;opacity:.95}
 .qAyah .qs{font-family:"Thmanyah Sans","UserFont",sans-serif;font-size:28px;color:#e9c97a;margin-top:14px}
+/* 🧹 «وضع الأعلى», one thing at a time: the sports mode's own scene keeps its date and glass clock (no second day line, no
+   weather cards); something playing takes the corner (no name-of-Allah card or worship chips beside it); while an ayah is
+   recited it is the only words on the screen (the clock and the day fade back) */
+body.couch.ambient .day,body.couch.ambient .awid{display:none!important}
+body.ambient.aplay .spirit,body.ambient.aplay .ibadaA{display:none!important}
+body.ambient.qread .spirit,body.ambient.qread .awid,body.ambient.qread .ibadaA,body.ambient.qread .ambNote{display:none!important}
+body.ambient.qread .day{opacity:.16;transition:opacity .8s}
+body.couch.ambient.qread .gclock,body.couch.ambient.qread .cDate{opacity:.1;transition:opacity .8s}
 body.ambient.qread .qAyah{display:block}body.ambient.qread .phrase{display:none!important}
 .phrase{position:absolute;top:40%;left:41%;right:3%;display:none;text-align:center;white-space:nowrap;overflow:hidden;color:#fbf7ec;text-shadow:0 4px 28px rgba(0,0,0,.5);
   font-family:"Thmanyah Sans","UserFont",Inter,sans-serif!important;font-weight:400;font-size:60px;line-height:1.3;font-feature-settings:"liga" 1,"rlig" 1,"calt" 1,"locl" 1,"ccmp" 1,"mark" 1,"mkmk" 1,"ss01" 1,"ss02" 1,"ss03" 1,"zero" 1}
@@ -1613,7 +1621,7 @@ function radioBlocked() {
 function miniAudio() {
   const m = $('#miniA'); if (!m) return;
   const on = !audio.paused && (SND ? true : radioOn ? !!RNOW : !!playing);
-  m.classList.toggle('on', on); if (!on) return;
+  m.classList.toggle('on', on); document.body.classList.toggle('aplay', on); if (!on) return;
   if (SND) { const d = SOUNDS[SND.k], pct = audio.duration ? Math.min(100, ((SND.i + audio.currentTime / audio.duration) / SND.list.length) * 100) : 0; m.innerHTML = `<i class="eq"></i><div><b>${d.t}</b><span>${d.who} · 🔊</span></div><div class="pb"><i style="width:${pct}%"></i></div>`; return; }
   const s = radioOn ? RNOW.s : playing, who = radioOn ? RNAME[RNOW.r] + ' · 📻 راديو القرآن' : $('#plSub').textContent;
   const pct = audio.duration ? Math.min(100, audio.currentTime / audio.duration * 100) : 0;
@@ -4850,6 +4858,7 @@ function spiritUi() {
   el.classList.add('fade'); setTimeout(() => { el.innerHTML = html; el.classList.remove('fade'); }, 900);
 }
 setInterval(() => { if (document.body.classList.contains('ambient')) { loadAyah().then(spiritUi); } }, 60e3);
+setTimeout(() => window.DCW && DCW.start(), 1200);   // 🧩 the first level's widgets (cw/dcw.js)
 // the prayer list of today, as times
 function prayList() {
   const t = P.today; if (!t) return null;
@@ -4908,7 +4917,7 @@ setInterval(ibUi, 60e3); setTimeout(ibUi, 2500);
 function ambient(on) {
   if (on) skyNote();
   document.body.classList.toggle('ambient', on);
-  if (window.DCW) DCW.show(on);   // 🧩 the widgets of «وضع الأعلى» (✏️ edit, ➕ add)
+  if (on && window.DCW) DCW.leave();   // 🧩 the widgets live on the first level: editing ends here
   document.body.classList.toggle('livepic', on && S('livepic', LITE ? 'off' : 'on') !== 'off');
   if (on) { ambWidgets(); loadPhrase(); ambIqTick(); ambNoteUi(); ibUi(); loadAyah().then(spiritUi); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();

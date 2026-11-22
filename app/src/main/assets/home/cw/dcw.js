@@ -1,4 +1,4 @@
-// 🧩 Widgets on «وضع الأعلى» (the photo view): couch-tv's widgets (MIT, cw/LICENSE-couch-tv.txt — widgets.js draws each
+// 🧩 Widgets on the home's first level (the screen the home opens on; not «وضع الأعلى», which stays calm): couch-tv's widgets (MIT, cw/LICENSE-couch-tv.txt — widgets.js draws each
 // one's inside), placed on an 18 × 10 grid of half cells over the 1920 × 1080 screen.
 //   ✏️  edit: drag a widget to move it, drag its corner to size it, ✕ removes it (touch, pen or mouse — the web version on a
 //       touch laptop); «تم» keeps it
@@ -27,6 +27,8 @@
     ['📰 معلومات', ['news', 'sports', 'stocks', 'commute', 'agenda']],
     ['✍️ كلمات', ['quote', 'word', 'card', 'welcome', 'note', 'list', 'wifi', 'guide', 'people', 'quick']]];
   var NAMED = { line: [4, 1], wline: [8, 1], tile: [2, 2], wtile: [4, 2], small: [4, 4], tall: [4, 6], medium: [8, 4], wide: [12, 4], large: [8, 8], xl: [12, 6], hero: [18, 7], full: [18, 10] };
+  // ◐ a widget's shadow (couch-tv's): as the look gives it, none, soft, or lifted off the picture
+  var SHW = { auto: 'ظل عادي', none: 'بلا ظل', soft: 'ظل ناعم', lifted: 'ظل بارز' }, SHN = ['auto', 'soft', 'lifted', 'none'];
   var L = null, BAR = null, CAT = null, EDIT = false, ON = false, WXD = null, WXAT = 0;
 
   function sv(k, d) { try { return typeof S === 'function' ? S(k, d) : d; } catch (e) { return d; } }
@@ -63,7 +65,7 @@
       iconUrl: function (pkg) { try { var a = (APPS || []).find(function (x) { return x.pkg === pkg; }); return a && a.art || null; } catch (e) { return null; } } } };
   }
   function draw(w, b, demo) {
-    var o = { id: w.id, kind: w.kind, w: b.w, h: b.h, opts: w.opts || {}, style: { panel: 'glass' } };
+    var o = { id: w.id, kind: w.kind, w: b.w, h: b.h, opts: w.opts || {}, style: { panel: 'glass', shadow: w.sh || undefined } };
     try { return window.CouchWidgets.render(o, env(demo)); } catch (e) { return el('div', 'cw', AR[w.kind]); }
   }
 
@@ -72,7 +74,7 @@
   function render() {
     if (!L || !window.CouchWidgets) return;
     window.CouchWidgets.reset(L); L.textContent = '';
-    if (EDIT) L.appendChild(el('div', 'dcwGrid'));
+    if (EDIT) { L.appendChild(el('div', 'dcwGrid')); zones().forEach(function (z) { var b = el('div', 'dcwZone'); b.style.cssText = 'left:' + z[0] * CWID + 'px;top:' + z[1] * CHEI + 'px;width:' + z[2] * CWID + 'px;height:' + z[3] * CHEI + 'px'; L.appendChild(b); }); }
     list().forEach(function (w) {
       var b = boxOf(w), it = el('div', 'dcwIt');
       it.dataset.id = w.id;
@@ -83,15 +85,19 @@
         var x = el('button', 'dcwDel', '✕'); x.dataset.cw = 'del'; x.title = 'احذف'; it.appendChild(x);
         var z = el('div', 'dcwSize'); z.dataset.cw = 'size'; it.appendChild(z);
         var n = el('span', 'dcwName', AR[w.kind]); it.appendChild(n);
+        var sh = el('button', 'dcwSh', '◐ ' + SHW[w.sh || 'auto']); sh.dataset.cw = 'shadow'; sh.title = 'الظل'; it.appendChild(sh);
       }
       L.appendChild(it);
     });
     L.classList.toggle('edit', EDIT);
     document.body.classList.toggle('cwEdit', EDIT);
   }
+  // where the first level has its own things: the tabs (row 0), the prayer card (rows 7–9), the sports mode's glass clock
+  function zones() { var z = [[0, 0, 18, 1], [0, 7, 18, 3]]; if (document.body.classList.contains('couch')) z.push([5, 2, 8, 4]); return z; }
+  function busy(c, r, w, h) { return zones().some(function (z) { return c < z[0] + z[2] && z[0] < c + w && r < z[1] + z[3] && z[1] < r + h; }); }
   function free(l, w, h) {
     for (var r = 0; r + h <= ROWS; r++) for (var c = 0; c + w <= COLS; c++) {
-      if (r === 0 && c < 6) continue;   // the ✏️ ➕ buttons' corner
+      if (busy(c, r, w, h)) continue;
       if (!l.some(function (o) { return c < o.c + o.w && o.c < c + w && r < o.r + o.h && o.r < r + h; })) return { c: c, r: r };
     }
     return { c: 0, r: 0 };
@@ -109,7 +115,7 @@
   function down(e) {
     if (!EDIT) return;
     var t = e.target, it = t.closest && t.closest('.dcwIt'); if (!it) return;
-    if (t.dataset.cw === 'del') return;
+    if (t.dataset.cw === 'del' || t.dataset.cw === 'shadow') return;
     e.preventDefault(); e.stopPropagation();
     var l = list(), w = l.find(function (o) { return o.id === it.dataset.id; }); if (!w) return;
     DRAG = { id: w.id, mode: t.dataset.cw === 'size' ? 'size' : 'move', at: gridAt(e), w0: Object.assign({}, w), it: it };
@@ -147,11 +153,15 @@
     if (k === 'done') return edit(false);
     if (k === 'close') return catShow(false);
     if (k === 'pick') return addKind(t.dataset.k);
+    if (k === 'shadow') { var it2 = t.closest('.dcwIt'), l2 = list(), w2 = l2.find(function (o) { return o.id === it2.dataset.id; }); if (!w2) return;
+      var nx = SHN[(SHN.indexOf(w2.sh || 'auto') + 1) % SHN.length]; if (nx === 'auto') delete w2.sh; else w2.sh = nx; save(l2); render(); return; }
     if (k === 'del') { var it = t.closest('.dcwIt'); save(list().filter(function (o) { return o.id !== it.dataset.id; })); render(); return; }
     if (k === 'clear') { if (t.dataset.sure) { save([]); render(); t.textContent = '🗑 امسح الكل'; delete t.dataset.sure; } else { t.dataset.sure = '1'; t.textContent = 'متأكد؟ اضغط مرة ثانية'; } }
   }
   function edit(on) {
-    EDIT = !!on; render();
+    EDIT = !!on;
+    if (EDIT) { var hs = document.getElementById('homeScroll'); if (hs) hs.scrollTop = 0; document.body.classList.remove('deep', 'cdeep'); }
+    render();
     BAR.querySelector('[data-cw="edit"]').classList.toggle('on', EDIT);
     BAR.querySelector('[data-cw="done"]').hidden = !EDIT;
     BAR.querySelector('[data-cw="clear"]').hidden = !EDIT || !list().length;
@@ -199,13 +209,14 @@
   }
 
   window.DCW = {
-    show: function (on) {
-      ON = !!on; build();
-      document.body.classList.toggle('cwOn', ON);
+    // built once at start; the CSS shows it on the first level only (the home, not scrolled, not «وضع الأعلى»)
+    start: function () {
+      build(); ON = true;
       document.body.classList.toggle('cwWeb', /^https?:/.test(location.protocol));   // ✏️ ➕ always on the web; on the TV once a mouse or a touch is used
-      if (!ON) { if (EDIT) edit(false); catShow(false); return; }
       weatherLoad(); render();
+      setInterval(function () { weatherLoad(); }, 10 * 60e3);
     },
+    leave: function () { if (EDIT) edit(false); if (CAT) catShow(false); },
     refresh: function () { if (ON && !DRAG) render(); },
     editing: function () { return EDIT || (CAT && CAT.classList.contains('on')); },
     back: function () { if (CAT && CAT.classList.contains('on')) { catShow(false); return true; } if (EDIT) { edit(false); return true; } return false; },
