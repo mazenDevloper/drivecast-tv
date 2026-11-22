@@ -607,6 +607,8 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .mrow .mc,.vrow .vcard{transition:transform .18s cubic-bezier(.2,.8,.2,1)}
 .mrow .mc:focus,.vrow .vcard:focus{outline:0;transform:scale(1.06);box-shadow:0 0 0 4px #fff,0 26px 60px rgba(0,0,0,.45)!important}
 </style>
+<link rel="stylesheet" href="cw/widgets.css">
+<link rel="stylesheet" href="cw/dcw.css">
 </head>
 <body class="chome">
 <div class="cScene" id="cScene"><i class="cBg"></i><div class="cDate"><span id="cDate"></span></div><div class="gclock" id="gClock"><span class="fill"></span><span class="rim"></span><span class="sheen"></span></div><i class="cFg"></i><i class="cScrim"></i></div><div class="boardBg" id="boardBg"></div><div id="wallBack"></div><div class="wall" id="wall"><i class="wl" id="wDay"></i><i class="wl rk" id="rkA"></i><i class="wl rk" id="rkB"></i><i class="wl rk" id="rkN"></i><i class="wl rk" id="rkF"><i id="rkFL"></i><i id="rkFR"></i><i id="rkFG"></i></i><i class="wl rk" id="rkSky"><i id="rkTint"></i><canvas id="rkStars" width="1920" height="1080"></canvas><i id="rkSun"></i><img id="rkMoon" alt=""><canvas id="rkCloud2" width="2048" height="300"></canvas><canvas id="rkCloud" width="3072" height="672"></canvas></i><i class="wl rk" id="rkHaze"></i><i class="wl rk" id="rkRain"></i><i class="wl" id="wDark"><canvas id="stars" width="1920" height="1080"></canvas></i><i class="wl sky" id="wSky"></i><i class="wl sky" id="wMoonBox"><img id="wMoon" alt=""></i><i class="wl" id="wNight"></i><i class="wl" id="wPhotoN"></i><i class="wl sky" id="wSun"></i><i class="wl" id="wLight"></i></div><div class="veil" id="veil"></div>
@@ -740,6 +742,12 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 <script src="stars.js"></script>
 <script src="wall/rk-masks.js"></script>
 <script src="wall/rk-faces.js"></script>
+<script src="cw/icon-sets.js"></script>
+<script src="cw/widget-caps.js"></script>
+<script src="cw/widget-words.js"></script>
+<script src="cw/qr.js"></script>
+<script src="cw/widgets.js"></script>
+<script src="cw/dcw.js"></script>
 <script>
 // ⌨️ a text field is only selected when the focus reaches it (no keyboard popping up while moving with the arrows);
 // OK twice (or a double tap) opens it for writing, leaving it closes it again. The phone remote's typing still fills it.
@@ -775,6 +783,7 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
     } return axis === 'y' ? { e: document.scrollingElement, nat: true } : null; };
   addEventListener('pointerdown', e => {
     if (e.button > 0) return;
+    if (e.target.closest && e.target.closest('.dcwLayer.edit, .dcwCat, .dcwBar')) return;   // 🧩 the widget editor drags on its own
     const b = e.target.closest && e.target.closest('button, .f, [data-i], [data-mi], [data-ilist], [data-app]');
     st = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: e.target, b, moved: false, ax: '' };
     clearTimeout(st.hold);
@@ -837,7 +846,7 @@ const LITE = (() => { try { return !!(TV.lite && TV.lite()) || /[?&]lite=1\b/.te
 if (LITE) document.documentElement.classList.add('lite');
 // ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
 let SET = {};
-function loadSet() { setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
+function loadSet() { setTimeout(() => window.DCW && DCW.refresh(), 0); setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
 const S = (k, d) => SET[k] ?? d;
 function setPref(k, v) { SET[k] = v; if ((k === 'fx' || k === 'ring' || k === 'hud') && typeof fxApply === 'function') setTimeout(fxApply, 0); try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
 loadSet();
@@ -4561,7 +4570,7 @@ function tabKey(n) {
   show(t.dataset.page); t.focus(); return true;
 }
 window.onTvMenu = () => settings(!$('#panel').classList.contains('on'));
-window.onTvBack = () => { if (CTX) return ctxClose(); if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
+window.onTvBack = () => { if (window.DCW && DCW.back()) return; if (CTX) return ctxClose(); if (YTP) return YTP.sura != null ? ytPick() : ytClose(); if (MOVING) return moveEnd(); if ($('#bedit').classList.contains('on')) return editClose(EDIT?.id); if (document.body.classList.contains('ambient')) return ambient(false); if ($('#panel').classList.contains('on')) settings(false); else if (!$('#player').hidden && audio.paused) closePlayer(); else if ($('.page.on').id === 'p-home' && $('#homeScroll').scrollTop > 0) { $('#homeScroll').scrollTo({ top: 0, behavior: 'smooth' }); $('.tab.on').focus(); } else show('home'); };
 // 🌙 at night (11 pm → fajr) the whole screen is veiled a little, so a lit TV in a dark room does not glare
 function nightTick() {
   const now = window.__simTime ? new Date(window.__simTime()) : new Date(), m = now.getHours() * 60 + now.getMinutes();
@@ -4652,6 +4661,7 @@ setTimeout(() => { try { if (window.TV && TV.wake && TV.wake() === 'boot') onTvW
 window.onTvResume = () => { loadSet(); PINNO = null; loadApps(); loadPrayers(); nightTick(); try { liveUi(); if ($('#p-iptv').classList.contains('on')) { dynUi(); iptvUi(); } } catch (e) {} setTimeout(backFocus, 120); };
 // the phone remote (http://<tv>:8080 → «ريموت»): the same as the TV's remote, plus shortcuts
 window.onRemote = k => {
+  if (window.DCW && DCW.editing()) { if (k === 'back') DCW.back(); return; }   // 🧩 editing the widgets: by touch / mouse
   if (/^[0-9]$/.test(k)) return numberKey(k);
   const dir = { up: 'up', down: 'down', left: 'left', right: 'right' }[k];
   if (dir) return move(dir);
@@ -4898,6 +4908,7 @@ setInterval(ibUi, 60e3); setTimeout(ibUi, 2500);
 function ambient(on) {
   if (on) skyNote();
   document.body.classList.toggle('ambient', on);
+  if (window.DCW) DCW.show(on);   // 🧩 the widgets of «وضع الأعلى» (✏️ edit, ➕ add)
   document.body.classList.toggle('livepic', on && S('livepic', LITE ? 'off' : 'on') !== 'off');
   if (on) { ambWidgets(); loadPhrase(); ambIqTick(); ambNoteUi(); ibUi(); loadAyah().then(spiritUi); document.activeElement?.blur(); show('home'); $('#homeScroll').scrollTop = 0; document.body.classList.remove('deep'); }
   else $('.tab.on')?.focus();
@@ -5318,6 +5329,7 @@ document.addEventListener('keyup', e => {
 document.addEventListener('keydown', e => {
   if (/^[0-9]$/.test(e.key) && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName || '') && numberKey(e.key)) { e.preventDefault(); return; }
   const k = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[e.key];
+  if (window.DCW && DCW.editing() && e.key !== 'Escape') { if (k || e.key === 'Enter') e.preventDefault(); return; }
   if (k && (k === 'left' || k === 'right') && /^(ytQ|s-isearch|m3uvIn|m3uvQ|m3uIn)$/.test(document.activeElement?.id || '') && document.activeElement.value) return;
   if (k) { e.preventDefault(); if (e.repeat) { if (MVF) return; const now = performance.now(); if (!HOLDS) HOLDS = now; const gap = Math.max(45, 130 - (now - HOLDS) / 8); if (now - HOLDL < gap) return; HOLDL = now; MVF = requestAnimationFrame(() => { MVF = 0; }); } else { HOLDS = 0; HOLDL = performance.now(); } move(k); }
   if (document.body.classList.contains('ambient') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ambient(false); }

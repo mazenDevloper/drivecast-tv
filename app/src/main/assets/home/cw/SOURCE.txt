@@ -1,0 +1,2 @@
+couch-tv commit: c8cf6d8
+Changed in DriveCast TV: widgets.js's text-measuring box is position:fixed at 0,0 (hidden), not left:-10000px — on this right-to-left page that offset blanked the screen.
