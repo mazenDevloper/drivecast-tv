@@ -1730,9 +1730,16 @@ public class PlayerActivity extends Activity {
         Update.auto(getApplicationContext(), true);
         final long t0 = System.currentTimeMillis();
         h.post(new Runnable() { @Override public void run() {
-            String st = Update.stage, msg = "check".equals(st) ? "⬆️ أدوّر على آخر إصدار…" : "down".equals(st) ? "⬇️ أنزّل التحديث " + Update.pct + "٪ — القناة شغّالة"
-                : "install".equals(st) || "restart".equals(st) ? "📦 يتثبّت في الخلفية — التطبيق يرجع لحاله بعد ثواني" : "latest".equals(st) ? "✅ عندك آخر إصدار"
-                : "noadb".equals(st) ? "⚠️ التحديث بدون موافقة يحتاج «تصحيح الشبكة»: من الريموت ← المزيد ← ⚙️ التلفزيون ← 🔧" : "error".equals(st) ? "⚠️ ما قدرت أحدّث: " + Update.note : null;
+            String st = Update.stage, nt = Update.note, msg;
+            String[] v = nt.split("\\|");
+            if ("check".equals(st)) msg = "⬆️ أدوّر على آخر نسخة…";
+            else if ("latest".equals(st)) msg = "✅ عندك آخر نسخة" + (v.length == 2 ? " (رقم " + v[0] + ")" : "");
+            else if ("found".equals(st)) msg = v.length == 2 ? "⬆️ عندك نسخة رقم " + v[0] + " — وفيه نسخة رقم " + v[1] + " · أبدأ التحديث" : "⬆️ فيه نسخة جديدة · أبدأ التحديث";
+            else if ("down".equals(st)) msg = "⬇️ أنزّل النسخة " + (v.length == 2 ? v[1] + " " : "") + Update.pct + "٪";
+            else if ("install".equals(st) || "restart".equals(st)) msg = "📦 أثبّت الحين — التطبيق بيسكّر ويرجع بالنسخة الجديدة";
+            else if ("noadb".equals(st)) msg = "⚠️ التحديث بدون موافقة يحتاج «تصحيح الشبكة»: من الريموت ← المزيد ← ⚙️ التلفزيون ← 🔧";
+            else if ("error".equals(st)) msg = "⚠️ ما تم التحديث: " + nt;
+            else msg = null;
             if (msg != null) flash(msg);
             if (!"latest".equals(st) && !"error".equals(st) && !"noadb".equals(st) && !"restart".equals(st) && System.currentTimeMillis() - t0 < 10 * 60_000) h.postDelayed(this, 1500);
         } });

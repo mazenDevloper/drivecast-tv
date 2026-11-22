@@ -147,31 +147,29 @@ public class Update extends BroadcastReceiver {
             try {
                 JSONObject j = new JSONObject(check(c));
                 if (j.has("error")) { stage = "error"; note = j.optString("error"); return; }
-                note = String.valueOf(j.optLong("latest"));
+                long hv = have(c), lt = j.optLong("latest"); note = hv + "|" + lt;
                 if (!j.optBoolean("newer")) { stage = "latest"; pct = 100; return; }
+                // 1) say what was found — «عندك نسخة N وفيه نسخة M» — for a moment, then the download
+                stage = "found"; Thread.sleep(3000);
                 File f = download(c, j.optString("url"), (st, n) -> { stage = st; pct = n; });
                 stage = "install"; pct = 100;
-                // 1) the TV's own debugging shell: installs with no screen at all, then brings the home screen back
+                // 2) the TV's own debugging shell, in the foreground: pm installs it, Android closes this app at once to replace it
+                // (that ends this thread too), and a small helper started first brings the home screen back the moment it is gone.
+                // (The old way put the install itself in the background — it said «started» and nothing happened.)
                 String p = f.getAbsolutePath().replace("'", "");
                 try {
-                    // setsid: the install runs in its own session, so closing this shell (or the app being replaced) can't stop it
-                    // after the install the new build is not ready at once (the screen stayed black): start it again every 2 s until
-                    // its process is up (≤ 30 s), then the HOME screen as a last resort; what am says goes to the log
                     String pkg = c.getPackageName(), home = pkg + "/app.drivecast.tv.HomeActivity";
-                    String job = "sleep 1; pm install -r -d /data/local/tmp/dctv.apk > /data/local/tmp/dctv.log 2>&1; "
-                            + "for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do sleep 2; am start -n " + home + " >> /data/local/tmp/dctv.log 2>&1; "
-                            + "sleep 1; pidof " + pkg + " > /dev/null 2>&1 && break; done; "
-                            + "pidof " + pkg + " > /dev/null 2>&1 || am start -a android.intent.action.MAIN -c android.intent.category.HOME >> /data/local/tmp/dctv.log 2>&1; "
-                            + "rm -f /data/local/tmp/dctv.apk";
-                    String out = SelfAdb.shell(c, "rm -f /data/local/tmp/dctv.log; cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
-                            + "( (setsid sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) || (nohup sh -c '" + job + "' < /dev/null > /dev/null 2>&1 &) ) && echo started",
-                            60000, 15000);
-                    if (out.contains("started")) {
-                        c.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("pending", System.currentTimeMillis()).putLong("from", have(c)).apply();
-                        stage = "restart"; return;
-                    }
-                    note = out.trim();
-                } catch (Exception e) { Crash.note(c, "update adb: " + e.getMessage()); }
+                    String back = "for i in $(seq 1 45); do sleep 2; pidof " + pkg + " > /dev/null 2>&1 || am start -n " + home + " > /dev/null 2>&1; done";
+                    c.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("pending", System.currentTimeMillis()).putLong("from", hv).commit();
+                    String out = SelfAdb.shell(c, "cp '" + p + "' /data/local/tmp/dctv.apk && chmod 644 /data/local/tmp/dctv.apk && "
+                            + "( (setsid sh -c '" + back + "' < /dev/null > /dev/null 2>&1 &) || true ); "
+                            + "pm install -r -d /data/local/tmp/dctv.apk 2>&1; rm -f /data/local/tmp/dctv.apk", 60000, 180000).trim();
+                    // still here: pm said no (its own words on the screen), or it took and Android has not closed this app yet
+                    if (out.contains("Success")) { stage = "restart"; Thread.sleep(4000); android.os.Process.killProcess(android.os.Process.myPid()); return; }
+                    note = out.isEmpty() ? "ما رد pm" : out.length() > 160 ? out.substring(out.length() - 160) : out;
+                    Crash.note(c, "update (pm): " + note);
+                    if (quiet) { stage = "error"; return; }
+                } catch (Exception e) { note = String.valueOf(e.getMessage()); Crash.note(c, "update adb: " + e.getMessage()); }
                 if (quiet && Build.VERSION.SDK_INT < 31) { stage = "noadb"; if (note.isEmpty()) note = SelfAdb.last; return; }
                 // 2) Android's installer (Android 12+: no confirm; older: its confirm screen on the TV)
                 stage = Build.VERSION.SDK_INT >= 31 ? "install" : "confirm";

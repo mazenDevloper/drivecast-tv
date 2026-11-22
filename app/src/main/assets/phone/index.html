@@ -420,14 +420,14 @@ setInterval(() => {
 }, 45);
 function mouseOn() { post('/mouse-on', '1'); $('s').textContent = 'جاري التشغيل… لو ما اشتغل تنفتح صفحة تسهيل الوصول على التلفزيون'; setTimeout(status, 2500); }
 // ⬆️ the TV updates itself: downloads the newest build from GitHub and installs it (through its own debugging: no confirm)
-const UPDT = { check: 'أشيك على آخر نسخة…', down: 'ينزّل', install: 'يثبّت…', restart: 'ثبّت ✅ — التلفزيون يرجع خلال ثواني…', latest: '✅ التلفزيون على آخر نسخة', confirm: '⚠️ طلعت على التلفزيون شاشة تأكيد — اضغط «🔧 خلّ التحديث بدون موافقة» مرة وحدة وأنت عنده', error: '❌ ما ضبط التحديث', allow: '⚠️ التلفزيون يطلب السماح بتثبيت التطبيقات' };
+const UPDT = { check: 'أشيك على آخر نسخة…', found: 'لقيت نسخة جديدة — أبدأ التحديث', down: 'ينزّل', install: 'يثبّت…', restart: 'ثبّت ✅ — التلفزيون يرجع خلال ثواني…', latest: '✅ التلفزيون على آخر نسخة', confirm: '⚠️ طلعت على التلفزيون شاشة تأكيد — اضغط «🔧 خلّ التحديث بدون موافقة» مرة وحدة وأنت عنده', error: '❌ ما ضبط التحديث', allow: '⚠️ التلفزيون يطلب السماح بتثبيت التطبيقات' };
 let updFrom = 0, updT = null;
 async function updPoll() {
   clearTimeout(updT); const el = $('updS');
   try {
     const j = await (await fetch('/update')).json();
     if (updFrom && j.have > updFrom) { el.textContent = `✅ التلفزيون رجع على النسخة ${j.have}`; updFrom = 0; return; }
-    if (!updFrom || j.stage !== 'restart') el.textContent = (UPDT[j.stage] || j.stage || '') + (j.stage === 'down' ? ` ${j.pct}٪` : '') + (j.stage === 'latest' && j.note ? ` (${j.have})` : '') + (j.stage === 'error' && j.note ? ` — ${j.note}` : '');
+    if (!updFrom || j.stage !== 'restart') el.textContent = (UPDT[j.stage] || j.stage || '') + (j.stage === 'found' && /\|/.test(j.note || '') ? ` (${j.note.split('|')[0]} ← ${j.note.split('|')[1]})` : '') + (j.stage === 'down' ? ` ${j.pct}٪` : '') + (j.stage === 'latest' && j.note ? ` (${j.have})` : '') + (j.stage === 'error' && j.note ? ` — ${j.note}` : '');
     if (j.stage === 'restart' && !updFrom) updFrom = j.have;
     if (j.running || updFrom) updT = setTimeout(updPoll, 2500);
   } catch (e) { if (updFrom) { el.textContent = '🔄 التلفزيون يعيد التشغيل…'; updT = setTimeout(updPoll, 3000); } }
