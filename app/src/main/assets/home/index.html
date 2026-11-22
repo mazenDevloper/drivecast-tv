@@ -3940,6 +3940,7 @@ let RSTATE = {};
 // A goal the 🔔 loop already showed (or the other way round) shows once
 const GOALAT = {}, HUBSEEN = new Set(), HUB0 = Date.now() - 90e3;
 window.hubMatch = a => {
+  if (a && a.kind === 'scores') return hubScores(a);
   if (!a || !a.id || HUBSEEN.has(a.id) || (a.at && a.at < HUB0)) return; HUBSEEN.add(a.id);
   if (a.kind !== 'goal' && a.kind !== 'start') return;
   const mid = String(a.match || ''), i = (MLIST || []).findIndex(m => ID365(m) === mid || m.id === mid), m = i >= 0 ? MLIST[i] : null;
@@ -3948,6 +3949,39 @@ window.hubMatch = a => {
   rOffer(a.title + (a.body && a.kind === 'goal' ? ' · ' + a.body : ''), m?.home?.logo || '', () => i >= 0 ? playMatch(i) : null, a.kind === 'goal' ? 1 : 0);
   setTimeout(() => { remindLoop(true); }, 300);   // the corner's score moves now, not in 20 s
 };
+// ⏱ the worker's live scores (each minute): onto every list the TV holds (today's, your teams', the phone's), and the cards
+// on screen change in place (no reload, the focus stays)
+function hubScores(a) {
+  const lists = [MLIST || [], ...Object.values(mCache).map(c => arr(c && c.d && c.d.matches))];
+  for (const x of a.list || []) {
+    for (const l of lists) for (const m of l) {
+      if (ID365(m) !== x.id && m.id !== x.id) continue;
+      m.status = x.st; m.score = { home: x.sh, away: x.sa }; if (x.el != null) { m.elapsed = x.el; m.elAt = a.at || Date.now(); }
+      if (x.disp || x.txt) m.st365 = /^\d/.test(x.disp || '') ? '' : (x.disp || x.txt);
+    }
+    const i = (MLIST || []).findIndex(m => ID365(m) === x.id || m.id === x.id); if (i >= 0) mPatch(i);
+  }
+}
+function mPatch(i) {
+  const m = MLIST[i]; if (!m) return;
+  const live = m.status === 'live', fin = m.status === 'finished', sc = m.score || {};
+  document.querySelectorAll(`#s-matches .mcard[data-mi="${i}"]`).forEach(b => {
+    const big = b.querySelector('.mid .big'), sub = b.querySelector('.mid small');
+    if (big && (live || fin)) big.textContent = `${AR(sc.home ?? 0)} - ${AR(sc.away ?? 0)}`;
+    if (sub && live) sub.textContent = `● مباشر ${mMin(m) != null ? AR(mMin(m)) + '′' : ''}`; else if (sub && fin) sub.textContent = 'انتهت';
+  });
+  document.querySelectorAll(`#s-cm .mc[data-mi="${i}"]`).forEach(b => {
+    const s = b.querySelector('.sc'); if (s && (live || fin)) s.textContent = `${sc.home ?? 0}-${sc.away ?? 0}`;
+    const c = b.querySelector('.ch'); if (c && live) c.innerHTML = c.innerHTML.replace(/^🔴 (\d+′ · )?/, '🔴 ' + (mMin(m) != null ? mMin(m) + '′ · ' : ''));
+  });
+}
+// 🔔 the bells, told to DriveCast's server (their 365 ids): it watches them every minute with your teams
+let BELLSIG = '', BELLAT = 0;
+function bellSync(rem) {
+  const ids = [...new Set((MLIST || []).filter(m => rem.includes(mKey(m)) && m.status !== 'finished').map(ID365).filter(Boolean))].sort(), sig = ids.join(',');
+  if (sig === BELLSIG && Date.now() - BELLAT < 10 * 60e3) return; BELLSIG = sig; BELLAT = Date.now();
+  fetch('https://studio.c-p.workers.dev/push/bells', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => { BELLAT = 0; });
+}
 let HUBPOLL = 0;
 async function hubPoll() {
   if (Date.now() - HUBPOLL < 18e3) return; HUBPOLL = Date.now();
@@ -3973,6 +4007,7 @@ window.remindLoop = remindLoop;
 async function remindRun() {
   hubPoll();
   const rem = REMIND();
+  if ((MLIST || []).length) bellSync(rem);
   if (!rem.length) { if (TV.playerScores) TV.playerScores('[]'); return; }
   // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
   if (!(MLIST || []).length && Date.now() - RWW.at > 60e3) { RWW = { at: Date.now(), d: await winwinDay(0).catch(() => null) }; }
@@ -3993,9 +4028,9 @@ async function remindRun() {
     const go = () => { const i = (MLIST || []).findIndex(x => mKey(x) === k); if (i >= 0) return playMatch(i); MLIST = [m, ...(MLIST || [])]; playMatch(0); };
     if (!p) continue;
     const hk = kd => { const x = ID365(m) + ':' + kd; if (Date.now() - (GOALAT[x] || 0) < 120e3) return 0; GOALAT[x] = Date.now(); return 1; };
-    if (p.st === 'upcoming' && m.status === 'live') { if (hk('start')) rOffer('🟢 بدأت: ' + title, m.home?.logo, go); rPush('🟢 بدأت: ' + title, m.league?.name); }
-    else if (m.status === 'live' && g > p.g) { if (hk('goal')) rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); rPush('⚽ هدف! ' + title, m.league?.name); }
-    else if (p.st === 'live' && m.status === 'finished') rPush('🏁 انتهت: ' + title, m.league?.name);
+    if (p.st === 'upcoming' && m.status === 'live') { if (hk('start')) rOffer('🟢 بدأت: ' + title, m.home?.logo, go); if (!ID365(m)) rPush('🟢 بدأت: ' + title, m.league?.name); }
+    else if (m.status === 'live' && g > p.g) { if (hk('goal')) rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); if (!ID365(m)) rPush('⚽ هدف! ' + title, m.league?.name); }
+    else if (p.st === 'live' && m.status === 'finished' && !ID365(m)) rPush('🏁 انتهت: ' + title, m.league?.name);
   }
   RSTATE = { ...RSTATE, ...now };
 }

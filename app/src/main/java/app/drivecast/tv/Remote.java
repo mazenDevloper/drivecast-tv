@@ -188,6 +188,21 @@ final class Remote {
         // ⚽ DriveCast's own goal / kick-off alerts (the worker's minute watch of your teams, the same as the phone's push): the
         // home page shows the goal card over the channel and refreshes the scores at once
         if ("msg".equals(d.optString("type")) && (m = d.optJSONObject("msg")) != null && "match".equals(m.optString("type"))) {
+            // ⏱ the live scores (each minute while one is on): the 🔔 ones straight into the player's corner — no page in between,
+            // so nothing (a sleeping page, a busy loop) stops the score and the real minute from moving
+            if ("scores".equals(m.optString("kind"))) try {
+                org.json.JSONArray in = m.optJSONArray("list"), out = new org.json.JSONArray(); long at = m.optLong("at", System.currentTimeMillis());
+                for (int k = 0; in != null && k < in.length() && out.length() < 3; k++) {
+                    JSONObject x = in.optJSONObject(k); if (x == null || !x.optBoolean("bell") || !"live".equals(x.optString("st"))) continue;
+                    String disp = x.optString("disp"); boolean num = disp.isEmpty() ? !x.isNull("el") : Character.isDigit(disp.charAt(0));
+                    int el = x.isNull("el") ? 0 : x.optInt("el");
+                    out.put(new JSONObject().put("hl", x.optString("hl")).put("al", x.optString("al")).put("h", x.optString("h")).put("a", x.optString("a"))
+                        .put("s", x.optInt("sh") + " - " + x.optInt("sa")).put("t", num ? el + "′" : (disp.isEmpty() ? x.optString("txt") : disp))
+                        .put("e", num ? el : 0).put("at", at));
+                }
+                final String sj = out.toString();
+                h.post(() -> PlayerActivity.scores(sj));
+            } catch (Exception ignored) { }
             String js = "window.hubMatch && hubMatch(" + m + ")";
             h.post(() -> { HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.evaluateJavascript(js, null); });
             return;

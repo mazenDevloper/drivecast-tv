@@ -282,7 +282,7 @@ function go(t) {
   $('subnav').classList.toggle('hide', !more);
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === (more ? 'x' : t)));
   document.querySelectorAll('[data-more]').forEach(b => b.classList.toggle('on', b.dataset.more === t));
-  clearInterval(window.__mtT); if (t === 'mt') { matches(); window.__mtT = setInterval(matches, 20000); }
+  clearInterval(window.__mtT); if (t === 'mt') { matches(); window.__mtT = setInterval(matches, 10000); }
   if (t === 'pl' && !PL.loaded) plGo([]);
   clearInterval(window.__lvT); if (t === 'r') { liveBar(); window.__lvT = setInterval(liveBar, 45000); }
   if (t === 'd') fit(); if (t === 'q') reciters(); if (t === 'z') azkar(); if (t === 'b') boardLoad(); if (t === 'm') status(); if (t === 'a') apps();
