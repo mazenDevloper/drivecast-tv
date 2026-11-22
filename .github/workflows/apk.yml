@@ -16,6 +16,9 @@ jobs:
         with: { node-version: 20 }
       - name: Finished-product + speed gate
         run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium && node tools/final.js && node tools/speed.js
+      # 🪶 Lite's pages, zero-bloat (minified, without what Lite never runs): app/src/lite/assets, taken over the main files
+      - name: Lite pages
+        run: npm i --no-save html-minifier-terser@7.2.0 && node tools/lite.js
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: actions/cache@v4
@@ -25,13 +28,13 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          for i in 1 2 3; do ./gradlew -q assembleRelease && break; echo "retry $i"; sleep 30; done
+          for i in 1 2 3; do ./gradlew -q assembleFullRelease assembleLiteLean && break; echo "retry $i"; sleep 30; done
           # Gradle's download servers down: the Gradle that comes with the runner
           O=app/build/outputs/apk
-          [ -f $O/full/release/app-full-release.apk ] || { gradle --version | head -3; gradle -q assembleRelease; }
-          test -f $O/full/release/app-full-release.apk && test -f $O/lite/release/app-lite-release.apk
+          [ -f $O/full/release/app-full-release.apk ] || { gradle --version | head -3; gradle -q assembleFullRelease assembleLiteLean; }
+          test -f $O/full/release/app-full-release.apk && test -f $O/lite/lean/app-lite-lean.apk
           cp $O/full/release/app-full-release.apk DriveCastTV.apk
-          cp $O/lite/release/app-lite-release.apk DriveCastTVLite.apk
+          cp $O/lite/lean/app-lite-lean.apk DriveCastTVLite.apk   # 🪶 Lite: shrunk by R8 (app/proguard-lite.pro)
           # the APK must carry DriveCast TV's own key (its certificate's SHA-256), or the TV refuses it as an update
           AS=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | tail -1)
           for A in DriveCastTV.apk DriveCastTVLite.apk; do

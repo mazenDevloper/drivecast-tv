@@ -44,6 +44,15 @@ android {
             minifyEnabled false
             signingConfig signingConfigs.dctv
         }
+        // 🪶 Lite, zero-bloat: the same app shrunk by R8 (unused library code and resources out, names shortened); the full
+        // edition stays on «release». Lite is built as liteLean (see androidComponents below and .github/workflows/apk.yml)
+        lean {
+            initWith release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-lite.pro'
+            matchingFallbacks = ['release']
+        }
     }
 
     // release builds skip lint's opt-in checks (Media3's player info uses its «unstable» API on purpose)
@@ -55,15 +64,23 @@ android {
     }
 }
 
+// one build per edition: full → release, lite → lean
+androidComponents {
+    beforeVariants(selector().all()) { v ->
+        def lite = v.productFlavors.any { it.second == 'lite' }
+        if ((lite && v.buildType == 'release') || (!lite && v.buildType == 'lean')) v.enable = false
+    }
+}
+
 dependencies {
     // the web version's link to DriveCast's hub (a WebSocket that stays open)
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     // the channel player (like a satellite receiver: the stream's resolution, codec, bit depth, frame rate, bitrate)
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.4.1'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.4.1'
+    fullImplementation 'androidx.media3:media3-exoplayer-dash:1.4.1'   // 🪶 not in Lite (no DASH channels in its Arabic lists)
     implementation 'androidx.media3:media3-ui:1.4.1'
-    implementation 'androidx.media3:media3-effect:1.4.1'
+    fullImplementation 'androidx.media3:media3-effect:1.4.1'   // 🔷 the picture enhancement (Up4K): full only, Lite has a stub
     // ⚡ the start: the app's code compiled ahead on install (baseline-prof.txt) instead of warming up on each boot
     implementation 'androidx.profileinstaller:profileinstaller:1.3.1'
 }

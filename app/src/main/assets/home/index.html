@@ -883,7 +883,7 @@ const CITIES = [
 // the phone's match times as DriveCast shows them: 24 h, Muscat (15:35, not a bare «3:35»)
 const hm24 = t => new Date(t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' });
 let VODL = [];
-function couchOn() { return S('mode', MODE0) === 'couch'; }
+function couchOn() { return !LITE && S('mode', MODE0) === 'couch'; }
 function couchApply() {
   const on = couchOn(), st = document.documentElement.style; document.body.classList.toggle('couch', on); if (!on) return;
   // the clock's bottom stays under the mosque's roofline (its top 60 % clear): the bigger the clock, the higher it starts
@@ -4276,7 +4276,9 @@ const SECIC = { '🕌': 'moon', '🏠': 'home', '🎛️': 'sliders', '🖼️':
 function mouseState() { try { return JSON.parse(TV.mouse ? TV.mouse() : '{}') || {}; } catch (e) { return {}; } }
 function sections() {
   const dev = DEV();
-  return allSections().filter(x => dev || !x[3]).map(x => [x[0], x[1], x[2].filter(r => dev || !r.dev)]).filter(x => x[2].length);
+  // 🪶 Lite has no picture enhancement and no sports glass-clock mode (their code and pictures are not in its APK)
+  const liteOut = r => LITE && (r.k === 'up4k' || /^(cclk|c-)/.test(r.k || ''));
+  return allSections().filter(x => dev || !x[3]).map(x => [x[0], x[1], x[2].filter(r => (dev || !r.dev) && !liteOut(r)).map(r => LITE && r.k === 'mode' ? { ...r, o: r.o.filter(o => o[0] !== 'couch') } : r)]).filter(x => x[2].length);
 }
 function allSections() {
   const m = mouseState(), u = TV.phoneUrl();

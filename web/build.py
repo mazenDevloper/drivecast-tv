@@ -10,6 +10,9 @@ site = root / '_site'
 shutil.rmtree(site, ignore_errors=True)
 shutil.copytree(root / 'app/src/main/assets/home', site)
 shutil.copytree(root / 'app/src/main/assets/fonts', site / 'fonts')   # the page's own fonts (Antonio, Amiri Quran): ../fonts on the TV
+# the full edition's own files (the widgets cw/, the sports mode's pictures, its clock font): Lite's APK leaves them out, the web has them
+shutil.copytree(root / 'app/src/full/assets/home', site, dirs_exist_ok=True)
+shutil.copytree(root / 'app/src/full/assets/fonts', site / 'fonts', dirs_exist_ok=True)
 for f in ('hub.js', 'web.js', 'remote.js'):
     shutil.copy(root / 'web' / f, site / f)
 

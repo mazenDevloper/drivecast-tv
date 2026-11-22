@@ -2,7 +2,7 @@ name: Web
 on:
   push:
     branches: [main]
-    paths: ['app/src/main/assets/**', 'web/**', '.github/workflows/pages.yml']
+    paths: ['app/src/main/assets/**', 'app/src/full/assets/**', 'web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
