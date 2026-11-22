@@ -12,7 +12,10 @@
   const fit = () => {
     const w = innerWidth, h = innerHeight, typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
     if (fw && h < fh && typing && Math.abs(w - fw) < 40) return;
-    fw = w; fh = h; document.body.style.zoom = Math.min(w / 1920, h / 1080);
+    fw = w; fh = h; const z = Math.min(w / 1920, h / 1080); document.body.style.zoom = z;
+    // 📺 the TV's own screen (Hisense 70U: 3840×2160, 16:9 — the page is drawn at 1920×1080 as on the TV), centred, black around it
+    document.documentElement.style.background = '#000'; document.body.style.width = '1920px'; document.body.style.height = '1080px'; document.body.style.overflow = 'hidden'; document.body.style.transform = 'translateZ(0)';   // its fixed layers (the scene, the wall) stay inside the screen
+    document.body.style.marginLeft = Math.max(0, (w / z - 1920) / 2) + 'px'; document.body.style.marginTop = Math.max(0, (h / z - 1080) / 2) + 'px';
   };
   fit(); addEventListener('resize', fit);
 

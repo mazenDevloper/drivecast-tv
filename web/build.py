@@ -9,10 +9,12 @@ root = pathlib.Path(__file__).resolve().parent.parent
 site = root / '_site'
 shutil.rmtree(site, ignore_errors=True)
 shutil.copytree(root / 'app/src/main/assets/home', site)
+shutil.copytree(root / 'app/src/main/assets/fonts', site / 'fonts')   # the page's own fonts (Antonio, Amiri Quran): ../fonts on the TV
 for f in ('hub.js', 'web.js', 'remote.js'):
     shutil.copy(root / 'web' / f, site / f)
 
 h = (site / 'index.html').read_text(encoding='utf-8')
+h = h.replace('../fonts/', 'fonts/')   # (before the script is found: it moves what comes after)
 main = re.search(r'<script>\n', h)
 assert main, 'the home page script'
 h = h[:main.start()] + '<script type="text/dctv">\n' + h[main.end():]   # waits for web.js

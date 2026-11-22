@@ -64,9 +64,22 @@
     return { look: { icons: 'line' }, data: { weather: WXD, place: place(), apps: apps(),
       iconUrl: function (pkg) { try { var a = (APPS || []).find(function (x) { return x.pkg === pkg; }); return a && a.art || null; } catch (e) { return null; } } } };
   }
+  // 🎨 the look: «iOS» (default) as Apple's own widgets look — the weather in its blue sky, the calendar and notes on white,
+  // photos edge to edge, the rest dark — with iOS's corner (13 % of the short side), its font and a soft shadow; or «زجاج»
+  var IOS_COLOUR = ['weather', 'hourly', 'week', 'bigtemp', 'rain', 'uv', 'sun', 'air', 'surf', 'countdown', 'screentime', 'wordclock', 'analog'],
+    IOS_PAPER = ['date', 'month', 'agenda', 'note', 'list', 'guide', 'wifi', 'quote', 'word', 'card'],
+    IOS_NONE = ['photo', 'slideshow', 'mosaic', 'artframe', 'memory', 'keep', 'upnext'];
+  var LOOKW = { ios: 'iOS', glass: 'زجاج' };
+  function panelOf(w) {
+    if ((w.lk || 'ios') !== 'ios') return 'glass';
+    return IOS_COLOUR.indexOf(w.kind) >= 0 ? 'colour' : IOS_PAPER.indexOf(w.kind) >= 0 ? 'paper' : IOS_NONE.indexOf(w.kind) >= 0 ? 'none' : 'solid';
+  }
   function draw(w, b, demo) {
-    var o = { id: w.id, kind: w.kind, w: b.w, h: b.h, opts: w.opts || {}, style: { panel: 'glass', shadow: w.sh || undefined } };
-    try { return window.CouchWidgets.render(o, env(demo)); } catch (e) { return el('div', 'cw', AR[w.kind]); }
+    var ios = (w.lk || 'ios') === 'ios';
+    var o = { id: w.id, kind: w.kind, w: b.w, h: b.h, opts: w.opts || {}, style: { panel: panelOf(w), shadow: w.sh || (ios ? 'soft' : undefined) } };
+    var r; try { r = window.CouchWidgets.render(o, env(demo)); } catch (e) { r = el('div', 'cw', AR[w.kind]); }
+    if (ios) { r.classList.add('dcwIOS'); r.style.setProperty('--r', Math.round(Math.min(b.w, b.h) * 0.13) + 'px'); }
+    return r;
   }
 
   // ---- the layer
@@ -85,15 +98,73 @@
         var x = el('button', 'dcwDel', '✕'); x.dataset.cw = 'del'; x.title = 'احذف'; it.appendChild(x);
         var z = el('div', 'dcwSize'); z.dataset.cw = 'size'; it.appendChild(z);
         var n = el('span', 'dcwName', AR[w.kind]); it.appendChild(n);
-        var sh = el('button', 'dcwSh', '◐ ' + SHW[w.sh || 'auto']); sh.dataset.cw = 'shadow'; sh.title = 'الظل'; it.appendChild(sh);
+        var tools = el('div', 'dcwTools');
+        var sh = el('button', '', '◐ ' + SHW[w.sh || 'auto']); sh.dataset.cw = 'shadow'; sh.title = 'الظل'; tools.appendChild(sh);
+        var lk = el('button', '', '🎨 ' + LOOKW[w.lk || 'ios']); lk.dataset.cw = 'look'; lk.title = 'الشكل'; tools.appendChild(lk);
+        it.appendChild(tools);
       }
       L.appendChild(it);
     });
     L.classList.toggle('edit', EDIT);
     document.body.classList.toggle('cwEdit', EDIT);
+    var cb = EDIT && clockBox();
+    if (cb) {
+      var ci = el('div', 'dcwIt dcwClk'); ci.dataset.id = '__clk';
+      ci.style.cssText = 'left:' + (cb.x - 12) + 'px;top:' + (cb.y - 12) + 'px;width:' + (cb.w + 24) + 'px;height:' + (cb.h + 24) + 'px';
+      ci.appendChild(el('div', 'dcwMove'));
+      var cz = el('div', 'dcwSize'); cz.dataset.cw = 'size'; ci.appendChild(cz);
+      ci.appendChild(el('span', 'dcwName', '🕐 الساعة الزجاجية والتاريخ'));
+      var ct = el('div', 'dcwTools'), cf = el('button', '', 'Aa ' + (sv('cclkf', 'antonio') === 'helv' ? 'خط رفيع' : 'خط طويل')); cf.dataset.cw = 'cfont'; cf.title = 'خط الساعة'; ct.appendChild(cf); ci.appendChild(ct);
+      L.appendChild(ci);
+    }
+  }
+  // 🕐 the sports mode's glass clock (behind the mosque) and its date line, as one item: drag to move both, the corner to
+  // size the clock; kept as cclkdx (px sideways), cclky (vh from the top) and cclks (vh tall), read by couchApply()
+  function lrect(n) {
+    var r = L.getBoundingClientRect(), q = n.getBoundingClientRect(), k = 1920 / r.width;
+    return { x: (q.left - r.left) * k, y: (q.top - r.top) * k, w: q.width * k, h: q.height * k };
+  }
+  function clockBox() {
+    var g = document.querySelector('#gClock .fill'), d = document.getElementById('cDate');
+    if (!g || !document.body.classList.contains('couch') || !L.offsetParent) return null;
+    var rg = document.createRange(); rg.selectNodeContents(g);
+    var r = L.getBoundingClientRect(), q = rg.getBoundingClientRect(), k = 1920 / r.width;
+    var a = { x: (q.left - r.left) * k, y: (q.top - r.top) * k, w: q.width * k, h: q.height * k };
+    if (!a.w) return null;
+    if (d && d.textContent) { var b = lrect(d), x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y); a = { x: x0, y: y0, w: Math.max(a.x + a.w, b.x + b.w) - x0, h: Math.max(a.y + a.h, b.y + b.h) - y0 }; }
+    return a;
+  }
+  function vars() { var st = document.documentElement.style; return { ct: parseFloat(st.getPropertyValue('--ct')) || 22, cs: parseFloat(st.getPropertyValue('--cs')) || 34, dx: parseFloat(st.getPropertyValue('--cdx')) || 0 }; }
+  function clkDown(e, t, it) {
+    e.preventDefault(); e.stopPropagation();
+    var r = L.getBoundingClientRect();
+    DRAG = { id: '__clk', mode: t.dataset.cw === 'size' ? 'size' : 'move', x0: e.clientX, y0: e.clientY, k: 1920 / r.width, v: vars(), it: it,
+      box: { l: parseFloat(it.style.left), t: parseFloat(it.style.top), w: parseFloat(it.style.width), h: parseFloat(it.style.height) } };
+    try { L.setPointerCapture(e.pointerId); } catch (x) {}
+    it.classList.add('drag');
+  }
+  function clkMove(e) {
+    var d = DRAG, dx = (e.clientX - d.x0) * d.k, dy = (e.clientY - d.y0) * d.k, st = document.documentElement.style;
+    if (d.mode === 'move') {
+      d.now = { dx: Math.round(d.v.dx + dx), ct: Math.max(-4, Math.min(80, d.v.ct + dy / 10.8)), cs: d.v.cs };
+      d.it.style.left = (d.box.l + dx) + 'px'; d.it.style.top = (d.box.t + dy) + 'px';
+    } else {
+      var cs = Math.max(12, Math.min(64, d.v.cs * (d.box.h + dy) / d.box.h));
+      d.now = { dx: d.v.dx, ct: d.v.ct, cs: Math.round(cs * 10) / 10 };
+      d.it.style.height = (d.box.h + dy) + 'px'; d.it.style.width = (d.box.w * cs / d.v.cs) + 'px';
+    }
+    st.setProperty('--cdx', d.now.dx + 'px'); st.setProperty('--ct', d.now.ct.toFixed(1) + 'vh'); st.setProperty('--cs', d.now.cs + 'vh');
+  }
+  function clkUp(d) {
+    if (!d.now) return;
+    try { setPref('cclkdx', String(d.now.dx)); setPref('cclky', d.now.ct.toFixed(1)); setPref('cclks', String(d.now.cs)); } catch (x) {}
+    setTimeout(render, 30);
   }
   // where the first level has its own things: the tabs (row 0), the prayer card (rows 7–9), the sports mode's glass clock
-  function zones() { var z = [[0, 0, 18, 1], [0, 7, 18, 3]]; if (document.body.classList.contains('couch')) z.push([5, 2, 8, 4]); return z; }
+  function zones() { var z = [[0, 0, 18, 1], [0, 7, 18, 3]], c = L && clockBox();
+    if (c) { var c0 = Math.max(0, Math.floor(c.x / CWID)), r0 = Math.max(0, Math.floor(c.y / CHEI)); z.push([c0, r0, Math.min(COLS, Math.ceil((c.x + c.w) / CWID)) - c0, Math.min(ROWS, Math.ceil((c.y + c.h) / CHEI)) - r0]); }
+    else if (document.body.classList.contains('couch')) z.push([5, 2, 8, 4]);
+    return z; }
   function busy(c, r, w, h) { return zones().some(function (z) { return c < z[0] + z[2] && z[0] < c + w && r < z[1] + z[3] && z[1] < r + h; }); }
   function free(l, w, h) {
     for (var r = 0; r + h <= ROWS; r++) for (var c = 0; c + w <= COLS; c++) {
@@ -115,7 +186,8 @@
   function down(e) {
     if (!EDIT) return;
     var t = e.target, it = t.closest && t.closest('.dcwIt'); if (!it) return;
-    if (t.dataset.cw === 'del' || t.dataset.cw === 'shadow') return;
+    if (['del', 'shadow', 'look', 'cfont'].indexOf(t.dataset.cw) >= 0) return;
+    if (it.dataset.id === '__clk') return clkDown(e, t, it);
     e.preventDefault(); e.stopPropagation();
     var l = list(), w = l.find(function (o) { return o.id === it.dataset.id; }); if (!w) return;
     DRAG = { id: w.id, mode: t.dataset.cw === 'size' ? 'size' : 'move', at: gridAt(e), w0: Object.assign({}, w), it: it };
@@ -124,6 +196,7 @@
   }
   function move(e) {
     if (!DRAG) return; e.preventDefault();
+    if (DRAG.id === '__clk') return clkMove(e);
     var g = gridAt(e), dc = g.c - DRAG.at.c, dr = g.r - DRAG.at.r, w = Object.assign({}, DRAG.w0);
     if (DRAG.mode === 'move') { w.c = Math.round(Math.min(COLS - w.w, Math.max(0, w.c + dc))); w.r = Math.round(Math.min(ROWS - w.h, Math.max(0, w.r + dr))); }
     else { var m = minOf(w.kind); w.w = Math.round(Math.min(COLS - w.c, Math.max(m[0], w.w + dc))); w.h = Math.round(Math.min(ROWS - w.r, Math.max(m[1], w.h + dr))); }
@@ -133,6 +206,7 @@
   function up() {
     if (!DRAG) return;
     var d = DRAG; DRAG = null; d.it.classList.remove('drag');
+    if (d.id === '__clk') return clkUp(d);
     if (!d.now) return;
     var l = list(), i = l.findIndex(function (o) { return o.id === d.id; }); if (i < 0) return;
     var resized = d.now.w !== l[i].w || d.now.h !== l[i].h;
@@ -155,6 +229,9 @@
     if (k === 'pick') return addKind(t.dataset.k);
     if (k === 'shadow') { var it2 = t.closest('.dcwIt'), l2 = list(), w2 = l2.find(function (o) { return o.id === it2.dataset.id; }); if (!w2) return;
       var nx = SHN[(SHN.indexOf(w2.sh || 'auto') + 1) % SHN.length]; if (nx === 'auto') delete w2.sh; else w2.sh = nx; save(l2); render(); return; }
+    if (k === 'look') { var it3 = t.closest('.dcwIt'), l3 = list(), w3 = l3.find(function (o) { return o.id === it3.dataset.id; }); if (!w3) return;
+      if ((w3.lk || 'ios') === 'ios') w3.lk = 'glass'; else delete w3.lk; save(l3); render(); return; }
+    if (k === 'cfont') { try { setPref('cclkf', sv('cclkf', 'antonio') === 'helv' ? 'antonio' : 'helv'); couchApply(); } catch (x) {} render(); return; }
     if (k === 'del') { var it = t.closest('.dcwIt'); save(list().filter(function (o) { return o.id !== it.dataset.id; })); render(); return; }
     if (k === 'clear') { if (t.dataset.sure) { save([]); render(); t.textContent = '🗑 امسح الكل'; delete t.dataset.sure; } else { t.dataset.sure = '1'; t.textContent = 'متأكد؟ اضغط مرة ثانية'; } }
   }

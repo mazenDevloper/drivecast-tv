@@ -30,7 +30,8 @@ body.couch.chome:not(.deep):not(.cdeep):not(.ambient).cwWeb .dcwBar,body.couch.c
 .dcwBar button[data-cw="clear"]{font-size:24px}
 body.cwEdit .top,body.cwEdit #p-home{opacity:.28;pointer-events:none;transition:opacity .3s}
 .dcwZone{position:absolute;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 14px,transparent 14px 28px);border-radius:24px}
-.dcwSh{position:absolute;left:12px;bottom:-22px;height:44px;padding:0 16px;border-radius:22px;border:0;background:rgba(20,22,28,.9);color:#fff;font:600 19px/44px system-ui,"Thmanyah Sans",sans-serif;cursor:pointer;z-index:3;direction:rtl;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.dcwTools{position:absolute;left:12px;bottom:-24px;display:flex;gap:8px;z-index:3;direction:rtl}
+.dcwTools button{height:46px;padding:0 16px;border-radius:23px;border:0;background:rgba(20,22,28,.92);color:#fff;font:600 19px/46px system-ui,"Thmanyah Sans",sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.45);white-space:nowrap}
 
 .dcwCat{position:absolute;inset:60px 120px;z-index:30;display:none;flex-direction:column;border-radius:44px;overflow:hidden;direction:rtl;
   background:rgba(14,16,22,.86);-webkit-backdrop-filter:blur(40px) saturate(1.3);backdrop-filter:blur(40px) saturate(1.3);border:1px solid rgba(255,255,255,.16);
@@ -56,3 +57,9 @@ body.cwEdit .top,body.cwEdit #p-home{opacity:.28;pointer-events:none;transition:
 .dcwPv .cw-glass>.cw-bg{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.1)}
 body.lite .dcwLayer .cw-glass>.cw-bg{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(18,18,24,.6)}
 .dcwCat{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(14,16,22,.96)}
+
+/* 🎨 the iOS look: Apple's own font and the widget's own corner */
+.dcwIOS{font-family:-apple-system,"SF Pro Display","SF Pro Text",system-ui,"Helvetica Neue","Inter",sans-serif}
+/* 🕐 the glass clock's item: drawn around it, never over its words */
+.dcwLayer.edit .dcwIt.dcwClk{outline:3px dashed #ffd60a;background:rgba(255,214,10,.06);border-radius:30px}
+.dcwLayer.edit .dcwIt.dcwClk .dcwName{background:#ffd60a;color:#1c1c1e}
