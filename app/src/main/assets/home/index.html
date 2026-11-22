@@ -3275,7 +3275,7 @@ async function dayFix(d, plus) {
   return { ...(d || {}), matches: out };
 }
 async function mFetch(k) {
-  if (mCache[k] && Date.now() - mCache[k].at < (k === 'tom' ? 3 * 60e3 : 40e3)) return mCache[k].d;
+  if (mCache[k] && Date.now() - mCache[k].at < (k === 'tom' ? 3 * 60e3 : k === 'mine' ? 15e3 : 40e3)) return mCache[k].d;
   let d = null;
   if (k === 'mine') { try { d = await (await fetch('https://studio.c-p.workers.dev/now?lang=27')).json(); } catch (e) {} d = d && { matches: (d.matches || []).map(m => ({ ...m, channels: m.channels || [], mine: 1 })) }; }
   else {
@@ -3935,6 +3935,24 @@ function rOffer(t, logo, f, goal) {
 }
 const rPush = (title, body) => fetch('https://studio.c-p.workers.dev/push/notify', { method: 'POST', body: JSON.stringify({ title, body: body || '' }) }).catch(() => {});
 let RSTATE = {};
+// ⚽ DriveCast's alerts (studio.c-p.workers.dev/push): the worker watches your teams every minute and tells every screen the
+// moment a goal lands — over the hub's socket (Remote.java → hubMatch), and /push/latest every 20 s if the socket is off.
+// A goal the 🔔 loop already showed (or the other way round) shows once
+const GOALAT = {}, HUBSEEN = new Set(), HUB0 = Date.now() - 90e3;
+window.hubMatch = a => {
+  if (!a || !a.id || HUBSEEN.has(a.id) || (a.at && a.at < HUB0)) return; HUBSEEN.add(a.id);
+  if (a.kind !== 'goal' && a.kind !== 'start') return;
+  const mid = String(a.match || ''), i = (MLIST || []).findIndex(m => ID365(m) === mid || m.id === mid), m = i >= 0 ? MLIST[i] : null;
+  const k = mid + ':' + a.kind;
+  if (Date.now() - (GOALAT[k] || 0) < 120e3) return; GOALAT[k] = Date.now();
+  rOffer(a.title + (a.body && a.kind === 'goal' ? ' · ' + a.body : ''), m?.home?.logo || '', () => i >= 0 ? playMatch(i) : null, a.kind === 'goal' ? 1 : 0);
+  setTimeout(() => { remindLoop(true); }, 300);   // the corner's score moves now, not in 20 s
+};
+let HUBPOLL = 0;
+async function hubPoll() {
+  if (Date.now() - HUBPOLL < 18e3) return; HUBPOLL = Date.now();
+  try { const d = await (await fetch('https://studio.c-p.workers.dev/push/latest', { cache: 'no-store' })).json(); for (const a of (d.alerts || []).slice().reverse()) hubMatch(a); } catch (e) {}
+}
 // ⚽ your 🔔 matches and your teams', live: each one's own 365Scores page every 20 s (as quick as DriveCast's goal
 // notifications) — the minute and the score in the player's corner, and the goal card the moment it lands
 async function g365(id) {
@@ -3953,6 +3971,7 @@ async function remindLoop(force) {
 }
 window.remindLoop = remindLoop;
 async function remindRun() {
+  hubPoll();
   const rem = REMIND();
   if (!rem.length) { if (TV.playerScores) TV.playerScores('[]'); return; }
   // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
@@ -3973,8 +3992,9 @@ async function remindRun() {
     const title = `${m.home?.name || ''} ${m.status === 'upcoming' ? '×' : (m.score?.home ?? 0) + ' - ' + (m.score?.away ?? 0)} ${m.away?.name || ''}`;
     const go = () => { const i = (MLIST || []).findIndex(x => mKey(x) === k); if (i >= 0) return playMatch(i); MLIST = [m, ...(MLIST || [])]; playMatch(0); };
     if (!p) continue;
-    if (p.st === 'upcoming' && m.status === 'live') { rOffer('🟢 بدأت: ' + title, m.home?.logo, go); rPush('🟢 بدأت: ' + title, m.league?.name); }
-    else if (m.status === 'live' && g > p.g) { rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); rPush('⚽ هدف! ' + title, m.league?.name); }
+    const hk = kd => { const x = ID365(m) + ':' + kd; if (Date.now() - (GOALAT[x] || 0) < 120e3) return 0; GOALAT[x] = Date.now(); return 1; };
+    if (p.st === 'upcoming' && m.status === 'live') { if (hk('start')) rOffer('🟢 بدأت: ' + title, m.home?.logo, go); rPush('🟢 بدأت: ' + title, m.league?.name); }
+    else if (m.status === 'live' && g > p.g) { if (hk('goal')) rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); rPush('⚽ هدف! ' + title, m.league?.name); }
     else if (p.st === 'live' && m.status === 'finished') rPush('🏁 انتهت: ' + title, m.league?.name);
   }
   RSTATE = { ...RSTATE, ...now };

@@ -185,6 +185,13 @@ final class Remote {
             h.post(() -> { HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.evaluateJavascript(js, null); });
             return;
         }
+        // ⚽ DriveCast's own goal / kick-off alerts (the worker's minute watch of your teams, the same as the phone's push): the
+        // home page shows the goal card over the channel and refreshes the scores at once
+        if ("msg".equals(d.optString("type")) && (m = d.optJSONObject("msg")) != null && "match".equals(m.optString("type"))) {
+            String js = "window.hubMatch && hubMatch(" + m + ")";
+            h.post(() -> { HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.evaluateJavascript(js, null); });
+            return;
+        }
         if (!"msg".equals(d.optString("type")) || (m = d.optJSONObject("msg")) == null || !"dctv".equals(m.optString("type"))) return;
         String to = d.optJSONObject("from") != null ? d.optJSONObject("from").optString("id") : "";
         if (to.isEmpty()) return;
