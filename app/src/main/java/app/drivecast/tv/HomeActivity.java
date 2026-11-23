@@ -505,6 +505,20 @@ public class HomeActivity extends Activity {
         @JavascriptInterface
         public void iptvHeaders(String json) { Iptv.put(json); }
 
+        /** 🧹 one press: background apps stopped, every app's cache trimmed, lighter animations (clean.sh through the app's adb), cb(text) */
+        @JavascriptInterface
+        public void clean(String cb) {
+            new Thread(() -> {
+                String r;
+                try (java.io.InputStream in = getAssets().open("clean.sh")) {
+                    java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(); byte[] b = new byte[8192]; int n; while ((n = in.read(b)) > 0) o.write(b, 0, n);
+                    r = SelfAdb.shell(HomeActivity.this, o.toString("UTF-8"), 0, 120_000);
+                } catch (Exception e) { r = "ERR " + e.getMessage(); }
+                final String js = cb + "(" + JSONObject.quote(r == null ? "" : r) + ")";
+                runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
+            }, "clean").start();
+        }
+
         @JavascriptInterface
         public void fetch(String url, String cb) {
             new Thread(() -> {

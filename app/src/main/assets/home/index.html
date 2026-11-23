@@ -636,7 +636,8 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .sere button:focus,.sert button:focus{outline:0;box-shadow:0 0 0 4px #fff;transform:scale(1.05)}
 .snew{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
 .snew .sk{width:auto}
-body:not(.mode-series) #shSer{display:none!important}
+body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!important}
+.sk.mb{width:250px;height:200px;background-size:cover;background-position:center;position:relative;overflow:hidden}.sk.mb::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.82))}.sk.mb>*{position:relative}.sk.mb .skl img{max-height:84px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}.sk.mb em.tg{position:absolute;top:8px;inset-inline-start:8px;font-style:normal;font-size:12px;padding:2px 8px;border-radius:9px;background:rgba(0,0,0,.6)}.sk.mb.no{opacity:.55}
 .vrow{display:flex;gap:20px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
 .vrow .vcard{flex:none;width:168px;border:0;border-radius:22px;padding:0;overflow:hidden;color:#fff;font:inherit;cursor:pointer;text-align:center}
 .vrow .vcard .po{aspect-ratio:2/3;background:#1a1a24 center/cover no-repeat;display:grid;place-items:center;font-size:44px}
@@ -680,6 +681,7 @@ body:not(.mode-series) #shSer{display:none!important}
     <div class="cRow" id="shMt"><h2>مباريات اليوم</h2><div class="mrow" id="s-cm"></div></div>
     <div id="shLive"><h2>قنوات مباشرة<span id="liveNote"></span></h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shSer" hidden><h2>🎞️ المسلسلات</h2><div class="serrow" id="s-ser"></div></div>
+    <div id="shMbc" hidden><h2>📺 مسلسلات وبرامج وأفلام MBC <small style="opacity:.6;font-size:.6em">من شاهد</small></h2><div class="serrow" id="s-mbc"></div></div>
     <div class="cRow" id="shVod"><h2>🎬 أفلام</h2><div class="vrow" id="s-vod"></div></div>
     <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -4390,6 +4392,11 @@ function allSections() {
       { k: 'force', l: 'إبقاء الماوس مفعّل دائماً', o: ON, d: 'on' },
       { a: '', o: [['mouse-on', '🖱️ شغّل الماوس الحين'], ['access', 'إعدادات تسهيل الوصول']] },
     ]],
+    ['🧹', 'تنظيف وتسريع', [
+      { i: 'بضغطة', t: 'يوقف التطبيقات الشغّالة في الخلفية (ما عدا DriveCast وZeroTier وRustDesk والكيبورد)، ويمسح الكاش حق كل التطبيقات (بدون ما يمسح بياناتها أو تسجيل الدخول)، ويخفّف الحركات — الاختصار 009' },
+      ...(CLEANR ? [{ i: 'آخر مرة', t: CLEANR }] : []),
+      { a: '', o: [['clean', '🧹 نظّف وسرّع الحين']] },
+    ]],
     ['🎮', 'أزرار الريموت', keyRows()],
     ['🔢', 'اختصارات الأرقام', shortRows()],
     ['🌐', 'الويب', (() => { let w = {}; try { w = JSON.parse(TV.webInfo ? TV.webInfo() : '{}'); } catch (e) {} return [
@@ -4527,6 +4534,7 @@ function setAct(a) {
   if (/^sim-/.test(a)) { simAct(a).then(() => { if ($('#panel').classList.contains('on')) { const all = [...document.querySelectorAll('#sbody .f')], at = all.indexOf(document.activeElement); setsBody(); (document.querySelectorAll('#sbody .f')[at] || $('#sbody .f'))?.focus(); } }); return; }
   if (/^(adhan|iqama|stop)$/.test(a)) return TV.tryAdhan && TV.tryAdhan(a);
   if (a === 'reload') { listsAt = 0; return loadLists(); }
+  if (a === 'clean') return smartClean();
   if (a === 'mouse-on') { TV.mouseOn && TV.mouseOn(); return setTimeout(() => { if ($('#panel').classList.contains('on')) setsBody(); }, 1500); }
   if (a === 'access') return TV.accessSettings && TV.accessSettings();
   if (a === 'system') return TV.settings();
@@ -4566,6 +4574,7 @@ const SHORTS = [
   { c: '000', l: '🛠 إعدادات الأندرويد (البوكس)', go: () => TV.settings() },
   { c: '999', l: '⬆️ حدّث التطبيق لآخر إصدار — بدون موافقة ولا زر', go: () => updAuto999() },
   { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
+  { c: '009', l: '🧹 نظّف وسرّع البوكس بضغطة', go: () => smartClean() },
   { c: '002', l: '📺 كل القنوات', go: () => tabGo('iptv') },
   { c: '003', l: '⚽ المباريات', go: () => tabGo('matches') },
   { c: '004', l: '📱 التطبيقات', go: () => tabGo('apps') },
@@ -4575,6 +4584,17 @@ const SHORTS = [
   { c: /^([1-9]\d{0,2})$/, s: '1 – 999', l: 'القناة المثبّتة بهذا الرقم (رقم من خانة وما فيه قناة: التاب)', name: m => { const c = PINS[+m[1] - 1]; return c ? c.name : ''; },
     go: m => { const i = +m[1] - 1; if (PINS[i]) { if (document.body.classList.contains('ambient')) ambient(false); return playChannel(PINS, i); } if (m[1].length === 1) tabKey(m[1]); else toast('ما فيه قناة بالرقم ' + m[1]); } },
 ];
+// 🧹 one press: clean.sh through the app's adb — the RAM and storage it freed shown after
+let CLEANR = '';
+function smartClean() {
+  if (!window.TV || !TV.clean) return toast('التنظيف يحتاج نسخة التطبيق الكاملة', 2500);
+  if (smartClean.busy) return toast('🧹 التنظيف شغّال…', 1500); smartClean.busy = 1; toast('🧹 أنظّف وأسرّع البوكس…', 4000);
+  const n = '__clean' + Date.now(); window[n] = t => { delete window[n]; smartClean.busy = 0;
+    const m = /apps=(\d+) ram0=(\d+) ram1=(\d+) disk0=(\d+) disk1=(\d+)/.exec(t || '');
+    CLEANR = m ? `✅ وقّفت ${AR(+m[1])} تطبيق · الذاكرة الفاضية ${AR(+m[2])} ← ${AR(+m[3])} م.ب (+${AR(Math.max(0, m[3] - m[2]))}) · التخزين +${AR(Math.max(0, m[5] - m[4]))} م.ب` : '⚠️ ما قدرت أنظّف (' + String(t || '').slice(0, 80) + ')';
+    toast('🧹 ' + CLEANR, 6000); if ($('#panel').classList.contains('on')) setsBody(); };
+  TV.clean(n);
+}
 function shortFind(code) { for (const r of SHORTS) { if (typeof r.c === 'string') { if (r.c === code) return [r, null]; } else { const m = code.match(r.c); if (m) return [r, m]; } } return [null, null]; }
 // 🔢 a channel's own number (set in the player: ☰ → «اختصار لهذه القناة») comes before the rest
 window.chNumPlay = o => { if (!o || !o.url) return; if (document.body.classList.contains('ambient')) ambient(false);
@@ -5562,7 +5582,7 @@ function serUi() {
   const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
   let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
   if (last) h += card('data-ser="res"', `<div class="skl">${last.logo ? `<img src="${esc(last.logo)}" alt="">` : '<em>▶</em>'}</div><span>كمّل المشاهدة</span><small>${esc(last.title)} · ح${AR(last.e)}</small>`, 'res', 0, serPct(last));
-  h += SER.map((r, k) => card(`data-ser="${k}"`, `<div class="skl">${r.logo ? `<img src="${esc(r.logo)}" alt="" loading="lazy">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${AR(r.eps.length)} حلقة</small>`, '')).join('');
+  h += SER.map((r, k) => card(`data-ser="${k}"`, `<div class="skl">${shLogo(r) || r.logo ? `<img src="${esc(shLogo(r) || r.logo)}" alt="" loading="lazy">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${AR(r.eps.length)} حلقة</small>`, '')).join('');
   $('#s-ser').innerHTML = h;
 }
 function serClose() { const v = $('#serV'); v.classList.remove('on'); v.innerHTML = ''; SERV = null; for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = false; } const b = document.querySelector('#s-ser .sk'); if (b) b.focus(); }
@@ -5593,6 +5613,62 @@ function serPlay(r, x, st) {
   if (SERV) serClose();
   if (TV.watchFull) TV.watchFull(JSON.stringify(items), k); else if (TV.watch) TV.watch(JSON.stringify(items.map(i => i.url)), JSON.stringify(items.map(i => i.name)), k); else TV.link(x.c.url);
 }
+// 📺 MBC on Shahid: what MBC 1 · MBC 4 · MBC Masr · MBC Drama show (their guide), and Shahid's newest Arabic series, programmes and
+// films — each with Shahid's own logo and poster. OK plays it from your M3U lists (the series' episodes, the film), else the MBC
+// channel it is on now or next. Shahid's logo also replaces the list's logo on the series cards.
+const MBCCH = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^MBC ?4\b/i, /^MBC Masr\b(?! ?2| ?drama)/i, /^MBC Drama\b(?!.*\+)/i, /^MBC Masr Drama/i];
+const SHIMG = (u, w, h) => String(u || '').replace('{height}', h).replace('{width}', w).replace('{croppingPoint}', 'mc');
+const SHAR = /عربي|خليجي|مصري|سوري|سعودي|لبناني|كويتي|عراقي|إماراتي|اماراتي|أردني|مغربي|تونسي|بحريني|عماني|قطري/;
+const shNorm = t => serNorm(String(t || '').replace(/^\s*(مسلسل|برنامج|فيلم)\s+/, '').replace(/\s*[-–:|،(\[].*$/, '').replace(/\s*(الحلقة|الحلقه|حلقة|ح)\s*\d+.*$/, '').replace(/\s*(الموسم|الجزء)\s*\S+$/, ''));
+const shSame = (a, b) => !!a && !!b && (a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))));
+let SHC = null, SHROW = [];
+try { const c = JSON.parse(localStorage.shcat || 'null'); if (c && c.v) SHC = c.v; } catch (e) {}
+async function shahidCat(force) {
+  try { const c = JSON.parse(localStorage.shcat || 'null'); if (!force && c && Date.now() - c.at < 12 * 3600e3) return SHC = c.v; } catch (e) {}
+  const one = (type, sub, page) => { const f = { pageNumber: page, pageSize: 50, productType: type, sorts: [{ order: 'DESC', type: 'SORTDATE' }] }; if (sub) f.productSubType = sub;
+    return getJ('https://api3.shahid.net/proxy/v2.1/product/filter?filter=' + encodeURIComponent(JSON.stringify(f)) + '&language=ar&country=OM').then(d => arr(d && d.productList && d.productList.products)).catch(() => []); };
+  const jobs = [];
+  for (const [t, sub, k] of [['SHOW', 'SERIES', 's'], ['SHOW', 'PROGRAM', 'p'], ['MOVIE', '', 'm']]) for (let pg = 0; pg < 4; pg++)
+    jobs.push(one(t, sub, pg).then(l => l.filter(x => x && x.title).map(x => { const g = (x.genres || []).map(y => y.title).join(' · ');
+      return { k, t: x.title, n: shNorm(x.title), logo: x.logoTitleImage || '', po: (x.image && (x.image.thumbnailImage || x.image.landscapeClean)) || '', g, ar: /[ء-ي]/.test(x.title) || SHAR.test(g), soon: /قريباً/.test(g) }; })));
+  const v = (await Promise.all(jobs)).flat();
+  if (v.length > 50) { SHC = v; try { localStorage.shcat = JSON.stringify({ at: Date.now(), v }); } catch (e) {} }
+  return SHC || [];
+}
+/** the MBC channels' programmes from now on: name → { c: the channel, at, t } (the first time each is on) */
+function mbcAiring() {
+  const out = new Map(), pools = MPOOLS();
+  for (const re of MBCCH) { const c = pools.find(x => x && re.test(x.name) && (EPG[epgId(x)] || []).length); if (!c) continue;
+    for (const r of epgRows(c).slice(0, 80)) { const n = shNorm(r[2]); if (n.length < 3) continue; const o = out.get(n); if (!o || r[0] < o.at) out.set(n, { c, at: r[0], t: r[2] }); } }
+  return out;
+}
+const shSer = n => SER.findIndex(r => shSame(r.key, n) || shSame(shNorm(r.title), n));
+const shVod = n => VODL.findIndex(c => shSame(shNorm(String(c.name).replace(/\b(19|20)\d\d\b/, '')), n));
+/** Shahid's logo for a series of the lists */
+function shLogo(r) { if (!SHC) return ''; const a = r.key, b = shNorm(r.title); const x = SHC.find(y => y.k !== 'm' && y.logo && (shSame(y.n, a) || shSame(y.n, b))); return x ? SHIMG(x.logo, 360, 160) : ''; }
+function mbcUi() {
+  const el = $('#shMbc'); if (!el) return; if (!SERIES() || !SHC) { el.hidden = true; return; }
+  const air = mbcAiring(), now = Date.now() / 1000, used = new Set(), rows = [];
+  for (const x of SHC) { if (x.k === 'm' || used.has(x.n)) continue; let a = null; for (const [n, v] of air) if (shSame(n, x.n)) { a = v; break; }
+    if (a) { used.add(x.n); rows.push({ x, a, si: shSer(x.n), vi: -1, o: a.at / 1e10 }); } }
+  for (const x of SHC) { if (used.has(x.n) || !x.ar || x.soon) continue; const si = x.k !== 'm' ? shSer(x.n) : -1, vi = x.k === 'm' ? shVod(x.n) : -1;
+    if (si < 0 && vi < 0) continue; used.add(x.n); rows.push({ x, a: null, si, vi, o: x.k === 'm' ? 2 : 1 }); }
+  rows.sort((a, b) => a.o - b.o); SHROW = rows.slice(0, 60); el.hidden = !SHROW.length;
+  const kind = { s: 'مسلسل', p: 'برنامج', m: 'فيلم' };
+  $('#s-mbc').innerHTML = SHROW.map((r, k) => { const x = r.x, play = r.si >= 0 || r.vi >= 0;
+    const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : '');
+    return `<button class="sk mb f ${play || r.a ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 360, 160))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
+}
+function mbcGo(k) {
+  const r = SHROW[k]; if (!r) return;
+  if (r.si >= 0) return serOpen(String(r.si));
+  if (r.vi >= 0) return playChannel(VODL, r.vi);
+  if (r.a) { const l = MPOOLS(), i = l.indexOf(r.a.c); return playChannel(l, i < 0 ? 0 : i); }
+  toast('ما لقيت «' + r.x.t + '» في قوائمك ولا في دليل MBC', 2500);
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mbc]'); if (b) { e.stopPropagation(); mbcGo(+b.dataset.mbc); } }, true);
+async function mbcLoad() { if (!SERIES()) return; await shahidCat(); serUi(); mbcUi(); }
+setTimeout(mbcLoad, 8000); setInterval(() => { if (SERIES()) mbcLoad(); }, 10 * 60e3);
 // the player says where it stopped (its pause, back, or another episode): kept per series, so «كمّل المشاهدة» starts there
 window.vodPos = (url, pos, dur) => {
   const h = SERIDX.get(url); if (!h || !(dur > 60e3)) return;
