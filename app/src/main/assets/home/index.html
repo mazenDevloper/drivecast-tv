@@ -975,7 +975,10 @@ async function hlLoad(force) {
 }
 function hlAgo(t) { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + AR(m) + ' د' : m < 1440 ? 'قبل ' + AR(Math.round(m / 60)) + ' س' : 'قبل ' + AR(Math.round(m / 1440)) + ' يوم'; }
 function hlUi() {
-  const el = $('#shHl'); if (!el) return; const on = couchOn() && S('c-hl', 'on') !== 'off' && HL.length; el.style.display = on ? '' : 'none'; if (!on) return;
+  const el = $('#shHl'); if (!el) return;
+  // the sports mode chosen after start-up (or the first load failed): asked now, not in 30 min
+  if (couchOn() && !HL.length && !hlUi.asked && Date.now() - (hlUi.at || 0) > 5 * 60e3) { hlUi.asked = 1; hlUi.at = Date.now(); setTimeout(() => hlLoad(true).finally(() => { hlUi.asked = 0; }), 0); }
+  const on = couchOn() && S('c-hl', 'on') !== 'off' && HL.length; el.style.display = on ? '' : 'none'; if (!on) return;
   // «ملخص مباراة ليفربول ومانشستر يونايتد | الدوري الإنجليزي الممتاز - الجولة 11» → «ليفربول × مانشستر يونايتد» and its league
   $('#s-hl').innerHTML = HL.map(v => { const [a, lg] = v.t.split('|').map(x => x.trim()); let name = (a || v.t).replace(/^ملخص\s+(مباراة\s+)?/, '');
     const mm = /^(.+?)\s+و\s*(\S.+)$/.exec(name); if (/^ملخص/.test(v.t) && mm) name = mm[1] + ' × ' + mm[2];
