@@ -5587,7 +5587,14 @@ function serUi() {
   // its programme's own logo from the guide (as the channel cards show it); the rest of the lists after, Arabic titles only
   const ord = SER.map((r, k) => ({ r, k, g: serGuide(r) })), ar = t => /[ء-ي]/.test(t);
   const top = ord.filter(o => o.g).sort((a, b) => b.r.last - a.r.last), rest = ord.filter(o => !o.g && ar(o.r.title));
-  const xsNow = XS.filter(x => x.now && x.ar).sort((a, b) => b.at - a.at).slice(0, 60);
+  // the server's series in three steps: 1) the names the MBC guide or Shahid carry (and the ⭐ priority ones), found on the server;
+  // 2) «مسلسلات عربية تعرض حاليا»; 3) the programmes (برامج تليفزيونية) searched by the guide's and Shahid's programme names
+  const g0 = mbcGuide(), pr0 = mbcPrio(), shN = (SHC || []).filter(y => y.k !== 'm').map(y => y.n), byAt = (a, b) => b.at - a.at;
+  const known = x => x.ns.some(q => g0.has(q) || shN.some(n => shSame(n, q)));
+  const isProg = x => /برامج|tv ?show/i.test(x.cat), seenX = new Set(), take = l => l.filter(x => !seenX.has(x.id) && seenX.add(x.id));
+  const xs1 = take(XS.filter(x => x.ns.some(q => pr0.some(p => q.includes(p))))), xs2 = take(XS.filter(x => !isProg(x) && x.now && known(x)).sort(byAt));
+  const xs3 = take(XS.filter(x => /مسلسلات عربية تعرض حاليا/.test(x.cat)).sort(byAt)), xs4 = take(XS.filter(x => isProg(x) && known(x)).sort(byAt));
+  const xsNow = [...xs1, ...xs2, ...xs3, ...xs4].slice(0, 90);
   h += xsNow.map(x => { const sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q))), g = mbcGuide(); let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
     const lg = sh ? SHIMG(sh.logo, 360, 160) : (gg && gg.img) || x.cover;
     return card(`data-xs="${x.id}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.remove()">` : `<em>${esc(ini(x.t))}</em>`}</div><span>${esc(x.t)}</span><small>${gg ? '📺 ' + esc(gg.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${esc(x.cat.replace(/[\[\]|]/g, ' ').trim())}</small>`, sh ? 'mbcg' : ''); }).join('');
