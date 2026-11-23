@@ -608,6 +608,35 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .mrow .mc .tm img{width:56px;height:56px;object-fit:contain;display:block;margin:0 auto 6px}.mrow .mc .tm div{font-size:16px;font-weight:700;line-height:1.25}
 .mrow .mc .sc{font-family:"Antonio",sans-serif;font-size:38px;direction:ltr}.mrow .mc.live .sc{color:#ff7b7b}
 .mrow .mc .ch{margin-top:8px;font-size:14px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr}
+/* 🎞️ وضع المسلسلات: the series of your lists as cards — a logo on a plain tile (no poster behind it) */
+.serrow{display:flex;gap:18px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
+.sk{flex:none;width:210px;height:176px;border:0;border-radius:26px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:6px;background:rgba(255,255,255,.1);color:#fff;font:inherit;cursor:pointer;text-align:center;position:relative;overflow:hidden;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.sk .skl{flex:1;width:100%;display:grid;place-items:center;min-height:0}
+.sk .skl img{max-width:86%;max-height:92px;object-fit:contain}
+.sk .skl b{font-size:30px;letter-spacing:.5px}
+.sk .skl em{font-style:normal;font-size:44px;font-weight:700;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14)}
+.sk span{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;font-size:17px;font-weight:600;max-width:100%}
+.sk small{font-size:13px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sk.new{background:linear-gradient(150deg,#1d6b57,#134a3d)}
+.sk.res{background:linear-gradient(150deg,#3a4a8c,#27316b)}
+.sk i{position:absolute;inset:auto 0 0 0;height:5px;background:rgba(255,255,255,.18)}.sk i u{display:block;height:100%;background:#fff}
+.sk:focus{outline:0;transform:scale(1.07);box-shadow:0 0 0 4px #fff,0 22px 50px rgba(0,0,0,.45)}
+.serv{position:fixed;inset:0;z-index:1150;display:none;flex-direction:column;gap:18px;padding:56px 90px;background:rgba(6,9,13,.985);overflow-y:auto}
+.serv.on{display:flex}
+.serh{display:flex;align-items:center;gap:22px}.serh img{height:84px;max-width:240px;object-fit:contain}.serh b{font-size:42px}.serh small{display:block;font-size:20px;opacity:.7;margin-top:4px}
+.sert{display:flex;gap:12px;flex-wrap:wrap}
+.sert button,.sere button{border:0;border-radius:18px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:21px;padding:12px 14px;cursor:pointer;white-space:nowrap}
+.sert button{padding:12px 26px}
+.sert button.on{background:#fff;color:#111}
+.sere{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.sere button{position:relative;overflow:hidden;min-height:78px;font-weight:600}
+.sere button small{display:block;font-size:13px;font-weight:400;opacity:.65;margin-top:2px}
+.sere button.dn{opacity:.55}.sere button.nx{background:#1d6b57}
+.sere button i{position:absolute;inset:auto 0 0 0;height:5px;background:rgba(255,255,255,.18)}.sere button i u{display:block;height:100%;background:#fff}
+.sere button:focus,.sert button:focus{outline:0;box-shadow:0 0 0 4px #fff;transform:scale(1.05)}
+.snew{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.snew .sk{width:auto}
+body:not(.mode-series) #shSer{display:none!important}
 .vrow{display:flex;gap:20px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
 .vrow .vcard{flex:none;width:168px;border:0;border-radius:22px;padding:0;overflow:hidden;color:#fff;font:inherit;cursor:pointer;text-align:center}
 .vrow .vcard .po{aspect-ratio:2/3;background:#1a1a24 center/cover no-repeat;display:grid;place-items:center;font-size:44px}
@@ -650,6 +679,7 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
     <div id="shQuran"><div class="qhead"><h2>القرآن والأذكار</h2><form class="ytbar" id="ytBar" autocomplete="off"><input class="f" id="ytQ" type="search" enterkeyhint="search" placeholder="ابحث في يوتيوب…" aria-label="ابحث في يوتيوب"><button class="f" id="ytGo" type="submit" aria-label="ابحث">🔎</button></form></div><div class="shelf" id="s-quran"></div></div>
     <div class="cRow" id="shMt"><h2>مباريات اليوم</h2><div class="mrow" id="s-cm"></div></div>
     <div id="shLive"><h2>قنوات مباشرة<span id="liveNote"></span></h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
+    <div id="shSer" hidden><h2>🎞️ المسلسلات</h2><div class="serrow" id="s-ser"></div></div>
     <div class="cRow" id="shVod"><h2>🎬 أفلام</h2><div class="vrow" id="s-vod"></div></div>
     <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -737,6 +767,7 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
     <div class="beRow"><button class="btn f" data-be="done" id="beDone">✓ انتهى</button><button class="btn f bdel" data-be="del">حذف</button></div>
     <div class="beRow"><button class="btn f bsave" data-be="save">حفظ</button><button class="btn f" data-be="close">إغلاق</button></div>
   </div></div>
+  <div class="serv" id="serV"></div>
   <div class="ctx" id="ctx"><div class="ctxbox"><div class="ctxh"><img id="ctxLogo" alt=""><b id="ctxName"></b></div><div id="ctxBody"></div></div></div>
   <div class="panel ytp" id="ytp"><div class="box">
     <div class="ytph"><h3 id="ytpT"></h3><button class="btn f" data-act="ytclose">إغلاق</button></div>
@@ -2686,6 +2717,7 @@ async function loadLists() {
   if (cl) getJ(cl.replace(/&id=[^&]+/, '&list=1')).then(d => { for (const it of (d && d.lists) || []) for (const u of mineU) if (u.endsWith('&id=' + it.id)) M3UNAME[u] = it.name; m3uUi(); }).catch(() => {});
   STARL = []; const MG = MGRP();
   try { vodSet(mineT.flatMap((t, k) => parseM3u(t).filter(isVod).map(c => ({ ...c, pl: plName(mineU[k]) })))); } catch (e) {}
+  try { serSet(mineT.flatMap((t, k) => /الحلقة|الحلقه|حلقة|حلقه|\bS\d{1,2} ?E\d|episode|\/series\//i.test(t) ? parseM3u(t).map(c => ({ ...c, pl: plName(mineU[k]) })) : [])); } catch (e) {}
   mineT.forEach((t, k) => { const l = parseM3u(t).filter(c => !isVod(c)).map(c => ({ ...c, pl: plName(mineU[k]) })), gs = MG[mineU[k]];
     if (gs && gs.length) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url) && gs.includes(c.group)).map(c => ({ ...c, mine: 1, star: 1 })));
     else if (mineU[k] === m3uStar()) STARL = STARL.concat(l.filter(c => /^https?:/.test(c.url)).map(c => ({ ...c, og: c.group, group: '📂 قائمتي', mine: 1, star: 1 }))); M3UN[mineU[k]] = l.length; if (/\/hub\/m3u\?/.test(mineU[k]) && !M3UNAME[mineU[k]]) M3UNAME[mineU[k]] = 'قائمة ' + AR(k + 1); l.forEach(c => { if (!/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); alt(c); ILIST.push({ ...c, og: c.group, group: '📂 قائمتي', mine: 1 }); }); });
@@ -2728,8 +2760,8 @@ const POS5 = [['', 'تلقائي'], ['1', 'الأول'], ['2', 'الثاني'], 
 // ↕ the home's sections in the order chosen in the settings (a section not placed keeps its usual place: in وضع المسلسلات the
 // channels and the apps come right under the top row); and only the tabs chosen are shown at the top
 function homeOrder() {
-  const secs = [['hero', '#homeScroll>.heroRow'], ['live', '#shLive'], ['apps', '#shApps'], ['quran', '#shQuran'], ['ibada', '#ibada']];
-  const def = SERIES() ? { hero: 1, live: 2, apps: 3, ibada: 4, quran: 5 } : { hero: 1, ibada: 2, quran: 3, live: 4, apps: 5 };
+  const secs = [['hero', '#homeScroll>.heroRow'], ['ser', '#shSer'], ['live', '#shLive'], ['apps', '#shApps'], ['quran', '#shQuran'], ['ibada', '#ibada']];
+  const def = SERIES() ? { hero: 1, ser: 2, live: 3, apps: 4, ibada: 5, quran: 6 } : { hero: 1, ser: 2, ibada: 3, quran: 4, live: 5, apps: 6 };
   for (const [k, q] of secs) { const el = $(q); if (!el) continue; const v = +S('pos-' + k, '') || def[k]; el.style.order = String(v * 2 + (S('pos-' + k, '') ? 0 : 1)); }
   if ($('#shRec')) $('#shRec').style.order = String(+$('#shLive').style.order || 0);
   for (const t of ['board', 'subs', 'apps', 'quran']) { const b = $(`#tabs [data-page="${t}"]`); if (b) b.hidden = S('tab-' + t, t === 'quran' ? 'on' : 'off') === 'off'; }
@@ -4317,6 +4349,7 @@ function allSections() {
     ]],
     ['🎛️', 'الواجهة لهذا الجهاز', [
       { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['couch', '🏟️ الرياضة · ساعة زجاج خلف المسجد'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
+      { in: 1, k: 'newlogo', l: '🖼️ شعار كرت «الجديد» في المسلسلات (رابط صورة)', ph: 'https://…/logo.png' },
       { k: 'cclkx', l: '🏟️ مكان الساعة', o: [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], d: 'center' },
       { k: 'cclks', l: '🏟️ حجم الساعة', o: [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']], d: '34' },
       { k: 'c-mt', l: '🏟️ مباريات اليوم', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
@@ -4418,6 +4451,7 @@ function keyAct(a) {
   if (a.startsWith('kmdel=')) { const m = kmap(); delete m[a.slice(6)]; TV.keyMapSet(JSON.stringify(m)); setsBody(); $('#sbody [data-sact="km-learn"]')?.focus(); return; }
 }
 function rowHtml(r) {
+  if (r.in) return `<div class="srow wide"><span>${r.l}</span><input class="f bin" data-sin="${r.k}" type="url" value="${esc(S(r.k, ''))}" placeholder="${esc(r.ph || '')}" autocomplete="off" style="flex:1;min-width:420px"></div>`;
   if (r.qr) return `<div class="srow qrrow"><span>${r.l}</span><div class="qrbox" data-qr="${esc(r.qr)}"></div></div>`;
   if (r.i) return `<div class="srow"><span>${r.i}</span><em${r.log ? ' style="white-space:pre-line;direction:ltr;text-align:left"' : ''}>${esc(r.t)}</em></div>`;
   if (r.a !== undefined) return `<div class="srow"><span>${r.a}</span><div class="sopt">${r.o.map(([v, l]) => `<button class="f" data-sact="${v}">${l}</button>`).join('')}</div></div>`;
@@ -5483,6 +5517,99 @@ function fit() {
   document.body.style.zoom = String(Math.min(w / 1920, h / 1080));
 }
 fit(); addEventListener('resize', fit);
+
+// 🎞️ وضع المسلسلات: the series of your M3U lists as cards — «الجديد» first (your own logo from the settings), «كمّل المشاهدة», then each
+// series by its logo. A series opens on the season and the episode you are most likely to want: the one you stopped in, or the
+// next after one you finished, else the first; the player gets only that series' episodes, from where you left off.
+const AD = t => String(t).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+const ORD = { 'الاول': 1, 'الأول': 1, 'الثاني': 2, 'الثالث': 3, 'الرابع': 4, 'الخامس': 5, 'السادس': 6, 'السابع': 7, 'الثامن': 8, 'التاسع': 9, 'العاشر': 10 };
+const SEASONRE = /(?:الموسم|موسم|الجزء|جزء|season)\s*(\d+|الاول|الأول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر)/i;
+const serNorm = t => String(t).toLowerCase().replace(/[ً-ٰٟـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[^a-z0-9ء-ي]+/g, '');
+function epOf(c) {
+  const n = AD(c.name || '').replace(/[_.]+/g, ' ').replace(/\s+/g, ' ').trim(); let t, e = 0, s = 0, m;
+  if ((m = /^(.*?)[\s\-:|]*\bS(\d{1,2}) ?E(\d{1,3})\b/i.exec(n))) { t = m[1]; s = +m[2]; e = +m[3]; }
+  else if ((m = /^(.*?)[\s\-:|]*(?:الحلقة|الحلقه|حلقة|حلقه|episode|ep)\s*(\d+)/i.exec(n))) { t = m[1]; e = +m[2]; }
+  else if (isVod(c) && (m = /^(.*?)[\s\-:|]+(\d{1,3})\s*$/.exec(n))) { t = m[1]; e = +m[2]; }
+  else return null;
+  const ms = SEASONRE.exec(n); if (ms) { s = +ms[1] || ORD[ms[1]] || 1; t = t.replace(SEASONRE, ''); }
+  t = t.replace(/^\s*مسلسل\s+/, '').replace(/\b(hd|fhd|uhd|4k|1080p?|720p?)\b/ig, '').replace(/[\[\(].*?[\]\)]/g, '').replace(/[\s\-:|،,]+$/, '').trim();
+  return t.length < 2 || !e ? null : { title: t, s: s || 1, e, key: serNorm(t) };
+}
+let SER = [], SERIDX = new Map(), SERV = null, SERW = {};
+try { SERW = JSON.parse(S('serw', '{}')) || {}; } catch (e) {}
+function serSet(l) {
+  const M = new Map(), seen = new Set(); SERIDX = new Map();
+  l.forEach((c, k) => { if (!c || !/^https?:/.test(c.url) || seen.has(c.url)) return; seen.add(c.url); const x = epOf(c); if (!x || !x.key) return;
+    let r = M.get(x.key); if (!r) M.set(x.key, r = { key: x.key, title: x.title, logo: '', eps: [], first: k, last: k });
+    if (!r.logo && c.logo) r.logo = c.logo; r.last = k; r.eps.push({ s: x.s, e: x.e, c }); });
+  SER = [...M.values()]; for (const r of SER) { const u = new Set(); r.eps = r.eps.filter(x => { const q = x.s + ':' + x.e; return !u.has(q) && u.add(q); }).sort((a, b) => a.s - b.s || a.e - b.e); for (const x of r.eps) SERIDX.set(x.c.url, { r, x }); }
+  SER.sort((a, b) => a.first - b.first); serUi();
+}
+const ini = t => [...String(t).replace(/^ال/, '')][0] || '';
+const serDone = (w, q) => !!(w && w.done && w.done[q]);
+/** the episode to open on, and where to start in it */
+function serSmart(r) {
+  const w = SERW[r.key]; if (!w) return { x: r.eps[0], st: 0 };
+  const i = r.eps.findIndex(x => x.s === w.s && x.e === w.e); if (i < 0) return { x: r.eps[0], st: 0 };
+  if (w.dur && w.pos / w.dur >= 0.92) return { x: r.eps[Math.min(r.eps.length - 1, i + 1)], st: 0 };
+  return { x: r.eps[i], st: w.pos > 15e3 ? w.pos - 5e3 : 0 };
+}
+const serPct = w => w && w.dur ? Math.min(100, Math.round(100 * w.pos / w.dur)) : 0;
+function serUi() {
+  const el = $('#shSer'); if (!el) return;
+  const logo = S('newlogo', ''), ws = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at), last = ws[0];
+  el.hidden = !SERIES() || !SER.length;
+  const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
+  let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
+  if (last) h += card('data-ser="res"', `<div class="skl">${last.logo ? `<img src="${esc(last.logo)}" alt="">` : '<em>▶</em>'}</div><span>كمّل المشاهدة</span><small>${esc(last.title)} · ح${AR(last.e)}</small>`, 'res', 0, serPct(last));
+  h += SER.map((r, k) => card(`data-ser="${k}"`, `<div class="skl">${r.logo ? `<img src="${esc(r.logo)}" alt="" loading="lazy">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${AR(r.eps.length)} حلقة</small>`, '')).join('');
+  $('#s-ser').innerHTML = h;
+}
+function serClose() { const v = $('#serV'); v.classList.remove('on'); v.innerHTML = ''; SERV = null; for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = false; } const b = document.querySelector('#s-ser .sk'); if (b) b.focus(); }
+function serShell(head, body) { const v = $('#serV'); v.innerHTML = head + body; v.classList.add('on'); for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = true; } return v; }
+function serOpen(id) {
+  if (id === 'res') { const w = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at)[0], r = w && SER.find(x => x.key === w.key); if (!r) return; return serPlay(r, serSmart(r).x, serSmart(r).st); }
+  if (id === 'new') {   // each series' latest episode, the series with the newest one first
+    const rs = SER.slice().sort((a, b) => b.last - a.last).slice(0, 40); SERV = { id };
+    const v = serShell(`<div class="serh"><b>✨ الجديد</b><small>آخر حلقة من كل مسلسل</small></div>`, `<div class="snew">${rs.map((r, k) => { const x = r.eps[r.eps.length - 1];
+      return `<button class="sk f" data-snew="${k}"><div class="skl">${r.logo ? `<img src="${esc(r.logo)}" alt="">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>الحلقة ${AR(x.e)}${r.eps.some(y => y.s > 1) ? ' · الموسم ' + AR(x.s) : ''}</small></button>`; }).join('')}</div>`);
+    SERV.list = rs; const b = v.querySelector('.sk'); if (b) b.focus(); return;
+  }
+  const r = SER[+id]; if (!r) return; const sm = serSmart(r); SERV = { r, s: sm.x.s }; serSeasons(sm.x);
+}
+function serSeasons(focusX) {
+  const r = SERV.r, ss = [...new Set(r.eps.map(x => x.s))], w = SERW[r.key], sm = serSmart(r);
+  const head = `<div class="serh">${r.logo ? `<img src="${esc(r.logo)}" alt="">` : ''}<div><b>${esc(r.title)}</b><small>${AR(r.eps.length)} حلقة${w ? ' · وقفت عند ' + (ss.length > 1 ? 'الموسم ' + AR(w.s) + ' ' : '') + 'الحلقة ' + AR(w.e) : ''}</small></div></div>`;
+  const tabs = ss.length > 1 ? `<div class="sert">${ss.map(n => `<button class="f ${n === SERV.s ? 'on' : ''}" data-ses="${n}">الموسم ${AR(n)}</button>`).join('')}</div>` : '';
+  const eps = r.eps.filter(x => x.s === SERV.s);
+  const body = `<div class="sere">${eps.map(x => { const q = x.s + ':' + x.e, d = serDone(w, q) || (w && w.s === x.s && w.e === x.e && w.dur && w.pos / w.dur >= 0.92), cur = w && w.s === x.s && w.e === x.e && !d, nx = sm.x === x && !(w && w.s === x.s && w.e === x.e && !d);
+    return `<button class="f ${d ? 'dn' : ''} ${nx ? 'nx' : ''}" data-sep="${r.eps.indexOf(x)}">${d ? '✓ ' : ''}الحلقة ${AR(x.e)}${nx ? '<small>التالية</small>' : cur ? '<small>كمّل</small>' : ''}${cur ? `<i><u style="width:${serPct(w)}%"></u></i>` : ''}</button>`; }).join('')}</div>`;
+  const v = serShell(head, tabs + body), f = (focusX && v.querySelector(`[data-sep="${r.eps.indexOf(focusX)}"]`)) || v.querySelector('.sere button');
+  if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); }
+}
+function serPlay(r, x, st) {
+  if (!x) return; const list = r.eps, k = list.indexOf(x);
+  const items = list.map((y, j) => ({ url: y.c.url, name: r.title + ' · ' + (list.some(z => z.s > 1) ? 'م' + AR(y.s) + ' ' : '') + 'ح' + AR(y.e), logo: r.logo || y.c.logo || '', group: r.title, pl: y.c.pl || '', ua: y.c.ua || '', ref: y.c.ref || '', org: y.c.org || '', st: j === k ? (st || 0) : 0 }));
+  if (SERV) serClose();
+  if (TV.watchFull) TV.watchFull(JSON.stringify(items), k); else if (TV.watch) TV.watch(JSON.stringify(items.map(i => i.url)), JSON.stringify(items.map(i => i.name)), k); else TV.link(x.c.url);
+}
+// the player says where it stopped (its pause, back, or another episode): kept per series, so «كمّل المشاهدة» starts there
+window.vodPos = (url, pos, dur) => {
+  const h = SERIDX.get(url); if (!h || !(dur > 60e3)) return;
+  const { r, x } = h, old = SERW[r.key] || {}, done = { ...(old.done || {}) }; if (pos / dur >= 0.92) done[x.s + ':' + x.e] = 1;
+  SERW[r.key] = { key: r.key, title: r.title, logo: r.logo, s: x.s, e: x.e, url, pos, dur, at: Date.now(), done };
+  const keep = Object.values(SERW).sort((a, b) => b.at - a.at).slice(0, 30); SERW = Object.fromEntries(keep.map(w => [w.key, w]));
+  setPref('serw', JSON.stringify(SERW)); serUi();
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-ser],[data-ses],[data-sep],[data-snew]'); if (!b) return;
+  if (b.dataset.ser != null) return serOpen(b.dataset.ser);
+  if (b.dataset.ses != null && SERV) { SERV.s = +b.dataset.ses; serSeasons(null); const t = $(`#serV [data-ses="${SERV.s}"]`); if (t) t.focus(); return; }
+  if (b.dataset.sep != null && SERV) { const r = SERV.r, x = r.eps[+b.dataset.sep], w = SERW[r.key], same = w && w.s === x.s && w.e === x.e && w.dur && w.pos / w.dur < 0.92; return serPlay(r, x, same ? Math.max(0, w.pos - 5e3) : 0); }
+  if (b.dataset.snew != null && SERV && SERV.list) { const r = SERV.list[+b.dataset.snew]; return serPlay(r, r.eps[r.eps.length - 1], 0); }
+}, true);
+document.addEventListener('change', e => { const i = e.target.closest && e.target.closest('[data-sin]'); if (i) { setPref(i.dataset.sin, i.value.trim()); serUi(); } });
+{ const ob = window.onTvBack; window.onTvBack = () => SERV ? serClose() : ob(); }
 </script>
 </body>
 </html>

@@ -51,6 +51,15 @@ import java.util.Map;
 @UnstableApi
 public class PlayerActivity extends Activity {
     private ExoPlayer player;
+    // 🎞️ episodes: where each one starts (resume), and where it stopped — told to the page (vodPos) for «كمّل المشاهدة»
+    private long[] starts; private String reportUrl;
+    private void vodReport() {
+        try {
+            if (player == null || reportUrl == null || player.isCurrentMediaItemLive() || player.getDuration() == C.TIME_UNSET || player.getDuration() < 60_000) return;
+            final String js = "window.vodPos && vodPos(" + org.json.JSONObject.quote(reportUrl) + "," + player.getCurrentPosition() + "," + player.getDuration() + ")";
+            HomeActivity a = HomeActivity.alive; if (a != null && a.web != null) a.web.post(() -> a.web.evaluateJavascript(js, null));
+        } catch (Throwable ignored) { }
+    }
     private DefaultBandwidthMeter meter;
     private String[] urls, names, logos, groups, ccs, pls;
     private int i;
@@ -481,7 +490,7 @@ public class PlayerActivity extends Activity {
         if (in.getBooleanExtra("big", false) && PEND != null) { in.putExtras(PEND); PEND = null; }   // the list handed over in memory
         urls = in.getStringArrayExtra("urls"); names = in.getStringArrayExtra("names");
         logos = in.getStringArrayExtra("logos"); groups = in.getStringArrayExtra("groups"); ccs = in.getStringArrayExtra("ccs"); pls = in.getStringArrayExtra("pls");
-        i = in.getIntExtra("i", 0);
+        i = in.getIntExtra("i", 0); starts = in.getLongArrayExtra("starts");
         if (urls == null || urls.length == 0) { finish(); return; }
 
         FrameLayout root = new FrameLayout(this); rootF = root; auto = in.getBooleanExtra("auto", false);
@@ -1363,7 +1372,9 @@ public class PlayerActivity extends Activity {
         if (ref != null) hd.put("Referer", ref); if (org != null) hd.put("Origin", org);
         http.setUserAgent(Iptv.uaFor(urls[i])); http.setDefaultRequestProperties(hd);
         // a live channel plays ~20 s behind its edge (where the CDN allows): room in the buffer for the line's hiccups
-        player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); tsLocal = false; tsLater(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+        vodReport(); reportUrl = urls[i];
+        long st0 = starts != null && i < starts.length ? starts[i] : 0; if (starts != null && i < starts.length) starts[i] = 0;
+        player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build(), st0 > 0 ? st0 : C.TIME_UNSET); player.prepare(); player.play(); tsLocal = false; tsLater(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private boolean barDirty;
     private void fill() { try { if (bar != null && bar.getAlpha() < 0.01f) { barDirty = true; return; } barDirty = false; progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
@@ -1680,6 +1691,7 @@ public class PlayerActivity extends Activity {
         fill();
         showBar(5500);
         // zapping: the bar changes at once, the stream opens only once the remote rests (400 ms)
+        vodReport();   // an episode left for another: where it stopped
         tsStop();   // another channel: the recording of this one is deleted
         player.stop();
         final int at = i;
@@ -1989,6 +2001,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        vodReport();
         tsStop();
         tally();
         if (live == this) live = null;
