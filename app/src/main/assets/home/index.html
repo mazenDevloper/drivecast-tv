@@ -890,7 +890,8 @@ if (LITE) document.documentElement.classList.add('lite');
 // ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
 let SET = {};
 function loadSet() { setTimeout(() => window.DCW && DCW.refresh(), 0); setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
-const S = (k, d) => SET[k] ?? d;
+let QMODE = ''; try { QMODE = new URLSearchParams(location.search).get('mode') || ''; } catch (e) {}   // ?mode=series (the web page): that mode, whatever the TV has
+const S = (k, d) => (k === 'mode' && QMODE) || (SET[k] ?? d);
 function setPref(k, v) { SET[k] = v; if ((k === 'fx' || k === 'ring' || k === 'hud') && typeof fxApply === 'function') setTimeout(fxApply, 0); try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
 loadSet();
 // one clock for the whole page (a test can move it: window.__simTime)
@@ -5636,7 +5637,7 @@ function serPlay(r, x, st) {
 // channel it is on now or next. Shahid's logo also replaces the list's logo on the series cards.
 const MBCCH = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^MBC ?4\b/i, /^MBC Masr\b(?! ?2| ?drama)/i, /^MBC Drama\b(?!.*\+)/i, /^MBC Masr Drama/i];
 // Shahid's picture at its own shape (a width only: the logo is never cropped)
-const SHIMG = (u, w) => u ? String(u).split('?')[0] + '?width=' + w : '';
+const SHIMG = (u, w) => u ? String(u).split('?')[0] + '?width=' + w + '&type=png' : '';   // png: the logo's own transparency
 const SHAR = /عربي|خليجي|مصري|سوري|سعودي|لبناني|كويتي|عراقي|إماراتي|اماراتي|أردني|مغربي|تونسي|بحريني|عماني|قطري/;
 const shNorm = t => serNorm(String(t || '').replace(/^\s*(مسلسل|برنامج|فيلم)\s+/, '').replace(/\s*[-–:|،(\[].*$/, '').replace(/\s*(الحلقة|الحلقه|حلقة|ح)\s*\d+.*$/, '').replace(/\s*(الموسم|الجزء)\s*\S+$/, ''));
 const shSame = (a, b) => !!a && !!b && (a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))));
