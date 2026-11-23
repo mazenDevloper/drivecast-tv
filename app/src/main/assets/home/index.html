@@ -58,6 +58,9 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .top{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .clock b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
 .clock span{font-size:20px;color:var(--dim)}
+.tabs .msep{width:2px;align-self:stretch;margin:6px 4px;background:rgba(255,255,255,.22);border-radius:2px}
+.tabs .mtab small{font-size:.62em;opacity:.65;margin-inline-start:6px;font-weight:600}
+.tabs .mtab.on{background:#ffd23f!important;color:#111!important}
 .tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .tab{white-space:nowrap;padding:12px 22px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
@@ -665,6 +668,7 @@ body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!importa
       <button class="tab f" data-page="matches">المباريات</button>
       <button class="tab f" data-page="apps">التطبيقات</button>
       <button class="tab f" data-act="settings">الإعدادات</button>
+      <i class="msep"></i><button class="tab f mtab" data-mode="sports" title="اضغط 11">⚽ رياضة<small>11</small></button><button class="tab f mtab" data-mode="series" title="اضغط 22">📺 مسلسلات<small>22</small></button>
     </nav>
     <div><div class="wx" id="wx"></div><div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div></div>
   </div>
@@ -4541,7 +4545,7 @@ function applySet(k, v) {
   if (/^(h-|phrase-on|zoom|big5)/.test(k)) homeLayout();
   if (/^(uiscale|hcard|hart|hlogo|motion|lite|livebg)$/.test(k)) { uiApply(); liveRefresh(); }
   if (/^(cclk|c-)/.test(k)) { couchApply(); couchRows(); }
-  if (k === 'mode') { uiApply(); liveUi(); nextUi(); homeOrder(); }
+  if (k === 'mode') { try { homeLayout(); } catch (e) {} uiApply(); liveUi(); nextUi(); homeOrder(); try { couchRows(); serUi(); hlUi(); modeTabs(); } catch (e) {} }
   if (/^(pos-|tab-)/.test(k)) homeOrder();
   if (/^iq/.test(k)) prayersUi();
 }
@@ -4608,6 +4612,8 @@ const SHORTS = [
   { c: '0', l: '⚙️ إعدادات DriveCast', go: () => settings(true) },
   { c: '00', l: '⚙️ إعدادات DriveCast', go: () => { SEC = 0; settings(true); } },   // always from the first section
   { c: '000', l: '🛠 إعدادات الأندرويد (البوكس)', go: () => TV.settings() },
+  { c: '11', l: '⚽ وضع الرياضة', go: () => setMode('sports') },
+  { c: '22', l: '📺 وضع المسلسلات', go: () => setMode('series') },
   { c: '999', l: '⬆️ حدّث التطبيق لآخر إصدار — بدون موافقة ولا زر', go: () => updAuto999() },
   { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
   { c: '009', l: '🧹 نظّف وسرّع البوكس بضغطة', go: () => smartClean() },
@@ -4631,6 +4637,19 @@ function smartClean() {
     toast('🧹 ' + CLEANR, 6000); if ($('#panel').classList.contains('on')) setsBody(); };
   TV.clean(n);
 }
+// ⚽ / 📺 the switcher at the top (and 11 / 22): the sports mode (the glass clock behind the mosque; Lite: the next match) or the series
+const SPORTSMODE = () => LITE ? 'sport' : 'couch';
+function modeTabs() { const m = S('mode', MODE0); for (const b of document.querySelectorAll('.mtab')) b.classList.toggle('on', b.dataset.mode === 'series' ? m === 'series' : m !== 'series'); }
+function setMode(which) {
+  const m = which === 'series' ? 'series' : SPORTSMODE(); QMODE = '';
+  if (S('mode', MODE0) !== m) setPref('mode', m);
+  try { homeLayout(); uiApply(); liveUi(); nextUi(); homeOrder(); couchRows(); serUi(); } catch (e) {}
+  if (m === 'series' && typeof mbcLoad === 'function') mbcLoad();
+  if (typeof hlUi === 'function') hlUi();
+  modeTabs(); toast(m === 'series' ? '📺 وضع المسلسلات' : '⚽ وضع الرياضة', 1800);
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mode]'); if (b) { e.stopPropagation(); setMode(b.dataset.mode); } }, true);
+setTimeout(modeTabs, 0);
 function shortFind(code) { for (const r of SHORTS) { if (typeof r.c === 'string') { if (r.c === code) return [r, null]; } else { const m = code.match(r.c); if (m) return [r, m]; } } return [null, null]; }
 // 🔢 a channel's own number (set in the player: ☰ → «اختصار لهذه القناة») comes before the rest
 window.chNumPlay = o => { if (!o || !o.url) return; if (document.body.classList.contains('ambient')) ambient(false);
