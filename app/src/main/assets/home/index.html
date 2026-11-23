@@ -612,7 +612,8 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .serrow{display:flex;gap:18px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
 .sk{flex:none;width:210px;height:176px;border:0;border-radius:26px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:6px;background:rgba(255,255,255,.1);color:#fff;font:inherit;cursor:pointer;text-align:center;position:relative;overflow:hidden;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
 .sk .skl{flex:1;width:100%;display:grid;place-items:center;min-height:0}
-.sk .skl img{max-width:86%;max-height:92px;object-fit:contain}
+.sk .skl img{width:100%;max-width:100%;max-height:118px;object-fit:contain}
+#shMbc{display:none!important}   /* one list: «المسلسلات» (logos only) */
 .sk .skl b{font-size:30px;letter-spacing:.5px}
 .sk .skl em{font-style:normal;font-size:44px;font-weight:700;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14)}
 .sk span{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;font-size:17px;font-weight:600;max-width:100%}
@@ -5596,7 +5597,7 @@ function serUi() {
   const xs3 = take(XS.filter(x => /مسلسلات عربية تعرض حاليا/.test(x.cat)).sort(byAt)), xs4 = take(XS.filter(x => isProg(x) && known(x)).sort(byAt));
   const xsNow = [...xs1, ...xs2, ...xs3, ...xs4].slice(0, 90);
   h += xsNow.map(x => { const sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q))), g = mbcGuide(); let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
-    const lg = sh ? SHIMG(sh.logo, 360, 160) : (gg && gg.img) || x.cover;
+    const lg = sh ? SHIMG(sh.logo, 480) : (gg && gg.img) || x.cover;
     return card(`data-xs="${x.id}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.remove()">` : `<em>${esc(ini(x.t))}</em>`}</div><span>${esc(x.t)}</span><small>${gg ? '📺 ' + esc(gg.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${esc(x.cat.replace(/[\[\]|]/g, ' ').trim())}</small>`, sh ? 'mbcg' : ''); }).join('');
   h += [...top, ...rest].map(({ r, k, g }) => { const lg = (g && g.img) || shLogo(r) || r.logo;
     return card(`data-ser="${k}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('em'),{textContent:'${esc(ini(r.title)).replace(/'/g, '')}'}))">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${g ? '📺 ' + esc(g.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${AR(r.eps.length)} حلقة</small>`, g ? 'mbcg' : ''); }).join('');
@@ -5634,7 +5635,8 @@ function serPlay(r, x, st) {
 // films — each with Shahid's own logo and poster. OK plays it from your M3U lists (the series' episodes, the film), else the MBC
 // channel it is on now or next. Shahid's logo also replaces the list's logo on the series cards.
 const MBCCH = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^MBC ?4\b/i, /^MBC Masr\b(?! ?2| ?drama)/i, /^MBC Drama\b(?!.*\+)/i, /^MBC Masr Drama/i];
-const SHIMG = (u, w, h) => String(u || '').replace('{height}', h).replace('{width}', w).replace('{croppingPoint}', 'mc');
+// Shahid's picture at its own shape (a width only: the logo is never cropped)
+const SHIMG = (u, w) => u ? String(u).split('?')[0] + '?width=' + w : '';
 const SHAR = /عربي|خليجي|مصري|سوري|سعودي|لبناني|كويتي|عراقي|إماراتي|اماراتي|أردني|مغربي|تونسي|بحريني|عماني|قطري/;
 const shNorm = t => serNorm(String(t || '').replace(/^\s*(مسلسل|برنامج|فيلم)\s+/, '').replace(/\s*[-–:|،(\[].*$/, '').replace(/\s*(الحلقة|الحلقه|حلقة|ح)\s*\d+.*$/, '').replace(/\s*(الموسم|الجزء)\s*\S+$/, ''));
 const shSame = (a, b) => !!a && !!b && (a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))));
@@ -5662,7 +5664,7 @@ function mbcAiring() {
 const shSer = n => SER.findIndex(r => shSame(r.key, n) || shSame(shNorm(r.title), n));
 const shVod = n => VODL.findIndex(c => shSame(shNorm(String(c.name).replace(/\b(19|20)\d\d\b/, '')), n));
 /** Shahid's logo for a series of the lists */
-function shLogo(r) { if (!SHC) return ''; const a = r.key, b = shNorm(r.title); const x = SHC.find(y => y.k !== 'm' && y.logo && (shSame(y.n, a) || shSame(y.n, b))); return x ? SHIMG(x.logo, 360, 160) : ''; }
+function shLogo(r) { if (!SHC) return ''; const a = r.key, b = shNorm(r.title); const x = SHC.find(y => y.k !== 'm' && y.logo && (shSame(y.n, a) || shSame(y.n, b))); return x ? SHIMG(x.logo, 480) : ''; }
 /** the MBC channels' whole guide: programme name → { t, img, c } (the programme's own picture from the guide) */
 let MBCG = null, MBCGAT = 0;
 function mbcGuide() {
@@ -5716,7 +5718,7 @@ async function xsOpen(x) {
   const u = new Set(); const ep2 = eps.filter(y => { const q = y.s + ':' + y.e; return !u.has(q) && u.add(q); }).sort((a, b) => a.s - b.s || a.e - b.e);
   const key = 'xs' + x.id, sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q)));
   let r = SER.find(y => y.key === key);
-  if (!r) { r = { key, title: x.t, logo: sh ? SHIMG(sh.logo, 360, 160) : (x.cover || ''), eps: [], first: SER.length, last: 1e9 + x.at }; SER.push(r); }
+  if (!r) { r = { key, title: x.t, logo: sh ? SHIMG(sh.logo, 480) : (x.cover || ''), eps: [], first: SER.length, last: 1e9 + x.at }; SER.push(r); }
   r.eps = ep2; for (const y of ep2) SERIDX.set(y.c.url, { r, x: y });
   const sm = serSmart(r); SERV = { r, s: sm.x.s }; serSeasons(sm.x);
 }
@@ -5735,7 +5737,7 @@ function mbcUi() {
   const kind = { s: 'مسلسل', p: 'برنامج', m: 'فيلم' };
   $('#s-mbc').innerHTML = SHROW.map((r, k) => { const x = r.x, play = r.si >= 0 || r.vi >= 0 || !!r.xs;
     const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : r.o < 0 ? '⭐ أولوية' : '');
-    return `<button class="sk mb f ${play || r.a || r.o < 0 ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 360, 160))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
+    return `<button class="sk mb f ${play || r.a || r.o < 0 ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 480))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
 }
 function mbcGo(k) {
   const r = SHROW[k]; if (!r) return;
