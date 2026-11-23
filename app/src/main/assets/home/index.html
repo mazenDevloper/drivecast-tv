@@ -4028,7 +4028,7 @@ async function remindRun() {
   hubPoll();
   const rem = REMIND();
   if ((MLIST || []).length) bellSync(rem);
-  if (!rem.length) { if (TV.playerScores) TV.playerScores('[]'); return; }
+  if (!rem.length) { if (TV.playerScoresClear) TV.playerScoresClear(); else if (TV.playerScores) TV.playerScores('[]'); return; }
   // the day's list: the matches as the home shows them (365's ids on them), winwin's when the list is not there yet
   if (!(MLIST || []).length && Date.now() - RWW.at > 60e3) { RWW = { at: Date.now(), d: await winwinDay(0).catch(() => null) }; }
   const list = (MLIST || []).length ? MLIST : (RWW.d?.matches || []);

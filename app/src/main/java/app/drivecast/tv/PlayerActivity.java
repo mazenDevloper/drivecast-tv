@@ -73,8 +73,20 @@ public class PlayerActivity extends Activity {
     // ---- ⚽ the scores of your 🔔 matches (and your teams'), live, in the bottom-left corner (the bottom-right one is «التالي»)
     static String SCORES = "[]";
     private LinearLayout sbox;
+    // ⚽ two feeds fill the corner (the hub's minute push and the page's own 20 s loop); one of them answering with nothing for a
+    // moment (a list reloading, a failed fetch) used to blank it for up to a minute — an empty answer now only clears it when
+    // the last real one is older than 4 minutes, or when the page says there are no 🔔 left (clearScores)
+    static long scoresAt = 0;
     static void scores(String json) {
-        SCORES = json == null ? "[]" : json;
+        String j = json == null ? "[]" : json;
+        long now = System.currentTimeMillis();
+        if ("[]".equals(j)) { if (now - scoresAt < 4 * 60_000L) return; }
+        else scoresAt = now;
+        SCORES = j;
+        PlayerActivity p = live; if (p != null) p.scoresFill();
+    }
+    static void clearScores() {
+        scoresAt = 0; SCORES = "[]";
         PlayerActivity p = live; if (p != null) p.scoresFill();
     }
     // ✕ hides the corner till it is shown again (☰ → «النتائج في الزاوية»)
@@ -1213,6 +1225,7 @@ public class PlayerActivity extends Activity {
                 else if (!guideOn && nextBox != null && nextBox.getVisibility() == View.VISIBLE) {
                     nextAt = Math.max(0, nextShown + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
                 }
+                else if (!guideOn && !menuOn && tsWind(right)) { }   // ◀ ▶ wind the last 30 minutes (when they are being kept)
                 else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
                 return true;
             }
@@ -1350,7 +1363,7 @@ public class PlayerActivity extends Activity {
         if (ref != null) hd.put("Referer", ref); if (org != null) hd.put("Origin", org);
         http.setUserAgent(Iptv.uaFor(urls[i])); http.setDefaultRequestProperties(hd);
         // a live channel plays ~20 s behind its edge (where the CDN allows): room in the buffer for the line's hiccups
-        player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
+        player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build()); player.prepare(); player.play(); tsLocal = false; tsLater(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private boolean barDirty;
     private void fill() { try { if (bar != null && bar.getAlpha() < 0.01f) { barDirty = true; return; } barDirty = false; progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
@@ -1433,6 +1446,53 @@ public class PlayerActivity extends Activity {
         return out;
     }
     private void flash(String s) { setNote(s); fill(); showBar(3500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 3500); }
+    // ⏪ the last 30 minutes of the channel in front (full edition, HLS channels): Timeshift records it, ◀ ▶ in the player wind through it
+    // (taps close together step further: 10 s · 30 s · 1 · 2 · 5 min). Change channel or leave the player: the recording is deleted.
+    private Timeshift ts; private boolean tsLocal; private int tsIdx; private long tsLastAt; private String tsUrl;
+    private final Handler tsH = new Handler(Looper.getMainLooper());
+    private static final int[] TS_STEPS = {10, 30, 60, 120, 300};
+    private void tsStop() {
+        tsH.removeCallbacksAndMessages(null);
+        if (ts != null) { ts.stop(); ts = null; }
+        tsLocal = false; tsUrl = null;
+    }
+    /** a few seconds after a channel opens (not while zapping through) the recording starts */
+    private void tsLater() {
+        final int at = i; final String u = urls[i];
+        if (ts != null && u.equals(tsUrl)) return;
+        if (!u.startsWith("http") || ytIdOf(u) != null) return;
+        tsH.removeCallbacksAndMessages(null);
+        tsH.postDelayed(() -> {
+            if (at != i || player == null || (ts != null && u.equals(tsUrl))) return;
+            if (ts != null) { ts.stop(); ts = null; }
+            tsUrl = u; ts = Timeshift.start(this, u, Iptv.uaFor(u), Iptv.refererFor(u), Iptv.originFor(u));
+        }, 6000);
+    }
+    private void tsOpenLocal(long startMs) {
+        tsLocal = true;
+        player.setMediaItem(new MediaItem.Builder().setUri(ts.localUrl()).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setMinPlaybackSpeed(1f).setMaxPlaybackSpeed(1f).build()).build(), startMs);
+        player.prepare(); player.play();
+    }
+    private void tsLive() { tsLocal = false; open(); flash("🔴 رجعت للمباشر"); }
+    /** ◀ (back) / ▶ (forward) in the player: true when it wound (or told why not), false to leave the key to the guide as before */
+    private boolean tsWind(boolean right) {
+        if (player == null || urls == null) return false;
+        if (ts == null || ts.fail() != null) return false;   // Lite, a channel it cannot record (raw .ts, encrypted), or not started yet: the key keeps its old job
+        long now = System.currentTimeMillis();
+        tsIdx = now - tsLastAt < 1500 ? Math.min(TS_STEPS.length - 1, tsIdx + 1) : 0; tsLastAt = now;
+        long step = TS_STEPS[tsIdx] * 1000L, win = ts.windowMs();
+        if (!tsLocal) {
+            if (right) { flash("🔴 أنت على المباشر"); return true; }
+            if (win < 20000) { flash("⏳ التسجيل بدأ قبل لحظات — " + mmss(win) + " محفوظة"); return true; }
+            tsOpenLocal(Math.max(0, Math.min(win - 15000, win - step)));
+            flash("⏪ " + TS_STEPS[tsIdx] + " ث للخلف  · المحفوظ " + mmss(win)); return true;
+        }
+        long d = player.getDuration(), pos = player.getCurrentPosition(), to = pos + (right ? step : -step);
+        if (right && d != C.TIME_UNSET && to >= d - 15000) { tsLive(); return true; }
+        player.seekTo(Math.max(0, to));
+        flash((right ? "⏩ " : "⏪ ") + TS_STEPS[tsIdx] + " ث" + "  · متأخر " + mmss(d == C.TIME_UNSET ? 0 : Math.max(0, d - Math.max(0, to))) + " من " + mmss(win));
+        return true;
+    }
     private void wind(long by) {
         long d = player.getDuration(), to = Math.max(0, Math.min(d == C.TIME_UNSET ? Long.MAX_VALUE : d - 2000, player.getCurrentPosition() + by));
         player.seekTo(to);
@@ -1531,6 +1591,7 @@ public class PlayerActivity extends Activity {
         boolean on = want != null ? want : !player.getPlayWhenReady();
         if (on) {
             boolean jumpLive = player.isCurrentMediaItemLive() && (!canWind() || System.currentTimeMillis() - pausedAt > 5 * 60000);
+            if (jumpLive && tsLocal) { tsLive(); return; }   // on the recording: the real live again
             if (jumpLive) player.seekToDefaultPosition();
             player.play(); flash(jumpLive ? "▶ رجوع للمباشر" : "▶ متابعة");
         } else { player.pause(); pausedAt = System.currentTimeMillis(); setNote("⏸ متوقف مؤقتاً · ⏯ أو OK للمتابعة"); fill(); showBar(0); }
@@ -1619,6 +1680,7 @@ public class PlayerActivity extends Activity {
         fill();
         showBar(5500);
         // zapping: the bar changes at once, the stream opens only once the remote rests (400 ms)
+        tsStop();   // another channel: the recording of this one is deleted
         player.stop();
         final int at = i;
         net.postDelayed(() -> { if (at != i) return; open(); }, 250);
@@ -1927,6 +1989,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        tsStop();
         tally();
         if (live == this) live = null;
         net.removeCallbacksAndMessages(null); h.removeCallbacksAndMessages(null); zz.removeCallbacksAndMessages(null); cd.removeCallbacksAndMessages(null); sk.removeCallbacksAndMessages(null);

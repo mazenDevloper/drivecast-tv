@@ -630,6 +630,8 @@ public class HomeActivity extends Activity {
         /** ⚽ the live scores of the 🔔 matches for the player's bottom-left corner: a JSON array of lines */
         @JavascriptInterface
         public void playerScores(String j) { runOnUiThread(() -> PlayerActivity.scores(j)); }
+        @JavascriptInterface
+        public void playerScoresClear() { runOnUiThread(PlayerActivity::clearScores); }
         /** ⚽ a goal over a playing channel: the card with «حوّل للقناة» (OK), gone after 6 s; false when no channel plays */
         @JavascriptInterface
         public boolean playerGoal(String t) {
