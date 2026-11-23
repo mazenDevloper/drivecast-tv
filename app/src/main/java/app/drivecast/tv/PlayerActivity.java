@@ -248,7 +248,12 @@ public class PlayerActivity extends Activity {
         return out;
     }
     /** ⭐ on / off: shown here at once; the home page saves it with DriveCast (its cloud list), as a star there does */
-    private boolean mpinHas(String key) { return Access.set(this).getStringSet("mpins", new java.util.HashSet<>()).contains(key); }
+    /** the pinned matches — a set; the page may have saved «mpins» as text (it threw on every key: the remote looked dead) */
+    private java.util.Set<String> mpins() {
+        try { return Access.set(this).getStringSet("mpins", new java.util.HashSet<>()); }
+        catch (ClassCastException e) { java.util.Set<String> o = new java.util.HashSet<>(); String t = Access.set(this).getString("mpins", ""); for (String x : t.replaceAll("[\\[\\]\"]", "").split(",")) if (!x.trim().isEmpty()) o.add(x.trim()); Access.set(this).edit().remove("mpins").putStringSet("mpins", o).apply(); return o; }
+    }
+    private boolean mpinHas(String key) { return mpins().contains(key); }
     private boolean favToggle(int ch) {
         try {
             String nm = names != null && ch < names.length && names[ch] != null ? names[ch] : ""; if (nm.isEmpty()) return false;
@@ -713,6 +718,14 @@ public class PlayerActivity extends Activity {
         cd.removeCallbacks(this); cd.postDelayed(this, 20000);
         try { nextFill(); } catch (Throwable t) { if (nextBox != null) nextBox.setVisibility(View.GONE); }
     } };
+    /** the guide's episode words made short: «… · الموسم 3 الحلقة 352» / «… - الحلقة 20» → «… ح352» */
+    static String shortEp(String t) {
+        String s = (t == null ? "" : t).trim();
+        s = s.replaceAll("\\s*[·\\-–|،,]?\\s*(?:الموسم|موسم)\\s*\\d+\\s*[·\\-–|،,]?\\s*(?:الحلقة|الحلقه|حلقة)\\s*(\\d+)", " ح$1");
+        s = s.replaceAll("\\s*[·\\-–|،,]?\\s*(?:الحلقة|الحلقه|حلقة)\\s*(\\d+)", " ح$1");
+        s = s.replaceAll("\\s*[·\\-–|،,]?\\s*(?:الموسم|موسم)\\s*\\d+\\s*$", "").trim();
+        return s.length() > 50 ? s.substring(0, 49) + "…" : s;
+    }
     private void nextFill() {
         if (nextBox == null) return;
         boolean busy = (bar != null && bar.getAlpha() > 0.01f) || (listPanel != null && listPanel.getVisibility() == View.VISIBLE)
@@ -724,24 +737,19 @@ public class PlayerActivity extends Activity {
         // «التالي» with its start, never «الآن» with a time that is really the end of what plays
         long nowS = System.currentTimeMillis() / 1000;
         boolean onAir = false; try { onAir = !ps.isEmpty() && ps.get(0).getLong(0) <= nowS; } catch (Throwable ignored) { }
-        if (at < 0) at = 0;   // by itself: always the programme on air now (its own logo, its name, when it ends); ◀ ▶ step to the next ones
+        // by itself: the programme on air («الآن · حتى …»), and 15 min before it ends the next one («التالي · …»); ◀ ▶ choose for 8 s
+        if (at < 0) { at = 0; try { if (onAir && ps.size() > 1 && ps.get(0).getLong(1) - nowS <= 15 * 60) at = 1; } catch (Throwable ignored) { } }
         if (at >= ps.size()) at = Math.max(0, ps.size() - 1);
         nextShown = at;
         if (!ps.isEmpty()) nx = ps.get(at);
         if (busy || nx == null) { nextBox.setVisibility(View.GONE); return; }
         String logo = nx.length() > 4 ? nx.optString(4, "") : "", pic = nx.length() > 3 ? nx.optString(3, "") : "", u = !logo.isEmpty() ? logo : pic;
-        String title = nx.optString(2, "").trim();   // with its episode, as the guide writes it if (title.length() > 50) title = title.substring(0, 49) + "…";
+        String title = shortEp(nx.optString(2, ""));   // «المدينة البعيدة · الموسم 3 الحلقة 352» → «المدينة البعيدة ح352»
         int step = onAir ? at : at + 1;   // 0 on air, 1 next, 2+ after it
         String tag = step == 0 ? "الآن" : step == 1 ? "التالي" : "بعده";
         // «الآن · حتى 9:00» — the time it ends (not its start); a later one: its start
         nextTxt.setText(step == 0 ? tag + " · حتى " + clock(nx.optLong(1)) : tag + " · " + clock(nx.optLong(0)));
-        // under the name: what follows it (التالي 9:00 · …), smaller
-        String after = "";
-        try { if (at + 1 < ps.size()) { org.json.JSONArray f = ps.get(at + 1); String ft = f.optString(2, "").trim(); if (ft.length() > 40) ft = ft.substring(0, 39) + "…"; if (!ft.isEmpty()) after = (step == 0 ? "التالي " : "ثم ") + clock(f.optLong(0)) + " · " + ft; } } catch (Throwable ignored) { }
-        if (after.isEmpty()) nextName.setText(title);
-        else { android.text.SpannableString sp = new android.text.SpannableString(title + '\n' + after);
-            sp.setSpan(new android.text.style.RelativeSizeSpan(0.72f), title.length() + 1, sp.length(), 0);
-            sp.setSpan(new android.text.style.ForegroundColorSpan(0xCCFFFFFF), title.length() + 1, sp.length(), 0); nextName.setText(sp); }
+        nextName.setText(title);
         nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
         nextBox.setVisibility(View.VISIBLE);
         if (u.equals(nextUrl)) return; nextUrl = u;
@@ -1179,7 +1187,7 @@ public class PlayerActivity extends Activity {
             case "matches": menuLv = 1; menuSel = 0; menuFill(); return;
             case "mpin": {   // ⚽ this channel joins every match's carriers (right after the match's own), and plays when none is found
                 String mk = nOf(ch).trim().toLowerCase(Locale.ROOT); boolean on = !mpinHas(mk);
-                java.util.Set<String> s2 = new java.util.HashSet<>(Access.set(this).getStringSet("mpins", new java.util.HashSet<>()));
+                java.util.Set<String> s2 = new java.util.HashSet<>(mpins());
                 if (on) s2.add(mk); else s2.remove(mk); Access.set(this).edit().putStringSet("mpins", s2).apply();
                 HomeActivity hm2 = HomeActivity.alive; if (hm2 != null) hm2.run("window.mpinFromPlayer && mpinFromPlayer(" + chJson(ch) + "," + on + ")");
                 menuShow(false); flash(on ? "⚽ ثُبّتت للمباريات — تطلع مع ناقلي كل مباراة" : "أُلغي تثبيتها للمباريات"); return;

@@ -2657,7 +2657,9 @@ function epgId(c) {
   if (NID.has(c.name)) return NID.get(c.name);
   if (!NIDX) { NIDX = new Map(); for (const [n, id] of Object.entries(EPGN)) { if (!fut(id)) continue; for (const v of [n, n.replace(ARABW, ' ')]) { const k = channelKey(v); if (k && !NIDX.has(k)) NIDX.set(k, id); } } }
   const look = n => { const base = String(n || '').replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ''); for (const v of [base, base.replace(ARABW, ' ')]) { const k = channelKey(v); if (k && k.split(' ').some(t => !isNum(t) && !GENERIC.has(t)) && NIDX.get(k)) return NIDX.get(k); } return ''; };
-  const id = look(c.name) || (c.en ? look(c.en) : '') || (c.id && EPG[c.id] ? c.id : '') || epgFuzzy(c);
+  // «MYHD-MBC 4 HD», «MBC-4-4K», «AR: MBC DRAMA FHD»: the provider tag, the dashes and the quality words away
+  const tidy = n => String(n || '').replace(/^\s*(?:MY-?HD|AR|ARB|ARAB|VIP|OSN|BEIN|MENA|KSA)\s*[-:|]+\s*/i, '').replace(/[-_|]+/g, ' ').replace(/\b(?:4k|uhd|fhd|hd|sd|hevc|h265|1080p?|720p?)\b/gi, '').replace(/\s+/g, ' ').trim();
+  const id = look(c.name) || (c.en ? look(c.en) : '') || (tidy(c.name) !== c.name ? look(tidy(c.name)) : '') || (c.id && EPG[c.id] ? c.id : '') || epgFuzzy(c);
   NID.set(c.name, id); return id;
 }
 // ✏️ the guide linked by hand (the pencil on a channel): { channel key: guide id | '-' }
