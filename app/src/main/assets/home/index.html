@@ -5628,11 +5628,11 @@ async function shahidCat(force) {
   const one = (type, sub, page) => { const f = { pageNumber: page, pageSize: 50, productType: type, sorts: [{ order: 'DESC', type: 'SORTDATE' }] }; if (sub) f.productSubType = sub;
     return getJ('https://api3.shahid.net/proxy/v2.1/product/filter?filter=' + encodeURIComponent(JSON.stringify(f)) + '&language=ar&country=OM').then(d => arr(d && d.productList && d.productList.products)).catch(() => []); };
   const jobs = [];
-  for (const [t, sub, k] of [['SHOW', 'SERIES', 's'], ['SHOW', 'PROGRAM', 'p'], ['MOVIE', '', 'm']]) for (let pg = 0; pg < 4; pg++)
-    jobs.push(one(t, sub, pg).then(l => l.filter(x => x && x.title).map(x => { const g = (x.genres || []).map(y => y.title).join(' · ');
+  for (const [t, sub, k, np] of [['SHOW', 'SERIES', 's', 28], ['SHOW', 'PROGRAM', 'p', 28], ['MOVIE', '', 'm', 8]]) for (let pg = 0; pg < np; pg++)
+    jobs.push(() => one(t, sub, pg).then(l => l.filter(x => x && x.title).map(x => { const g = (x.genres || []).map(y => y.title).join(' · ');
       return { k, t: x.title, n: shNorm(x.title), logo: x.logoTitleImage || '', po: (x.image && (x.image.thumbnailImage || x.image.landscapeClean)) || '', g, ar: /[ء-ي]/.test(x.title) || SHAR.test(g), soon: /قريباً/.test(g) }; })));
-  const v = (await Promise.all(jobs)).flat();
-  if (v.length > 50) { SHC = v; try { localStorage.shcat = JSON.stringify({ at: Date.now(), v }); } catch (e) {} }
+  const v = []; for (let i = 0; i < jobs.length; i += 6) { const got = await Promise.all(jobs.slice(i, i + 6).map(f => f())); got.forEach(l => v.push(...l)); }
+  if (v.length > 50) { SHC = v; try { localStorage.shcat = JSON.stringify({ at: Date.now(), v: v.map(x => ({ ...x, g: '' })) }); } catch (e) {} }
   return SHC || [];
 }
 /** the MBC channels' programmes from now on: name → { c: the channel, at, t } (the first time each is on) */
