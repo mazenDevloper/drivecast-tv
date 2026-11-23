@@ -691,7 +691,7 @@ public class PlayerActivity extends Activity {
         nextImg.setMaxWidth((int) dp(120)); nextImg.setMaxHeight((int) dp(56));
         LinearLayout.LayoutParams nip = new LinearLayout.LayoutParams(-2, -2); nip.leftMargin = (int) dp(12);
         nextName = text(15, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); nextName.setShadowLayer(dp(6), 0, dp(1), 0xF0000000);
-        nextName.setGravity(Gravity.CENTER); nextName.setMaxWidth((int) dp(240)); nextName.setMaxLines(2); nextName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        nextName.setGravity(Gravity.CENTER); nextName.setMaxWidth((int) dp(260)); nextName.setMaxLines(3); nextName.setEllipsize(android.text.TextUtils.TruncateAt.END);
         nextTxt.setGravity(Gravity.RIGHT); nextName.setGravity(Gravity.RIGHT);
         LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setGravity(Gravity.RIGHT);
         LinearLayout.LayoutParams nnp = new LinearLayout.LayoutParams(-2, -2); nnp.topMargin = (int) dp(2);
@@ -724,7 +724,7 @@ public class PlayerActivity extends Activity {
         // «التالي» with its start, never «الآن» with a time that is really the end of what plays
         long nowS = System.currentTimeMillis() / 1000;
         boolean onAir = false; try { onAir = !ps.isEmpty() && ps.get(0).getLong(0) <= nowS; } catch (Throwable ignored) { }
-        if (at < 0) { at = 0; try { if (onAir && ps.size() > 1 && ps.get(0).getLong(1) - nowS <= 15 * 60) at = 1; } catch (Throwable ignored) { } }
+        if (at < 0) at = 0;   // by itself: always the programme on air now (its own logo, its name, when it ends); ◀ ▶ step to the next ones
         if (at >= ps.size()) at = Math.max(0, ps.size() - 1);
         nextShown = at;
         if (!ps.isEmpty()) nx = ps.get(at);
@@ -733,8 +733,16 @@ public class PlayerActivity extends Activity {
         String title = nx.optString(2, "").trim();   // with its episode, as the guide writes it if (title.length() > 50) title = title.substring(0, 49) + "…";
         int step = onAir ? at : at + 1;   // 0 on air, 1 next, 2+ after it
         String tag = step == 0 ? "الآن" : step == 1 ? "التالي" : "بعده";
-        nextTxt.setText(tag + " · " + clock(nx.optLong(0)));
-        nextName.setText(title); nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
+        // «الآن · حتى 9:00» — the time it ends (not its start); a later one: its start
+        nextTxt.setText(step == 0 ? tag + " · حتى " + clock(nx.optLong(1)) : tag + " · " + clock(nx.optLong(0)));
+        // under the name: what follows it (التالي 9:00 · …), smaller
+        String after = "";
+        try { if (at + 1 < ps.size()) { org.json.JSONArray f = ps.get(at + 1); String ft = f.optString(2, "").trim(); if (ft.length() > 40) ft = ft.substring(0, 39) + "…"; if (!ft.isEmpty()) after = (step == 0 ? "التالي " : "ثم ") + clock(f.optLong(0)) + " · " + ft; } } catch (Throwable ignored) { }
+        if (after.isEmpty()) nextName.setText(title);
+        else { android.text.SpannableString sp = new android.text.SpannableString(title + '\n' + after);
+            sp.setSpan(new android.text.style.RelativeSizeSpan(0.72f), title.length() + 1, sp.length(), 0);
+            sp.setSpan(new android.text.style.ForegroundColorSpan(0xCCFFFFFF), title.length() + 1, sp.length(), 0); nextName.setText(sp); }
+        nextName.setVisibility(title.isEmpty() ? View.GONE : View.VISIBLE);   // the programme's name under its logo
         nextBox.setVisibility(View.VISIBLE);
         if (u.equals(nextUrl)) return; nextUrl = u;
         if (u.isEmpty()) { nextImg.setImageDrawable(null); nextImg.setVisibility(View.GONE); return; }

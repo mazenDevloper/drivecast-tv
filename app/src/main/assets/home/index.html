@@ -639,6 +639,7 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .snew .sk{width:auto}
 body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!important}
 .sk.mb{width:250px;height:200px;background-size:cover;background-position:center;position:relative;overflow:hidden}.sk.mb::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.82))}.sk.mb>*{position:relative}.sk.mb .skl img{max-height:84px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}.sk.mb em.tg{position:absolute;top:8px;inset-inline-start:8px;font-style:normal;font-size:12px;padding:2px 8px;border-radius:9px;background:rgba(0,0,0,.6)}.sk.mb.no{opacity:.55}
+.vid.hl{position:relative}.vid.hl em{display:block;padding:0 14px 12px;font-size:14px;opacity:.7;font-style:normal}.vid.hl .hlnew{position:absolute;margin:10px;padding:2px 10px;border-radius:10px;background:#e0263f;font-size:13px;font-weight:700}
 .vrow{display:flex;gap:20px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
 .vrow .vcard{flex:none;width:168px;border:0;border-radius:22px;padding:0;overflow:hidden;color:#fff;font:inherit;cursor:pointer;text-align:center}
 .vrow .vcard .po{aspect-ratio:2/3;background:#1a1a24 center/cover no-repeat;display:grid;place-items:center;font-size:44px}
@@ -683,6 +684,7 @@ body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!importa
     <div id="shLive"><h2>قنوات مباشرة<span id="liveNote"></span></h2><div class="shelf" id="s-live"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shSer" hidden><h2>🎞️ المسلسلات</h2><div class="serrow" id="s-ser"></div></div>
     <div id="shMbc" hidden><h2>📺 مسلسلات وبرامج وأفلام MBC <small style="opacity:.6;font-size:.6em">من شاهد</small></h2><div class="serrow" id="s-mbc"></div></div>
+    <div class="cRow" id="shHl" style="display:none"><h2>🎬 ملخصات beIN <small style="opacity:.6;font-size:.6em">الأحدث أولاً</small></h2><div class="mrow" id="s-hl"></div></div>
     <div class="cRow" id="shVod"><h2>🎬 أفلام</h2><div class="vrow" id="s-vod"></div></div>
     <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -936,6 +938,7 @@ function couchTick() {
   const c = $('#cDate'); if (c) c.textContent = d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' }) + (hijri ? ' · ' + hijri : '') + (S('clock', '12') !== '24' ? (d.getHours() < 12 ? ' · ص' : ' · م') : '');
 }
 function couchRows() {
+  if (typeof hlUi === 'function') try { hlUi(); } catch (e) {}
   if (!couchOn()) return;
   const mt = $('#shMt'), vd = $('#shVod');
   const ms = MTAB === 'all' ? MLIST.map((m, i) => [m, i]).filter(([m]) => m.status !== 'finished' || Date.now() / 1000 - m.timestamp < 3 * 3600).slice(0, 14) : [];
@@ -956,6 +959,30 @@ function vodSet(l) {
     .sort((a, b) => String(a.group || '').localeCompare(String(b.group || ''), 'ar') || yr(b) - yr(a) || a.name.localeCompare(b.name, 'ar')).slice(0, 400);
   couchRows();
 }
+// 🎬 ملخصات beIN (the sports mode): beIN SPORTS' own YouTube channel — its latest summaries, the newest first, played in the
+// TV's YouTube player like every «data-yt» card; asked again every 30 min
+let HL = [], HLAT = 0;
+try { const c = JSON.parse(localStorage.hl || 'null'); if (c && c.v) { HL = c.v; HLAT = c.at; } } catch (e) {}
+const HLCH = ['UCJUCcJUeh0Cz2xyKwkw5Q1w'];   // beIN SPORTS (عربي)
+async function hlLoad(force) {
+  if (!couchOn()) return; if (!force && HL.length && Date.now() - HLAT < 30 * 60e3) return hlUi();
+  const all = [];
+  for (const id of HLCH) { const x = await getText('https://www.youtube.com/feeds/videos.xml?channel_id=' + id); if (!x) continue;
+    for (const e of x.split('<entry>').slice(1)) { const vid = (/<yt:videoId>([^<]+)/.exec(e) || [])[1], t = (/<title>([^<]+)/.exec(e) || [])[1], at = Date.parse((/<published>([^<]+)/.exec(e) || [])[1] || '');
+      if (vid && t) all.push({ id: vid, t: t.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim(), at: at || 0 }); } }
+  if (all.length) { const seen = new Set(); HL = all.filter(v => !seen.has(v.id) && seen.add(v.id)).sort((a, b) => b.at - a.at).slice(0, 30); HLAT = Date.now(); try { localStorage.hl = JSON.stringify({ at: HLAT, v: HL }); } catch (e) {} }
+  hlUi();
+}
+function hlAgo(t) { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + AR(m) + ' د' : m < 1440 ? 'قبل ' + AR(Math.round(m / 60)) + ' س' : 'قبل ' + AR(Math.round(m / 1440)) + ' يوم'; }
+function hlUi() {
+  const el = $('#shHl'); if (!el) return; const on = couchOn() && S('c-hl', 'on') !== 'off' && HL.length; el.style.display = on ? '' : 'none'; if (!on) return;
+  // «ملخص مباراة ليفربول ومانشستر يونايتد | الدوري الإنجليزي الممتاز - الجولة 11» → «ليفربول × مانشستر يونايتد» and its league
+  $('#s-hl').innerHTML = HL.map(v => { const [a, lg] = v.t.split('|').map(x => x.trim()); let name = (a || v.t).replace(/^ملخص\s+(مباراة\s+)?/, '');
+    const mm = /^(.+?)\s+و\s*(\S.+)$/.exec(name); if (/^ملخص/.test(v.t) && mm) name = mm[1] + ' × ' + mm[2];
+    const fresh = Date.now() - v.at < 6 * 3600e3;
+    return `<button class="vid hl f" data-yt="${esc(v.id)}">${fresh ? '<b class="hlnew">جديد</b>' : ''}<img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span>${esc(name)}</span><em>${esc((lg || '').replace(/\s*-\s*/g, ' · '))}${lg ? ' · ' : ''}${hlAgo(v.at)}</em></button>`; }).join('');
+}
+setTimeout(() => hlLoad(), 6000); setInterval(() => hlLoad(), 30 * 60e3);
 // the first shelf sits at the foot of the photo (the clock and the mosque stay whole); further down the photo dims behind the rows
 document.addEventListener('focusin', e => { if (!couchOn()) return; const sc = $('#homeScroll'); if (!sc || !sc.contains(e.target)) return;
   const row = e.target.closest('#homeScroll > div'), pad = parseFloat(getComputedStyle(sc).paddingTop) || 0;
@@ -4358,6 +4385,7 @@ function allSections() {
       { k: 'cclkx', l: '🏟️ مكان الساعة', o: [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], d: 'center' },
       { k: 'cclks', l: '🏟️ حجم الساعة', o: [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']], d: '34' },
       { k: 'c-mt', l: '🏟️ مباريات اليوم', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
+      { k: 'c-hl', l: '🎬 ملخصات beIN (يوتيوب، الأحدث أولاً)', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'on' },
       { k: 'c-vod', l: '🏟️ الأفلام من قوائمك', o: [['on', 'تظهر'], ['off', 'مخفية']], d: 'off' },
       { k: 'uiscale', l: 'حجم الواجهة كلها', o: [['80', 'صغير'], ['90', 'أصغر شوي'], ['100', 'عادي'], ['115', 'أكبر'], ['130', 'كبير']], d: '100' },
       { k: 'hcard', l: 'كروت القنوات في الرئيسية', o: [['big', 'كبيرة'], ['mid', 'متوسطة'], ['small', 'صغيرة']], d: 'big' },
