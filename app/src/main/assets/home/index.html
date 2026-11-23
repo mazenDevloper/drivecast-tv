@@ -5579,7 +5579,7 @@ function serSmart(r) {
 const serPct = w => w && w.dur ? Math.min(100, Math.round(100 * w.pos / w.dur)) : 0;
 function serUi() {
   const el = $('#shSer'); if (!el) return;
-  const logo = S('newlogo', ''), ws = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at), last = ws[0];
+  const logo = (S('newlogo', '') || 'https://shahid.mbc.net/staticFiles/production/mbc_shahid.svg'), ws = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at), last = ws[0];
   el.hidden = !SERIES() || (!SER.length && !XS.length);
   const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
   let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
