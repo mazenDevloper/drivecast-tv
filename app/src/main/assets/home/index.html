@@ -5695,13 +5695,23 @@ function xsBase() {
 }
 async function xsLoad() {
   const b = xsBase(); if (!b) return XS; if (XS.length && XSB === b.api && Date.now() - XSAT < 3 * 3600e3) return XS;
-  const [l, cats] = await Promise.all([getJ(b.api + '&action=get_series'), getJ(b.api + '&action=get_series_categories')]);
-  if (!Array.isArray(l) || !l.length) return XS;
-  XSCAT = {}; for (const c of cats || []) XSCAT[c.category_id] = c.category_name || '';
+  // only the categories that matter (showing now, programmes, this year's): the whole list (9 000+) froze the TV
+  if (xsLoad.busy) return XS; xsLoad.busy = 1;
+  try {
+  const cats = await getJ(b.api + '&action=get_series_categories'); if (!Array.isArray(cats)) return XS;
+  XSCAT = {}; for (const c of cats) XSCAT[c.category_id] = c.category_name || '';
+  const want = cats.filter(c => /تعرض حاليا|حاليا|برامج|tv ?show|2026/i.test(c.category_name || '')).slice(0, 8), l = [];
+  for (const c of want) { const x = await getJ(b.api + '&action=get_series&category_id=' + c.category_id); if (Array.isArray(x)) l.push(...x); }
+  if (!l.length) return XS;
   XS = l.filter(x => x && x.name && x.series_id).map(x => ({ id: x.series_id, t: String(x.name).trim(), n: shNorm(x.name), cover: x.cover || '', cat: XSCAT[x.category_id] || '', at: +x.last_modified || 0 }));
   for (const x of XS) { const parts = x.t.split(/\s*[-–|]\s*/).map(serNorm).filter(q => q.length >= 3); x.ns = [x.n, ...parts]; x.now = /تعرض حاليا|حاليا|برامج|tv ?show/i.test(x.cat); x.ar = /[ء-ي]/.test(x.t); }
-  XSB = b.api; XSAT = Date.now(); return XS;
+  XSB = b.api; XSAT = Date.now();
+  try { localStorage.xs = JSON.stringify({ at: XSAT, b: XSB, v: XS.map(({ id, t, cover, cat, at }) => ({ id, t, cover, cat, at })) }); } catch (e) {}
+  return XS;
+  } finally { xsLoad.busy = 0; }
 }
+function xsPrep(x) { x.n = shNorm(x.t); x.ns = [x.n, ...x.t.split(/\s*[-–|]\s*/).map(serNorm).filter(q => q.length >= 3)]; x.now = /تعرض حاليا|حاليا|برامج|tv ?show/i.test(x.cat); x.ar = /[ء-ي]/.test(x.t); return x; }
+try { const c = JSON.parse(localStorage.xs || 'null'); if (c && c.v) { XS = c.v.map(xsPrep); XSB = c.b; XSAT = c.at; } } catch (e) {}
 /** the server's series for a name: the whole name, or either side of a «-» (Uzak Sehir - المدينة البعيدة - مدبلج), the newest */
 function xsFind(n) {
   if (!n || !XS.length) return null; let best = null;
