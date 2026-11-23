@@ -5579,7 +5579,7 @@ const serPct = w => w && w.dur ? Math.min(100, Math.round(100 * w.pos / w.dur)) 
 function serUi() {
   const el = $('#shSer'); if (!el) return;
   const logo = S('newlogo', ''), ws = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at), last = ws[0];
-  el.hidden = !SERIES() || !SER.length;
+  el.hidden = !SERIES() || (!SER.length && !XS.length);
   const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
   let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
   if (last) h += card('data-ser="res"', `<div class="skl">${last.logo ? `<img src="${esc(last.logo)}" alt="">` : '<em>▶</em>'}</div><span>كمّل المشاهدة</span><small>${esc(last.title)} · ح${AR(last.e)}</small>`, 'res', 0, serPct(last));
@@ -5587,6 +5587,10 @@ function serUi() {
   // its programme's own logo from the guide (as the channel cards show it); the rest of the lists after, Arabic titles only
   const ord = SER.map((r, k) => ({ r, k, g: serGuide(r) })), ar = t => /[ء-ي]/.test(t);
   const top = ord.filter(o => o.g).sort((a, b) => b.r.last - a.r.last), rest = ord.filter(o => !o.g && ar(o.r.title));
+  const xsNow = XS.filter(x => x.now && x.ar).sort((a, b) => b.at - a.at).slice(0, 60);
+  h += xsNow.map(x => { const sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q))), g = mbcGuide(); let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
+    const lg = sh ? SHIMG(sh.logo, 360, 160) : (gg && gg.img) || x.cover;
+    return card(`data-xs="${x.id}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.remove()">` : `<em>${esc(ini(x.t))}</em>`}</div><span>${esc(x.t)}</span><small>${gg ? '📺 ' + esc(gg.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${esc(x.cat.replace(/[\[\]|]/g, ' ').trim())}</small>`, sh ? 'mbcg' : ''); }).join('');
   h += [...top, ...rest].map(({ r, k, g }) => { const lg = (g && g.img) || shLogo(r) || r.logo;
     return card(`data-ser="${k}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('em'),{textContent:'${esc(ini(r.title)).replace(/'/g, '')}'}))">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${g ? '📺 ' + esc(g.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${AR(r.eps.length)} حلقة</small>`, g ? 'mbcg' : ''); }).join('');
   $('#s-ser').innerHTML = h;
@@ -5671,35 +5675,72 @@ function serGuide(r) {
   return null;
 }
 const mbcPrio = () => String(S('mbcprio', 'The Floor')).split(/[,،\n]+/).map(t => serNorm(t)).filter(t => t.length >= 3);
+// 📺 the IPTV server's own series and programmes (Xtream «get_series»: what a get.php list never carries) — every series and show
+// of the server, its newest first; a card opens its seasons and episodes (get_series_info), played and resumed like the lists' series
+let XS = [], XSCAT = {}, XSAT = 0, XSB = '';
+function xsBase() {
+  const us = [...(typeof m3uvRecent === 'function' ? m3uvRecent() : []), ...(typeof m3uList === 'function' ? m3uList() : []), M3UV.url].filter(Boolean);
+  for (const u of us) { try { const x = new URL(u); const un = x.searchParams.get('username'), pw = x.searchParams.get('password'); if (/get\.php|player_api/.test(x.pathname) && un && pw) return { o: x.origin, un, pw, api: x.origin + '/player_api.php?username=' + encodeURIComponent(un) + '&password=' + encodeURIComponent(pw) }; } catch (e) {} }
+  return null;
+}
+async function xsLoad() {
+  const b = xsBase(); if (!b) return XS; if (XS.length && XSB === b.api && Date.now() - XSAT < 3 * 3600e3) return XS;
+  const [l, cats] = await Promise.all([getJ(b.api + '&action=get_series'), getJ(b.api + '&action=get_series_categories')]);
+  if (!Array.isArray(l) || !l.length) return XS;
+  XSCAT = {}; for (const c of cats || []) XSCAT[c.category_id] = c.category_name || '';
+  XS = l.filter(x => x && x.name && x.series_id).map(x => ({ id: x.series_id, t: String(x.name).trim(), n: shNorm(x.name), cover: x.cover || '', cat: XSCAT[x.category_id] || '', at: +x.last_modified || 0 }));
+  for (const x of XS) { const parts = x.t.split(/\s*[-–|]\s*/).map(serNorm).filter(q => q.length >= 3); x.ns = [x.n, ...parts]; x.now = /تعرض حاليا|حاليا|برامج|tv ?show/i.test(x.cat); x.ar = /[ء-ي]/.test(x.t); }
+  XSB = b.api; XSAT = Date.now(); return XS;
+}
+/** the server's series for a name: the whole name, or either side of a «-» (Uzak Sehir - المدينة البعيدة - مدبلج), the newest */
+function xsFind(n) {
+  if (!n || !XS.length) return null; let best = null;
+  for (const x of XS) if (x.ns.some(q => q === n || shSame(q, n))) { if (!best || (x.now && !best.now) || (x.now === best.now && x.at > best.at)) best = x; }
+  return best;
+}
+async function xsOpen(x) {
+  const b = xsBase(); if (!b || !x) return; toast('📺 ' + x.t + ' …', 1500);
+  const d = await getJ(b.api + '&action=get_series_info&series_id=' + x.id); const eps = [];
+  for (const [sn, list] of Object.entries((d && d.episodes) || {})) for (const e of list || []) {
+    const ext = e.container_extension || 'mp4';
+    eps.push({ s: +e.season || +sn || 1, e: +e.episode_num || eps.length + 1, c: { url: `${b.o}/series/${encodeURIComponent(b.un)}/${encodeURIComponent(b.pw)}/${e.id}.${ext}`, name: e.title || x.t, logo: (e.info && e.info.movie_image) || x.cover } });
+  }
+  if (!eps.length) return toast('ما لقيت حلقات «' + x.t + '» في السيرفر', 2500);
+  const u = new Set(); const ep2 = eps.filter(y => { const q = y.s + ':' + y.e; return !u.has(q) && u.add(q); }).sort((a, b) => a.s - b.s || a.e - b.e);
+  const key = 'xs' + x.id, sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q)));
+  let r = SER.find(y => y.key === key);
+  if (!r) { r = { key, title: x.t, logo: sh ? SHIMG(sh.logo, 360, 160) : (x.cover || ''), eps: [], first: SER.length, last: 1e9 + x.at }; SER.push(r); }
+  r.eps = ep2; for (const y of ep2) SERIDX.set(y.c.url, { r, x: y });
+  const sm = serSmart(r); SERV = { r, s: sm.x.s }; serSeasons(sm.x);
+}
 function mbcUi() {
   const el = $('#shMbc'); if (!el) return; if (!SERIES() || !SHC) { el.hidden = true; return; }
   const air = mbcAiring(), now = Date.now() / 1000, used = new Set(), rows = [];
   for (const x of SHC) { if (x.k === 'm' || used.has(x.n)) continue; let a = null; for (const [n, v] of air) if (shSame(n, x.n)) { a = v; break; }
-    if (a) { used.add(x.n); rows.push({ x, a, si: shSer(x.n), vi: -1, o: a.at / 1e10 }); } }
-  for (const x of SHC) { if (used.has(x.n) || !x.ar || x.soon) continue; const si = x.k !== 'm' ? shSer(x.n) : -1, vi = x.k === 'm' ? shVod(x.n) : -1;
-    if (si < 0 && vi < 0) continue; used.add(x.n); rows.push({ x, a: null, si, vi, o: x.k === 'm' ? 2 : 1 }); }
+    if (a) { used.add(x.n); rows.push({ x, a, si: shSer(x.n), vi: -1, xs: xsFind(x.n), o: a.at / 1e10 }); } }
+  for (const x of SHC) { if (used.has(x.n) || !x.ar || x.soon) continue; const si = x.k !== 'm' ? shSer(x.n) : -1, vi = x.k === 'm' ? shVod(x.n) : -1, xs = x.k !== 'm' ? xsFind(x.n) : null;
+    if (si < 0 && vi < 0 && !xs) continue; used.add(x.n); rows.push({ x, a: null, si, vi, xs, o: x.k === 'm' ? 2 : xs && xs.now ? 0.5 : 1 }); }
   // ⭐ the priority titles (Settings: «أولوية MBC», default The Floor) first, whatever else is on
   const pr = mbcPrio();
   for (const r of rows) if (pr.some(q => r.x.n.includes(q) || serNorm(r.x.t).includes(q))) r.o = -1;
-  for (const x of SHC) { if (used.has(x.n) || x.k === 'm' || !pr.some(q => x.n.includes(q) || serNorm(x.t).includes(q))) continue; used.add(x.n); rows.push({ x, a: null, si: shSer(x.n), vi: -1, o: -1, pr: 1 }); }
+  for (const x of SHC) { if (used.has(x.n) || x.k === 'm' || !pr.some(q => x.n.includes(q) || serNorm(x.t).includes(q))) continue; used.add(x.n); rows.push({ x, a: null, si: shSer(x.n), vi: -1, xs: xsFind(x.n), o: -1, pr: 1 }); }
   rows.sort((a, b) => a.o - b.o); SHROW = rows.slice(0, 60); el.hidden = !SHROW.length;
   const kind = { s: 'مسلسل', p: 'برنامج', m: 'فيلم' };
-  $('#s-mbc').innerHTML = SHROW.map((r, k) => { const x = r.x, play = r.si >= 0 || r.vi >= 0;
-    const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : r.o < 0 ? '⭐ أولوية · في شاهد' : '');
+  $('#s-mbc').innerHTML = SHROW.map((r, k) => { const x = r.x, play = r.si >= 0 || r.vi >= 0 || !!r.xs;
+    const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : r.o < 0 ? '⭐ أولوية' : '');
     return `<button class="sk mb f ${play || r.a || r.o < 0 ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 360, 160))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
 }
 function mbcGo(k) {
   const r = SHROW[k]; if (!r) return;
+  if (r.xs) return xsOpen(r.xs);
   if (r.si >= 0) return serOpen(String(r.si));
   if (r.vi >= 0) return playChannel(VODL, r.vi);
   if (r.a) { const l = MPOOLS(), i = l.indexOf(r.a.c); return playChannel(l, i < 0 ? 0 : i); }
-  const app = (typeof APPS !== 'undefined' ? APPS : []).find(a => /shahid/i.test(a.pkg + ' ' + a.label));
-  if (app) return TV.open(app.pkg);
-  if (r.o < 0 && TV.storeFind) { toast('«' + r.x.t + '» في شاهد — أفتح تطبيق شاهد في المتجر', 3000); return TV.storeFind('net.mbc.shahidTV'); }
   toast('ما لقيت «' + r.x.t + '» في قوائمك ولا في دليل MBC', 2500);
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mbc]'); if (b) { e.stopPropagation(); mbcGo(+b.dataset.mbc); } }, true);
-async function mbcLoad() { if (!SERIES()) return; await shahidCat(); serUi(); mbcUi(); }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-xs]'); if (b) { e.stopPropagation(); const x = XS.find(y => String(y.id) === b.dataset.xs); if (x) xsOpen(x); } }, true);
+async function mbcLoad() { if (!SERIES()) return; await Promise.all([shahidCat(), xsLoad().catch(() => {})]); serUi(); mbcUi(); }
 setTimeout(mbcLoad, 8000); setInterval(() => { if (SERIES()) mbcLoad(); }, 10 * 60e3);
 // the player says where it stopped (its pause, back, or another episode): kept per series, so «كمّل المشاهدة» starts there
 window.vodPos = (url, pos, dur) => {
