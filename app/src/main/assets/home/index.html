@@ -58,9 +58,10 @@ body.deep .veil{background:linear-gradient(180deg,rgba(10,14,19,.4) 0%,rgba(10,1
 .top{display:flex;align-items:center;justify-content:space-between;gap:24px}
 .clock b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
 .clock span{font-size:20px;color:var(--dim)}
-.tabs .msep{width:2px;align-self:stretch;margin:6px 4px;background:rgba(255,255,255,.22);border-radius:2px}
-.tabs .mtab small{font-size:.62em;opacity:.65;margin-inline-start:6px;font-weight:600}
-.tabs .mtab.on{background:#ffd23f!important;color:#111!important}
+.mswitch{display:flex;gap:4px;padding:5px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);margin-inline-start:14px}
+.mswitch .mtab{border:0;border-radius:999px;padding:10px 18px;font:inherit;font-size:20px;font-weight:700;color:#fff;background:transparent}
+.mswitch .mtab small{font-size:.62em;opacity:.65;margin-inline-start:6px}
+.mswitch .mtab.on{background:#ffd23f;color:#111}.mswitch .mtab:focus{outline:3px solid #fff;outline-offset:1px}
 .tabs{display:flex;gap:6px;padding:6px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .tab{white-space:nowrap;padding:12px 22px;border-radius:999px;font-size:24px;font-weight:600;color:#d6dbe1;border:0;background:none;font-family:inherit}
 .tab.on{background:var(--ink);color:var(--bg);font-weight:700}
@@ -640,7 +641,7 @@ body.couch #p-home h2{text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .sere button:focus,.sert button:focus{outline:0;box-shadow:0 0 0 4px #fff;transform:scale(1.05)}
 .snew{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
 .snew .sk{width:auto}
-body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!important}
+body:not(.mode-series):not(.couch) #shSer,body:not(.mode-series) #shMbc{display:none!important}
 .sk.mb{width:250px;height:200px;background-size:cover;background-position:center;position:relative;overflow:hidden}.sk.mb::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.82))}.sk.mb>*{position:relative}.sk.mb .skl img{max-height:84px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}.sk.mb em.tg{position:absolute;top:8px;inset-inline-start:8px;font-style:normal;font-size:12px;padding:2px 8px;border-radius:9px;background:rgba(0,0,0,.6)}.sk.mb.no{opacity:.55}
 .vid.hl{position:relative}.vid.hl em{display:block;padding:0 14px 12px;font-size:14px;opacity:.7;font-style:normal}.vid.hl .hlnew{position:absolute;margin:10px;padding:2px 10px;border-radius:10px;background:#e0263f;font-size:13px;font-weight:700}
 .vrow{display:flex;gap:20px;overflow-x:auto;padding:8px 4px 18px;scrollbar-width:none}
@@ -668,8 +669,8 @@ body:not(.mode-series) #shSer,body:not(.mode-series) #shMbc{display:none!importa
       <button class="tab f" data-page="matches">المباريات</button>
       <button class="tab f" data-page="apps">التطبيقات</button>
       <button class="tab f" data-act="settings">الإعدادات</button>
-      <i class="msep"></i><button class="tab f mtab" data-mode="sports" title="اضغط 11">⚽ رياضة<small>11</small></button><button class="tab f mtab" data-mode="series" title="اضغط 22">📺 مسلسلات<small>22</small></button>
     </nav>
+    <div class="mswitch" id="mSwitch"><button class="f mtab" data-mode="sports">⚽ رياضة<small>11</small></button><button class="f mtab" data-mode="series">📺 مسلسلات<small>22</small></button></div>
     <div><div class="wx" id="wx"></div><div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div></div>
   </div>
 
@@ -4644,7 +4645,7 @@ function setMode(which) {
   const m = which === 'series' ? 'series' : SPORTSMODE(); QMODE = '';
   if (S('mode', MODE0) !== m) setPref('mode', m);
   try { homeLayout(); uiApply(); liveUi(); nextUi(); homeOrder(); couchRows(); serUi(); } catch (e) {}
-  if (m === 'series' && typeof mbcLoad === 'function') mbcLoad();
+  if (typeof mbcLoad === 'function') mbcLoad();
   if (typeof hlUi === 'function') hlUi();
   modeTabs(); toast(m === 'series' ? '📺 وضع المسلسلات' : '⚽ وضع الرياضة', 1800);
 }
@@ -5633,7 +5634,7 @@ const serPct = w => w && w.dur ? Math.min(100, Math.round(100 * w.pos / w.dur)) 
 function serUi() {
   const el = $('#shSer'); if (!el) return;
   const logo = (S('newlogo', '') || 'https://shahid.mbc.net/staticFiles/production/mbc_shahid.svg'), ws = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at), last = ws[0];
-  el.hidden = !SERIES() || (!SER.length && !XS.length);
+  el.hidden = !(SERIES() || couchOn()) || (!SER.length && !XS.length);   // the glass sports mode shows the series too
   const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
   let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
   if (last) h += card('data-ser="res"', `<div class="skl">${last.logo ? `<img src="${esc(last.logo)}" alt="">` : '<em>▶</em>'}</div><span>كمّل المشاهدة</span><small>${esc(last.title)} · ح${AR(last.e)}</small>`, 'res', 0, serPct(last));
@@ -5812,8 +5813,8 @@ function mbcGo(k) {
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mbc]'); if (b) { e.stopPropagation(); mbcGo(+b.dataset.mbc); } }, true);
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-xs]'); if (b) { e.stopPropagation(); const x = XS.find(y => String(y.id) === b.dataset.xs); if (x) xsOpen(x); } }, true);
-async function mbcLoad() { if (!SERIES()) return; await Promise.all([shahidCat(), xsLoad().catch(() => {})]); serUi(); mbcUi(); }
-setTimeout(mbcLoad, 8000); setInterval(() => { if (SERIES()) mbcLoad(); }, 10 * 60e3);
+async function mbcLoad() { if (!SERIES() && !couchOn()) return; await Promise.all([shahidCat(), xsLoad().catch(() => {})]); serUi(); mbcUi(); }
+setTimeout(mbcLoad, 8000); setInterval(() => { if (SERIES() || couchOn()) mbcLoad(); }, 10 * 60e3);
 // the player says where it stopped (its pause, back, or another episode): kept per series, so «كمّل المشاهدة» starts there
 window.vodPos = (url, pos, dur) => {
   const h = SERIDX.get(url); if (!h || !(dur > 60e3)) return;
