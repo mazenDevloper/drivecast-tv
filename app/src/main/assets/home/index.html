@@ -4351,6 +4351,7 @@ function allSections() {
     ]],
     ['🎛️', 'الواجهة لهذا الجهاز', [
       { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['couch', '🏟️ الرياضة · ساعة زجاج خلف المسجد'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
+      { in: 1, k: 'mbcprio', l: '⭐ أولوية MBC من شاهد (أسماء مفصولة بفاصلة — أول الصف)', ph: 'The Floor, المدينة البعيدة' },
       { in: 1, k: 'newlogo', l: '🖼️ شعار كرت «الجديد» في المسلسلات (رابط صورة)', ph: 'https://…/logo.png' },
       { k: 'cclkx', l: '🏟️ مكان الساعة', o: [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], d: 'center' },
       { k: 'cclks', l: '🏟️ حجم الساعة', o: [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']], d: '34' },
@@ -5669,6 +5670,7 @@ function serGuide(r) {
   for (const [n, v] of g) if (n.length >= 4 && (shSame(n, a) || shSame(n, b) || (a.length >= 4 && (n.includes(a) || a.includes(n))))) return v;
   return null;
 }
+const mbcPrio = () => String(S('mbcprio', 'The Floor')).split(/[,،\n]+/).map(t => serNorm(t)).filter(t => t.length >= 3);
 function mbcUi() {
   const el = $('#shMbc'); if (!el) return; if (!SERIES() || !SHC) { el.hidden = true; return; }
   const air = mbcAiring(), now = Date.now() / 1000, used = new Set(), rows = [];
@@ -5676,17 +5678,24 @@ function mbcUi() {
     if (a) { used.add(x.n); rows.push({ x, a, si: shSer(x.n), vi: -1, o: a.at / 1e10 }); } }
   for (const x of SHC) { if (used.has(x.n) || !x.ar || x.soon) continue; const si = x.k !== 'm' ? shSer(x.n) : -1, vi = x.k === 'm' ? shVod(x.n) : -1;
     if (si < 0 && vi < 0) continue; used.add(x.n); rows.push({ x, a: null, si, vi, o: x.k === 'm' ? 2 : 1 }); }
+  // ⭐ the priority titles (Settings: «أولوية MBC», default The Floor) first, whatever else is on
+  const pr = mbcPrio();
+  for (const r of rows) if (pr.some(q => r.x.n.includes(q) || serNorm(r.x.t).includes(q))) r.o = -1;
+  for (const x of SHC) { if (used.has(x.n) || x.k === 'm' || !pr.some(q => x.n.includes(q) || serNorm(x.t).includes(q))) continue; used.add(x.n); rows.push({ x, a: null, si: shSer(x.n), vi: -1, o: -1, pr: 1 }); }
   rows.sort((a, b) => a.o - b.o); SHROW = rows.slice(0, 60); el.hidden = !SHROW.length;
   const kind = { s: 'مسلسل', p: 'برنامج', m: 'فيلم' };
   $('#s-mbc').innerHTML = SHROW.map((r, k) => { const x = r.x, play = r.si >= 0 || r.vi >= 0;
-    const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : '');
-    return `<button class="sk mb f ${play || r.a ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 360, 160))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
+    const sub = r.a ? (r.a.at <= now ? '🔴 الآن على ' : hm(r.a.at) + ' على ') + esc(r.a.c.name) : (play ? '▶ في قوائمك' : r.o < 0 ? '⭐ أولوية · في شاهد' : '');
+    return `<button class="sk mb f ${play || r.a || r.o < 0 ? '' : 'no'}" data-mbc="${k}" style="background-image:url('${esc(SHIMG(x.po, 500, 282))}')"><em class="tg">${kind[x.k]}${r.si >= 0 ? ' · ' + AR(SER[r.si].eps.length) + ' حلقة' : ''}</em><div class="skl">${x.logo ? `<img src="${esc(SHIMG(x.logo, 360, 160))}" alt="" loading="lazy" onerror="this.remove()">` : `<b>${esc(x.t)}</b>`}</div><span>${esc(x.t)}</span><small>${sub}</small></button>`; }).join('');
 }
 function mbcGo(k) {
   const r = SHROW[k]; if (!r) return;
   if (r.si >= 0) return serOpen(String(r.si));
   if (r.vi >= 0) return playChannel(VODL, r.vi);
   if (r.a) { const l = MPOOLS(), i = l.indexOf(r.a.c); return playChannel(l, i < 0 ? 0 : i); }
+  const app = (typeof APPS !== 'undefined' ? APPS : []).find(a => /shahid/i.test(a.pkg + ' ' + a.label));
+  if (app) return TV.open(app.pkg);
+  if (r.o < 0 && TV.storeFind) { toast('«' + r.x.t + '» في شاهد — أفتح تطبيق شاهد في المتجر', 3000); return TV.storeFind('net.mbc.shahidTV'); }
   toast('ما لقيت «' + r.x.t + '» في قوائمك ولا في دليل MBC', 2500);
 }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mbc]'); if (b) { e.stopPropagation(); mbcGo(+b.dataset.mbc); } }, true);
@@ -5707,7 +5716,7 @@ document.addEventListener('click', e => {
   if (b.dataset.sep != null && SERV) { const r = SERV.r, x = r.eps[+b.dataset.sep], w = SERW[r.key], same = w && w.s === x.s && w.e === x.e && w.dur && w.pos / w.dur < 0.92; return serPlay(r, x, same ? Math.max(0, w.pos - 5e3) : 0); }
   if (b.dataset.snew != null && SERV && SERV.list) { const r = SERV.list[+b.dataset.snew]; return serPlay(r, r.eps[r.eps.length - 1], 0); }
 }, true);
-document.addEventListener('change', e => { const i = e.target.closest && e.target.closest('[data-sin]'); if (i) { setPref(i.dataset.sin, i.value.trim()); serUi(); } });
+document.addEventListener('change', e => { const i = e.target.closest && e.target.closest('[data-sin]'); if (i) { setPref(i.dataset.sin, i.value.trim()); serUi(); if (typeof mbcUi === 'function') mbcUi(); } });
 { const ob = window.onTvBack; window.onTvBack = () => SERV ? serClose() : ob(); }
 </script>
 </body>
