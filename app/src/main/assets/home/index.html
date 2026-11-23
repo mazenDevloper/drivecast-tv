@@ -5582,7 +5582,12 @@ function serUi() {
   const card = (a, inner, cls, sub, bar) => `<button class="sk f ${cls || ''}" ${a}>${inner}${bar ? `<i><u style="width:${bar}%"></u></i>` : ''}</button>`;
   let h = card('data-ser="new"', `<div class="skl">${logo ? `<img src="${esc(logo)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'جديد'}))">` : '<b>✨ جديد</b>'}</div><span>الجديد</span><small>أحدث الحلقات</small>`, 'new');
   if (last) h += card('data-ser="res"', `<div class="skl">${last.logo ? `<img src="${esc(last.logo)}" alt="">` : '<em>▶</em>'}</div><span>كمّل المشاهدة</span><small>${esc(last.title)} · ح${AR(last.e)}</small>`, 'res', 0, serPct(last));
-  h += SER.map((r, k) => card(`data-ser="${k}"`, `<div class="skl">${shLogo(r) || r.logo ? `<img src="${esc(shLogo(r) || r.logo)}" alt="" loading="lazy">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${AR(r.eps.length)} حلقة</small>`, '')).join('');
+  // the series the MBC channels' guide carries come first (a partial name is enough), the one with the newest episode first, with
+  // its programme's own logo from the guide (as the channel cards show it); the rest of the lists after, Arabic titles only
+  const ord = SER.map((r, k) => ({ r, k, g: serGuide(r) })), ar = t => /[ء-ي]/.test(t);
+  const top = ord.filter(o => o.g).sort((a, b) => b.r.last - a.r.last), rest = ord.filter(o => !o.g && ar(o.r.title));
+  h += [...top, ...rest].map(({ r, k, g }) => { const lg = (g && g.img) || shLogo(r) || r.logo;
+    return card(`data-ser="${k}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('em'),{textContent:'${esc(ini(r.title)).replace(/'/g, '')}'}))">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${g ? '📺 ' + esc(g.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${AR(r.eps.length)} حلقة</small>`, g ? 'mbcg' : ''); }).join('');
   $('#s-ser').innerHTML = h;
 }
 function serClose() { const v = $('#serV'); v.classList.remove('on'); v.innerHTML = ''; SERV = null; for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = false; } const b = document.querySelector('#s-ser .sk'); if (b) b.focus(); }
@@ -5646,6 +5651,24 @@ const shSer = n => SER.findIndex(r => shSame(r.key, n) || shSame(shNorm(r.title)
 const shVod = n => VODL.findIndex(c => shSame(shNorm(String(c.name).replace(/\b(19|20)\d\d\b/, '')), n));
 /** Shahid's logo for a series of the lists */
 function shLogo(r) { if (!SHC) return ''; const a = r.key, b = shNorm(r.title); const x = SHC.find(y => y.k !== 'm' && y.logo && (shSame(y.n, a) || shSame(y.n, b))); return x ? SHIMG(x.logo, 360, 160) : ''; }
+/** the MBC channels' whole guide: programme name → { t, img, c } (the programme's own picture from the guide) */
+let MBCG = null, MBCGAT = 0;
+function mbcGuide() {
+  if (MBCG && Date.now() - MBCGAT < 10 * 60e3) return MBCG;
+  const out = new Map(), pools = MPOOLS();
+  for (const re of MBCCH) { const c = pools.find(x => x && re.test(x.name) && (EPG[epgId(x)] || []).length); if (!c) continue;
+    for (const r of EPG[epgId(c)] || []) { const n = shNorm(r[2]); if (n.length < 3) continue; const o = out.get(n); if (!o || (!o.img && r[3])) out.set(n, { t: r[2], img: r[3] || (o && o.img) || '', c }); } }
+  if (out.size) { MBCG = out; MBCGAT = Date.now(); }
+  return out;
+}
+/** a series of the lists that one of the MBC channels shows: the whole name, else one name inside the other (4+ letters) */
+function serGuide(r) {
+  const g = mbcGuide(); if (!g.size) return null; const a = r.key, b = shNorm(r.title);
+  if (g.has(a)) return g.get(a); if (g.has(b)) return g.get(b);
+  for (const part of String(r.title).split(/\s*[-–|:]\s*/)) { const q = serNorm(part); if (q.length >= 3 && g.has(q)) return g.get(q); }   // «Cukur - الحفرة - مترجم»
+  for (const [n, v] of g) if (n.length >= 4 && (shSame(n, a) || shSame(n, b) || (a.length >= 4 && (n.includes(a) || a.includes(n))))) return v;
+  return null;
+}
 function mbcUi() {
   const el = $('#shMbc'); if (!el) return; if (!SERIES() || !SHC) { el.hidden = true; return; }
   const air = mbcAiring(), now = Date.now() / 1000, used = new Set(), rows = [];
