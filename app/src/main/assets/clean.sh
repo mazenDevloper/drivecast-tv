@@ -15,10 +15,7 @@ am kill-all
 # every app's cache (keeps their data and logins)
 pm trim-caches 999G
 logcat -c 2>/dev/null
-# lighter animations: the box feels quicker
-settings put global window_animation_scale 0.5
-settings put global transition_animation_scale 0.5
-settings put global animator_duration_scale 0.5
+# the animations are left as they are (halving them made the navigation look dead)
 sleep 2
 m1=$(mem); d1=$(dsk)
 echo "OK apps=$n ram0=$m0 ram1=$m1 disk0=$d0 disk1=$d1"
