@@ -64,6 +64,7 @@ public class MessageServer extends Service {
         srv = new Thread(this::serve, "msg-server"); srv.start();
         Access.watch(this);   // the mouse stays on, even when the TV switches it off
         Remote.start(this);   // the web version: DriveCast TV from anywhere, through DriveCast's hub
+        MadarRelay.start(this);   // 📡 Madar's always-on link, kept here (boxes that never let Madar run it)
     }
 
     @Override
@@ -130,6 +131,7 @@ public class MessageServer extends Service {
                 if (first.startsWith("GET /screen.jpg")) { byte[] j = Cast.frame(getApplicationContext()); replyBytes(s.getOutputStream(), j == null ? "text/plain" : "image/jpeg", j == null ? "wait".getBytes(StandardCharsets.UTF_8) : j); }
                 else { Cast.frame(getApplicationContext()); try (InputStream a = getAssets().open("screen.html")) { ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b2 = new byte[8192]; int n; while ((n = a.read(b2)) > 0) o.write(b2, 0, n); reply(s.getOutputStream(), "text/html", o.toString("UTF-8")); } }
             }
+            else if (first.startsWith("GET /madar")) reply(s.getOutputStream(), "text/plain", Access.set(this).getString("madarRelay", ""));   // the relay's code (sys-…)
             else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
             else reply(s.getOutputStream(), "text/html", page());
             return;
