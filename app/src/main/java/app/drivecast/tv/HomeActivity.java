@@ -331,8 +331,8 @@ public class HomeActivity extends Activity {
             JSONArray al = c.optJSONArray("alts"); if (al != null && al.length() > 0) { String[] x = new String[al.length()]; for (int q = 0; q < x.length; q++) x[q] = al.optString(q); alts.put(us[k], x); } }
         PlayerActivity.EPG = epg; PlayerActivity.ALTS = alts;
         boolean auto = n > 0 && a.getJSONObject(0).optInt("auto") == 1;
-        long[] st = new long[n]; for (int k = 0; k < n; k++) st[k] = a.getJSONObject(k).optLong("st", 0);   // 🎞️ an episode resumes where it stopped
-        return PlayerActivity.big(ctx, new Intent().putExtra("starts", st).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index));
+        long[] st = new long[n]; int[] vd = new int[n]; for (int k = 0; k < n; k++) { st[k] = a.getJSONObject(k).optLong("st", 0); vd[k] = a.getJSONObject(k).optInt("vod", 0); }   // 🎞️ an episode resumes where it stopped
+        return PlayerActivity.big(ctx, new Intent().putExtra("starts", st).putExtra("vods", vd).putExtra("auto", auto).putExtra("urls", us).putExtra("names", ns).putExtra("logos", ls).putExtra("groups", gs).putExtra("pls", ps).putExtra("ccs", cs).putExtra("i", index));
     }
 
     class Bridge {

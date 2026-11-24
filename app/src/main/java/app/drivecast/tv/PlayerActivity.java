@@ -53,6 +53,18 @@ public class PlayerActivity extends Activity {
     private ExoPlayer player;
     // 🎞️ episodes: where each one starts (resume), and where it stopped — told to the page (vodPos) for «كمّل المشاهدة»
     private long[] starts; private String reportUrl;
+    private int[] vods; private long hideAt; private int tk; private String lastSig;
+    /** 🎞️ an episode (the page marks them): a list player — wind, pause, play, the episode before / after, its own progress bar */
+    private boolean vod() { return vods != null && i >= 0 && i < vods.length && vods[i] == 1; }
+    private int vIdx; private long vAt;
+    private static final int[] V_STEPS = {10, 30, 60, 120, 300};
+    /** ◀ ▶ in an episode: a tap 10 s, taps close together step further (30 s · 1 · 2 · 5 min); held, one step every ~0.4 s */
+    private void vodWind(boolean right, KeyEvent e) {
+        long now = System.currentTimeMillis(); int rc = e.getRepeatCount();
+        if (rc == 0) { vIdx = now - vAt < 1500 ? Math.min(V_STEPS.length - 1, vIdx + 1) : 0; vAt = now; }
+        else if (rc % 4 != 0) return; else vIdx = Math.max(1, vIdx);
+        wind((right ? 1 : -1) * V_STEPS[vIdx] * 1000L);
+    }
     private void vodReport() {
         try {
             if (player == null || reportUrl == null || player.isCurrentMediaItemLive() || player.getDuration() == C.TIME_UNSET || player.getDuration() < 60_000) return;
@@ -326,6 +338,16 @@ public class PlayerActivity extends Activity {
     }
     private void progFill() {
         if (prog == null) return;
+        if (vod() && player != null && player.getDuration() != C.TIME_UNSET && player.getDuration() > 0) {
+            long d = player.getDuration(), p = Math.min(d, player.getCurrentPosition());
+            prog.setText("▶ " + mmss(p) + " / " + mmss(d) + "   ·   باقي " + mmss(d - p)); prog.setVisibility(View.VISIBLE);
+            if (nowRow != null) {
+                float f = Math.max(0.01f, Math.min(1f, p / (float) d));
+                ((LinearLayout.LayoutParams) pdone.getLayoutParams()).weight = f; ((LinearLayout.LayoutParams) pleft.getLayoutParams()).weight = 1f - f;
+                pdone.requestLayout(); nowRow.setVisibility(View.VISIBLE); progLogo("");
+            }
+            return;
+        }
         String[] nn = nowNext(i);
         String t = (nn[0].isEmpty() ? "" : "▸ الآن: " + nn[0]) + (nn[1].isEmpty() ? "" : (nn[0].isEmpty() ? "" : "   ·   ") + "بعده " + nn[1]);
         prog.setText(t); prog.setVisibility(t.isEmpty() ? View.GONE : View.VISIBLE);
@@ -379,7 +401,7 @@ public class PlayerActivity extends Activity {
         int k = altAt.containsKey(i) ? altAt.get(i) : 0;
         if (a == null || k >= a.length) return false;
         first.put(i, key); altAt.put(i, k + 1); urls[i] = a[k]; errors = 0;
-        setNote("المصدر الأول ما اشتغل — أجرّب مصدر آخر (" + (k + 2) + " من " + (a.length + 1) + ")"); showBar(0);
+        retryNote = true; setNote("المصدر الأول ما اشتغل — أجرّب مصدر آخر (" + (k + 2) + " من " + (a.length + 1) + ")"); showBar(0);
         net.postDelayed(this::open, 400);
         return true;
     }
@@ -495,7 +517,7 @@ public class PlayerActivity extends Activity {
         if (in.getBooleanExtra("big", false) && PEND != null) { in.putExtras(PEND); PEND = null; }   // the list handed over in memory
         urls = in.getStringArrayExtra("urls"); names = in.getStringArrayExtra("names");
         logos = in.getStringArrayExtra("logos"); groups = in.getStringArrayExtra("groups"); ccs = in.getStringArrayExtra("ccs"); pls = in.getStringArrayExtra("pls");
-        i = in.getIntExtra("i", 0); starts = in.getLongArrayExtra("starts");
+        i = in.getIntExtra("i", 0); starts = in.getLongArrayExtra("starts"); vods = in.getIntArrayExtra("vods");
         if (urls == null || urls.length == 0) { finish(); return; }
 
         FrameLayout root = new FrameLayout(this); rootF = root; auto = in.getBooleanExtra("auto", false);
@@ -533,7 +555,7 @@ public class PlayerActivity extends Activity {
         if (up4k) try { player.setVideoEffects(Up4K.effects(this)); } catch (Throwable t) { up4k = false; }   // 🔷 sharpened at its own size; scaled only on a 4K output
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
-                if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); fill(); h.removeCallbacks(warmNext); h.postDelayed(warmNext, 3000); }
+                if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); if (errors > 0 || retryNote) { retryNote = false; setNote(null); if (bar.getAlpha() > 0.01f && player.getPlayWhenReady()) showBar(2500); } fill(); h.removeCallbacks(warmNext); h.postDelayed(warmNext, 3000); }
                 if (s == Player.STATE_BUFFERING) { net.removeCallbacks(stall); net.postDelayed(stall, 12000); }
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
             }
@@ -1379,7 +1401,8 @@ public class PlayerActivity extends Activity {
         if (auto && urls.length > 1) { setNote("بث يوتيوب ما اشتغل — الناقل التالي"); showBar(3000); i = (i + 1) % urls.length; play(); return; }
         if (id != null) { setNote("يوتيوب ما سمح بتشغيله هنا — أفتحه في تطبيق يوتيوب"); try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/watch?v=" + id))); } catch (Throwable ignored) { } }
     }
-    private void open() { try { if (player == null) return;
+    private void open() {
+        lastSig = null; try { if (player == null) return;
         String yid = ytIdOf(urls[i]); if (yid != null) { ytPlay(yid); return; } ytHide();
         // 📡 as an IPTV player: the channel's own headers from its list (user agent, Referer, Origin), else its site's, else
         // the IPTV player's (setting «ua»)
@@ -1392,7 +1415,10 @@ public class PlayerActivity extends Activity {
         long st0 = starts != null && i < starts.length ? starts[i] : 0; if (starts != null && i < starts.length) starts[i] = 0;
         player.setMediaItem(new MediaItem.Builder().setUri(urls[i]).setLiveConfiguration(new MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(20_000).setMinPlaybackSpeed(0.98f).setMaxPlaybackSpeed(1.02f).build()).build(), st0 > 0 ? st0 : C.TIME_UNSET); player.prepare(); player.play(); tsLocal = false; tsLater(); } catch (Throwable t) { Crash.note(this, "player open: " + t); setNote("تعذّر تشغيل القناة · ↑↓ قناة ثانية"); } }
     private boolean barDirty;
-    private void fill() { try { if (bar != null && bar.getAlpha() < 0.01f) { barDirty = true; return; } barDirty = false; progFill(); fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
+    private void fill() { try { if (bar != null && bar.getAlpha() < 0.01f) { barDirty = true; return; } barDirty = false; progFill();
+        // the chips are rebuilt only when something they show changed (a bar refreshed every few seconds used to rebuild ~15 views each time)
+        String sig = player == null ? "" : i + "|" + player.getPlaybackState() + "|" + player.getPlayWhenReady() + "|" + System.identityHashCode(player.getVideoFormat()) + "|" + System.identityHashCode(player.getAudioFormat()) + "|" + decoder + "|" + behindLive() / 5000 + "|" + canWind() + "|" + prevI + "|" + meter.getBitrateEstimate() / 500000 + "|" + (vod() ? player.getCurrentPosition() / 5000 : 0);
+        if (sig.equals(lastSig)) return; lastSig = sig; fill0(); } catch (Throwable t) { Crash.note(this, "player bar: " + t); } }
     private void fill0() {
         if (player == null) return;
         chips.removeAllViews(); chips2.removeAllViews(); row = chips;
@@ -1433,7 +1459,7 @@ public class PlayerActivity extends Activity {
             boolean sw = decoder.startsWith("OMX.google") || decoder.startsWith("c2.android") || decoder.contains(".sw.");
             chip((sw ? "⚙ فك برمجي · " : "⚡ فك عتادي · ") + decoder.replaceAll("^(c2|OMX)\\.", "").replace(".decoder", ""), sw ? 0x33F2994A : 0x2EFFFFFF, 0xCCFFFFFF);
         }
-        hint.setText(canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً ☰ الخيارات"
+        hint.setText(vod() ? "◀ ▶ لف ١٠ ث (ضغطات متتابعة تزيد الخطوة)  ·  OK إيقاف / تشغيل  ·  ▲▼ الحلقة السابقة / التالية  ·  OK مطوّلاً ☰ الخيارات" : canWind() ? "▲▼ قناة  ·  ◀ ▶ لف ١٠ ث  ·  ⏪ ⏩ ٣٠ ث  ·  ⏯ إيقاف/تشغيل  ·  OK مطوّلاً ☰ الخيارات"
             : "OK قائمة القنوات  ·  ▲▼ قناة  ·  ◀ ▶ دليل البرامج  ·  ◀ مطوّلاً القناة السابقة" + (prevI >= 0 && prevI < urls.length ? " (" + label(prevI) + ")" : "") + "  ·  ▶ مطوّلاً حجم الصورة  ·  OK مطوّلاً ☰ الخيارات");
         // the colour keys' guide: a coloured dot before each one's action (the Hisense remote's red / green / yellow / blue)
         {
@@ -1658,19 +1684,24 @@ public class PlayerActivity extends Activity {
             java.util.Calendar c = java.util.Calendar.getInstance();
             int hh = c.get(java.util.Calendar.HOUR) == 0 ? 12 : c.get(java.util.Calendar.HOUR);
             clock.setText(String.format(Locale.US, "%d:%02d", hh, c.get(java.util.Calendar.MINUTE)));
-            if (bar.getAlpha() > 0) fill();
-            h.postDelayed(this, 5000);
+            if (bar.getAlpha() > 0) {
+                // a bar that no timer will hide (a «reconnecting…» that ended, a pause that was resumed) never stays: with the picture playing, 2.5 s more
+                if (bar.getAlpha() > 0.5f && hideAt == 0 && player != null && player.getPlayWhenReady() && player.getPlaybackState() == Player.STATE_READY && !offered && !listOn && !guideOn && !menuOn) showBar(2500);
+                if (vod()) { progFill(); if (++tk % 5 == 0) fill(); } else fill();
+            }
+            h.postDelayed(this, vod() ? 1000 : 5000);
         }
     };
 
     private void showBar(long ms) {
         bar.animate().cancel(); boolean was = bar.getAlpha() < 0.01f; bar.setAlpha(1f); bar.setTranslationY(0); if (nextBox != null) nextBox.setVisibility(View.GONE); if (sbox != null) sbox.setVisibility(View.GONE);
         if (was && barDirty) fill();
-        h.removeCallbacks(hide);
+        h.removeCallbacks(hide); hideAt = ms > 0 ? System.currentTimeMillis() + ms : 0;
         if (ms > 0) h.postDelayed(hide, ms);
     }
     private final Runnable hide = () -> bar.animate().alpha(0f).translationY(dp(24)).setDuration(450).withEndAction(() -> { nextNowFirst(); scoresFill(); });
 
+    private boolean retryNote;
     private void setNote(String s) { note.setText(s); note.setVisibility(s == null ? View.GONE : View.VISIBLE); }
 
     private final Runnable clearNote = () -> { if (!offered && errors == 0) setNote(null); };
@@ -1684,7 +1715,7 @@ public class PlayerActivity extends Activity {
         if (errors >= 2 && nextSource()) return;
         if (auto && errors >= 3 && urls.length > 1) { setNote("القناة ما اشتغلت — الناقل التالي"); showBar(3000); i = (i + 1) % urls.length; play(); return; }   // ⚽ a match: the next carrier by itself
         if (errors >= TRIES) { offerOtherPlayer(); return; }
-        setNote("إعادة الاتصال… (" + errors + " من " + TRIES + ")");
+        retryNote = true; setNote("إعادة الاتصال… (" + errors + " من " + TRIES + ")");
         showBar(0);
         net.postDelayed(() -> { open(); }, 1200L * errors);
     }
@@ -1928,11 +1959,13 @@ public class PlayerActivity extends Activity {
         }
         if (ok && offered) { openOtherPlayer(); return true; }
         if (ok && !player.getPlayWhenReady()) { playPause(true); return true; }
+        if (ok && vod()) { playPause(null); return true; }   // an episode: OK pauses / plays (held: the options)
         boolean wind = canWind();
         // ◀ ▶ — a stream that can be wound: back / on 10 s (held: 30 s at a time). A plain live channel: ◀ the channel before
         // (like a receiver's «recall»), ▶ the picture's size
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
             boolean right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
+            if (wind && vod()) { vodWind(right, e); return true; }
             if (wind) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }
             if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }   // short: the guide, on release
             if (!(e.getRepeatCount() == 4 || e.isLongPress()) || lrCode != code || lrHeld) return true;
