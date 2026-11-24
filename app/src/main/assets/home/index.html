@@ -3310,7 +3310,9 @@ async function winwinDay(plus) {
   return { matches: out };
 }
 // a team's name, to tell the same team across sources («جمهورية التشيك» = «التشيك»)
-const tKey = n => String(n || '').toLowerCase().replace(/[ً-ْ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/جمهوريه|نادي|\bfc\b|\bcf\b/g, '').replace(/(^|\s)ال/g, '$1').replace(/[^a-z0-9؀-ۿ]+/g, '');
+const TKC = new Map();
+const tKey = n => { const s0 = String(n || ''); let v = TKC.get(s0); if (v !== undefined) return v; v = tKey0(s0); if (TKC.size > 6000) TKC.clear(); TKC.set(s0, v); return v; };
+const tKey0 = n => String(n || '').toLowerCase().replace(/[ً-ْ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/جمهوريه|نادي|\bfc\b|\bcf\b/g, '').replace(/(^|\s)ال/g, '$1').replace(/[^a-z0-9؀-ۿ]+/g, '');
 // + the consonants only (no ا و ي ه): 365 and winwin spell some names apart — «فاينورد / فينورد», «أكسيلسيور / أكسلسيور» — and
 // such a match never took 365's id, so its minute and score stayed where the list first had them
 const tSkel = k => k.replace(/[اويهءئؤ]/g, '');
@@ -5659,21 +5661,24 @@ function serUi() {
   const top = ord.filter(o => o.g).sort((a, b) => b.r.last - a.r.last), rest = ord.filter(o => !o.g && ar(o.r.title));
   // the server's series in three steps: 1) the names the MBC guide or Shahid carry (and the ⭐ priority ones), found on the server;
   // 2) «مسلسلات عربية تعرض حاليا»; 3) the programmes (برامج تليفزيونية) searched by the guide's and Shahid's programme names
-  const g0 = mbcGuide(), pr0 = mbcPrio(), shN = (SHC || []).filter(y => y.k !== 'm').map(y => y.n), byAt = (a, b) => b.at - a.at;
-  const known = x => x.ns.some(q => g0.has(q) || shN.some(n => shSame(n, q)));
+  const g0 = mbcGuide(), pr0 = mbcPrio(), byAt = (a, b) => b.at - a.at;
+  const known = x => x.ns.some(q => g0.has(q) || !!shFind(q));
   const isProg = x => /برامج|tv ?show/i.test(x.cat), seenX = new Set(), take = l => l.filter(x => !seenX.has(x.id) && seenX.add(x.id));
   const xs1 = take(XS.filter(x => x.ns.some(q => pr0.some(p => q.includes(p))))), xs2 = take(XS.filter(x => !isProg(x) && x.now && known(x)).sort(byAt));
   const xs3 = take(XS.filter(x => /مسلسلات عربية تعرض حاليا/.test(x.cat)).sort(byAt)), xs4 = take(XS.filter(x => isProg(x) && known(x)).sort(byAt));
   const xsNow = [...xs1, ...xs2, ...xs3, ...xs4].slice(0, 90);
-  h += xsNow.map(x => { const sh = SHC && SHC.find(y => y.k !== 'm' && y.logo && x.ns.some(q => shSame(y.n, q))), g = mbcGuide(); let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
+  h += xsNow.map(x => { let sh = null; for (const q of x.ns) { const y = shFind(q); if (y && y.logo) { sh = y; break; } } const g = g0; let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
     const lg = sh ? SHIMG(sh.logo, 480) : (gg && gg.img) || x.cover;
     return card(`data-xs="${x.id}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.remove()">` : `<em>${esc(ini(x.t))}</em>`}</div><span>${esc(x.t)}</span><small>${gg ? '📺 ' + esc(gg.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${esc(x.cat.replace(/[\[\]|]/g, ' ').trim())}</small>`, sh ? 'mbcg' : ''); }).join('');
-  h += [...top, ...rest].map(({ r, k, g }) => { const lg = (g && g.img) || shLogo(r) || r.logo;
+  h += [...top, ...rest].slice(0, 40).map(({ r, k, g }) => {   // 852 cards were drawn (a heavy page): the first 40
+ const lg = (g && g.img) || shLogo(r) || r.logo;
     return card(`data-ser="${k}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('em'),{textContent:'${esc(ini(r.title)).replace(/'/g, '')}'}))">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${g ? '📺 ' + esc(g.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${AR(r.eps.length)} حلقة</small>`, g ? 'mbcg' : ''); }).join('');
   $('#s-ser').innerHTML = h;
 }
-function serClose() { const v = $('#serV'); v.classList.remove('on'); v.innerHTML = ''; SERV = null; for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = false; } const b = document.querySelector('#s-ser .sk'); if (b) b.focus(); }
-function serShell(head, body) { const v = $('#serV'); v.innerHTML = head + body; v.classList.add('on'); for (const q of ['#p-home', '#tabs']) { const x = $(q); if (x) x.inert = true; } return v; }
+function serClose() { const v = $('#serV'); v.classList.remove('on'); v.innerHTML = ''; SERV = null; serInert(false); const b = document.querySelector('#s-ser .sk'); if (b) b.focus(); }
+function serShell(head, body) { const v = $('#serV'); v.innerHTML = head + body; v.classList.add('on'); serInert(true); return v; }
+// 🎯 behind the episodes: EVERYTHING is out of reach (the mode pill, the glass mode's rows, the scene) — focus went to cards you cannot see
+function serInert(on) { const v = $('#serV'); for (const el of document.querySelectorAll('body > *, .screen > *, .top > *')) { if (el === v || el.contains(v) || el.tagName === 'SCRIPT') continue; el.inert = on; } }
 function serOpen(id) {
   if (id === 'res') { const w = Object.values(SERW).filter(w => w && w.url).sort((a, b) => b.at - a.at)[0], r = w && SER.find(x => x.key === w.key); if (!r) return; return serPlay(r, serSmart(r).x, serSmart(r).st); }
   if (id === 'new') {   // each series' latest episode, the series with the newest one first
@@ -5712,14 +5717,14 @@ const shSame = (a, b) => !!a && !!b && (a === b || (a.length >= 4 && b.length >=
 let SHC = null, SHROW = [];
 try { const c = JSON.parse(localStorage.shcat || 'null'); if (c && c.v) SHC = c.v; } catch (e) {}
 async function shahidCat(force) {
-  try { const c = JSON.parse(localStorage.shcat || 'null'); if (!force && c && Date.now() - c.at < 12 * 3600e3) return SHC = c.v; } catch (e) {}
+  try { const c = JSON.parse(localStorage.shcat || 'null'); if (!force && c && Date.now() - c.at < 24 * 3600e3) return SHC = c.v; } catch (e) {}
   const one = (type, sub, page) => { const f = { pageNumber: page, pageSize: 50, productType: type, sorts: [{ order: 'DESC', type: 'SORTDATE' }] }; if (sub) f.productSubType = sub;
     return getJ('https://api3.shahid.net/proxy/v2.1/product/filter?filter=' + encodeURIComponent(JSON.stringify(f)) + '&language=ar&country=OM').then(d => arr(d && d.productList && d.productList.products)).catch(() => []); };
   const jobs = [];
-  for (const [t, sub, k, np] of [['SHOW', 'SERIES', 's', 28], ['SHOW', 'PROGRAM', 'p', 28], ['MOVIE', '', 'm', 8]]) for (let pg = 0; pg < np; pg++)
+  for (const [t, sub, k, np] of [['SHOW', 'SERIES', 's', LITE ? 4 : 12], ['SHOW', 'PROGRAM', 'p', LITE ? 2 : 8], ['MOVIE', '', 'm', LITE ? 0 : 2]]) for (let pg = 0; pg < np; pg++)
     jobs.push(() => one(t, sub, pg).then(l => l.filter(x => x && x.title).map(x => { const g = (x.genres || []).map(y => y.title).join(' · ');
       return { k, t: x.title, n: shNorm(x.title), logo: x.logoTitleImage || '', po: (x.image && (x.image.thumbnailImage || x.image.landscapeClean)) || '', g, ar: /[ء-ي]/.test(x.title) || SHAR.test(g), soon: /قريباً/.test(g) }; })));
-  const v = []; for (let i = 0; i < jobs.length; i += 6) { const got = await Promise.all(jobs.slice(i, i + 6).map(f => f())); got.forEach(l => v.push(...l)); }
+  const v = []; for (let i = 0; i < jobs.length; i += 3) { const got = await Promise.all(jobs.slice(i, i + 3).map(f => f())); got.forEach(l => v.push(...l)); await new Promise(r => setTimeout(r, 400)); }   // 3 at a time, a breath between
   if (v.length > 50) { SHC = v; try { localStorage.shcat = JSON.stringify({ at: Date.now(), v: v.map(x => ({ ...x, g: '' })) }); } catch (e) {} }
   return SHC || [];
 }
@@ -5733,7 +5738,11 @@ function mbcAiring() {
 const shSer = n => SER.findIndex(r => shSame(r.key, n) || shSame(shNorm(r.title), n));
 const shVod = n => VODL.findIndex(c => shSame(shNorm(String(c.name).replace(/\b(19|20)\d\d\b/, '')), n));
 /** Shahid's logo for a series of the lists */
-function shLogo(r) { if (!SHC) return ''; const a = r.key, b = shNorm(r.title); const x = SHC.find(y => y.k !== 'm' && y.logo && (shSame(y.n, a) || shSame(y.n, b))); return x ? SHIMG(x.logo, 480) : ''; }
+let SHIX = null, SHIXOF = null;
+function shIx() { if (SHIXOF === SHC && SHIX) return SHIX; SHIXOF = SHC; SHIX = new Map(); for (const y of SHC || []) { if (y.k === 'm' || !y.n) continue; const k = y.n.slice(0, 4); let a = SHIX.get(k); if (!a) SHIX.set(k, a = []); a.push(y); } return SHIX; }
+/** Shahid's series or programme for a name (the whole name, or one the start of the other): the one with a logo first */
+function shFind(q) { if (!q || !SHC) return null; const a = shIx().get(q.slice(0, 4)) || []; let any = null; for (const y of a) if (shSame(y.n, q)) { if (y.logo) return y; any = any || y; } return any; }
+function shLogo(r) { if (!SHC) return ''; if (r.shl !== undefined && r.shlOf === SHC) return r.shl; const x = shFind(r.key) || shFind(shNorm(r.title)); r.shlOf = SHC; return (r.shl = x && x.logo ? SHIMG(x.logo, 480) : ''); }
 /** the MBC channels' whole guide: programme name → { t, img, c } (the programme's own picture from the guide) */
 let MBCG = null, MBCGAT = 0;
 function mbcGuide() {
@@ -5802,7 +5811,7 @@ async function xsOpen(x) {
   const sm = serSmart(r); SERV = { r, s: sm.x.s }; serSeasons(sm.x);
 }
 function mbcUi() {
-  const el = $('#shMbc'); if (!el) return; if (!SERIES() || !SHC) { el.hidden = true; return; }
+  const el = $('#shMbc'); if (!el) return; if (getComputedStyle(el).display === 'none') { el.hidden = true; return; }   // the row is hidden: nothing to work out if (!SERIES() || !SHC) { el.hidden = true; return; }
   const air = mbcAiring(), now = Date.now() / 1000, used = new Set(), rows = [];
   for (const x of SHC) { if (x.k === 'm' || used.has(x.n)) continue; let a = null; for (const [n, v] of air) if (shSame(n, x.n)) { a = v; break; }
     if (a) { used.add(x.n); rows.push({ x, a, si: shSer(x.n), vi: -1, xs: xsFind(x.n), o: a.at / 1e10 }); } }
