@@ -4634,6 +4634,7 @@ const SHORTS = [
   { c: '22', l: '📺 وضع المسلسلات', go: () => setMode('series') },
   { c: '999', l: '⬆️ حدّث التطبيق لآخر إصدار — بدون موافقة ولا زر', go: () => updAuto999() },
   { c: '001', l: '📖 القرآن', go: () => tabGo('quran') },
+  { c: '007', l: '📁 ملفاتي (Resilio Sync)', go: () => { const r = (APPS || []).find(x => x.pkg === 'com.resilio.sync'); if (r || TV.open) { try { TV.open('com.resilio.sync'); } catch (e) {} } else if (TV.storeFind) TV.storeFind('com.resilio.sync'); } },
   { c: '009', l: '🧹 نظّف وسرّع البوكس بضغطة', go: () => smartClean() },
   { c: '002', l: '📺 كل القنوات', go: () => tabGo('iptv') },
   { c: '003', l: '⚽ المباريات', go: () => tabGo('matches') },
