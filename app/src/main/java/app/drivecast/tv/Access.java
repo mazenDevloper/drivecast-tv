@@ -80,6 +80,9 @@ final class Access {
     }
     /** if wanted and allowed: on now */
     static void keep(Context c) { if (wanted(c)) force(c); }
+    /** 📡 Madar back up after an update (this box never delivers MY_PACKAGE_REPLACED): its start receiver, nudged every minute —
+     *  it starts its always-on link only when it was linked to «المركز» once */
+    static void madar(Context c) { try { c.getPackageManager().getPackageInfo("com.madar.app", 0); c.sendBroadcast(new android.content.Intent("com.madar.app.KEEP").setClassName("com.madar.app", "com.madar.app.BootReceiver")); } catch (Exception ignored) { } }
 
     /** from the long-lived message service: back on the moment the TV switches it off, and a check every minute */
     static void watch(Context c) {
@@ -95,7 +98,7 @@ final class Access {
             app.getContentResolver().registerContentObserver(Settings.Secure.getUriFor(Settings.Secure.ACCESSIBILITY_ENABLED), false, o);
         } catch (Exception ignored) { }
         h.post(new Runnable() {
-            @Override public void run() { keep(app); h.postDelayed(this, 60_000); }
+            @Override public void run() { keep(app); madar(app); h.postDelayed(this, 60_000); }
         });
     }
 
