@@ -82,7 +82,19 @@ final class Access {
     static void keep(Context c) { if (wanted(c)) force(c); }
     /** 📡 Madar back up after an update (this box never delivers MY_PACKAGE_REPLACED): its start receiver, nudged every minute —
      *  it starts its always-on link only when it was linked to «المركز» once */
-    static void madar(Context c) { try { c.getPackageManager().getPackageInfo("com.madar.app", 0); c.sendBroadcast(new android.content.Intent("com.madar.app.KEEP").setClassName("com.madar.app", "com.madar.app.BootReceiver").addFlags(android.content.Intent.FLAG_INCLUDE_STOPPED_PACKAGES)); } catch (Exception ignored) { } }
+    static void madar(Context c) {
+        try {
+            android.content.pm.PackageInfo pi = c.getPackageManager().getPackageInfo("com.madar.app", 0);
+            c.sendBroadcast(new android.content.Intent("com.madar.app.KEEP").setClassName("com.madar.app", "com.madar.app.BootReceiver").addFlags(android.content.Intent.FLAG_INCLUDE_STOPPED_PACKAGES));
+            // this box holds background broadcasts to Madar: once after each Madar update and once per boot, its «keep» start (an
+            // instant, no screen) — only while the home screen is in front, never over a video
+            String mark = pi.lastUpdateTime + "/" + (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60000;
+            if (mark.equals(set(c).getString("madarKick", "")) || HomeActivity.front == null) return;
+            set(c).edit().putString("madarKick", mark).apply();
+            c.startActivity(new android.content.Intent().setClassName("com.madar.app", "com.madar.app.MainActivity").putExtra("keep", true)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (Exception ignored) { }
+    }
 
     /** from the long-lived message service: back on the moment the TV switches it off, and a check every minute */
     static void watch(Context c) {
