@@ -40,13 +40,24 @@ final class Access {
     static boolean wanted(Context c) { return !"off".equals(set(c).getString("force", "on")); }
 
     /** turns the mouse on (keeps every other service the TV has on); true if it is on afterwards */
+    /** 🎮 the other control services kept on with ours (when installed): Madar's «تحكم مدار» and RustDesk's input — the box drops
+     *  them (an update over adb, a reboot, the vendor's tools); each one is put back the moment it goes */
+    static final String[] PARTNERS = { "com.madar.app/com.madar.app.ControlService", "com.carriez.flutter_hbb/com.carriez.flutter_hbb.InputService" };
+    private static boolean installed(Context c, String comp) { try { c.getPackageManager().getPackageInfo(comp.substring(0, comp.indexOf('/')), 0); return true; } catch (Exception e) { return false; } }
+    private static String withPartners(Context c, String list) {
+        String l = list == null || list.trim().isEmpty() || "null".equals(list) ? "" : list;
+        for (String p : PARTNERS) if (!(":" + l + ":").contains(":" + p + ":") && installed(c, p)) l = l.isEmpty() ? p : l + ":" + p;
+        return l;
+    }
     static boolean force(Context c) {
-        if (enabled(c)) return true;
+        String now = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (enabled(c) && withPartners(c, now).equals(now == null ? "" : now)) return true;
         if (!canForce(c)) return false;
         try {
-            String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            String list = now;
             if (list == null || list.trim().isEmpty() || "null".equals(list)) list = ME;
             else if (!list.toLowerCase().contains(BuildConfig.APPLICATION_ID + "/")) list = list + ":" + ME;
+            list = withPartners(c, list);
             Settings.Secure.putString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, list);
             Settings.Secure.putInt(c.getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
         } catch (Exception e) { return false; }
