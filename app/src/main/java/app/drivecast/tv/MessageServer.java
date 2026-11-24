@@ -124,6 +124,12 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /pair")) pair(s.getOutputStream(), first);   // the web version pairs by the TV's address (home Wi-Fi)
             else if (first.startsWith("GET /web")) reply(s.getOutputStream(), "application/json", "{\"pin\":\"" + Remote.pin(this) + "\",\"id\":\"" + Remote.id(this) + "\",\"online\":" + Remote.online() + "}");   // on the home Wi-Fi only
             else if (first.startsWith("GET /adhan-log")) { android.content.SharedPreferences ap = getSharedPreferences("pset", MODE_PRIVATE); reply(s.getOutputStream(), "text/plain", "next " + ap.getString("next", "-") + "\n" + ap.getString("log", "")); }   // the adhan's last events (the test)
+            // 📡 the TV's screen: /screen (the viewer: picture + taps + keys) and /screen.jpg (one picture) — with the TV's PIN
+            else if (first.startsWith("GET /screen")) {
+                if (!first.contains("pin=" + Remote.pin(this))) { reply(s.getOutputStream(), "text/plain", "PIN?"); return; }
+                if (first.startsWith("GET /screen.jpg")) { byte[] j = Cast.frame(getApplicationContext()); replyBytes(s.getOutputStream(), j == null ? "text/plain" : "image/jpeg", j == null ? "wait".getBytes(StandardCharsets.UTF_8) : j); }
+                else { Cast.frame(getApplicationContext()); try (InputStream a = getAssets().open("screen.html")) { ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b2 = new byte[8192]; int n; while ((n = a.read(b2)) > 0) o.write(b2, 0, n); reply(s.getOutputStream(), "text/html", o.toString("UTF-8")); } }
+            }
             else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
             else reply(s.getOutputStream(), "text/html", page());
             return;
@@ -281,6 +287,10 @@ public class MessageServer extends Service {
         out.flush();
     }
 
+    private static void replyBytes(OutputStream out, String type, byte[] b) throws Exception {
+        out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + type + "\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " + b.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        out.write(b); out.flush();
+    }
     private static void reply(OutputStream out, String type, String body) throws Exception {
         byte[] b = body.getBytes(StandardCharsets.UTF_8);
         out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + type + "; charset=utf-8\r\nContent-Length: " + b.length

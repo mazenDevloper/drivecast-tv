@@ -314,10 +314,18 @@ public class HomeActivity extends Activity {
         if (r == null || r.isEmpty()) return;
         HomeActivity h = alive; if (h != null) h.run("window.voiceQuery && voiceQuery(" + new JSONArray(r) + ")");
     }
+    /** 📡 the screen capture for the phone / browser (Cast): Android grants it with no dialog once PROJECT_MEDIA is allowed */
+    private boolean casting;
+    void askCapture() {
+        if (casting || Cast.grant != null) return; casting = true;
+        try { startActivityForResult(getSystemService(android.media.projection.MediaProjectionManager.class).createScreenCaptureIntent(), 88); }
+        catch (Exception e) { casting = false; Crash.note(this, "cast ask: " + e); }
+    }
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         if (req == 77 && res == RESULT_OK) voiceResult(data);
+        if (req == 88) { if (res == RESULT_OK && data != null) { Cast.grant = data; Cast.start(this); } else Crash.note(this, "cast: capture refused (" + res + ")"); casting = false; }
     }
 
     /** the player for a list of channels [{url,name,logo,group,cc,ua,ref,org,epg,alts}] — from the page, or from the player itself

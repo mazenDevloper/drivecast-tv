@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- the adhan file in Music (granted over adb during setup) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -60,6 +61,8 @@
         <service android:name=".MessageServer" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Shows phone messages on the TV" />
         </service>
+
+        <service android:name=".Cast" android:exported="false" android:foregroundServiceType="mediaProjection" />
 
         <service android:name=".MouseService" android:exported="true" android:label="@string/mouse_name"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>DriveCast · شاشة التلفزيون</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#0b0f14;color:#e8eef5;font-family:system-ui,"Noto Sans Arabic",sans-serif;overflow:hidden;touch-action:none}
+#wrap{position:absolute;inset:0 0 64px 0;display:grid;place-items:center}
+#scr{max-width:100%;max-height:100%;display:block;user-select:none;-webkit-user-drag:none;cursor:crosshair;background:#000}
+#msg{position:absolute;top:10px;inset-inline:0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
+#bar{position:absolute;inset:auto 0 0 0;height:64px;display:flex;gap:6px;justify-content:center;align-items:center;background:#121820;border-top:1px solid #243041;padding:0 8px;overflow-x:auto}
+#bar button{flex:none;min-width:48px;height:44px;border:0;border-radius:12px;background:#1f2a38;color:#e8eef5;font-size:18px;font-family:inherit}
+#bar button:active{background:#2f6fde}
+#bar .sp{width:8px;flex:none}
+#fps{font-size:12px;opacity:.6;min-width:54px;text-align:center}
+</style>
+</head>
+<body>
+<div id="wrap"><img id="scr" alt="شاشة التلفزيون"></div>
+<div id="msg">يتصل بالتلفزيون…</div>
+<div id="bar">
+  <button data-m="b" title="رجوع">↩</button>
+  <button data-m="h" title="الرئيسية">⌂</button>
+  <span class="sp"></span>
+  <button data-k="left">◀</button><button data-k="up">▲</button><button data-k="ok">OK</button><button data-k="down">▼</button><button data-k="right">▶</button>
+  <span class="sp"></span>
+  <button data-k="voldown">🔉</button><button data-k="volup">🔊</button><button data-k="play">⏯</button>
+  <span id="fps"></span>
+</div>
+<script>
+// 📡 the TV's screen from DriveCast itself (Android's own capture; no RustDesk, no Madar): the picture asked again as soon as
+// one arrives; a tap is a tap there, a hold a long press, a drag a swipe; the bar sends the remote's keys
+const pin = new URLSearchParams(location.search).get('pin') || '';
+const img = document.getElementById('scr'), msg = document.getElementById('msg'), fps = document.getElementById('fps');
+let n = 0, t0 = Date.now(), wait = 0;
+function next() { img.src = '/screen.jpg?pin=' + encodeURIComponent(pin) + '&t=' + Date.now(); }
+img.onload = () => { msg.textContent = ''; wait = 0; n++; const s = (Date.now() - t0) / 1000; if (s > 2) { fps.textContent = (n / s).toFixed(1) + ' ص/ث'; n = 0; t0 = Date.now(); } next(); };
+img.onerror = () => { wait++; msg.textContent = wait > 3 ? 'يبدأ البث على التلفزيون… (أول مرة تاخذ ثواني)' : 'يتصل بالتلفزيون…'; setTimeout(next, wait > 20 ? 3000 : 600); };
+next();
+const send = (path, body) => fetch(path, { method: 'POST', body }).catch(() => {});
+const at = e => { const r = img.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+let down = null, hold = null;
+img.addEventListener('pointerdown', e => { e.preventDefault(); img.setPointerCapture(e.pointerId); down = { p: at(e), t: Date.now() }; hold = setTimeout(() => { if (down) { send('/mouse', 'al ' + down.p[0].toFixed(4) + ' ' + down.p[1].toFixed(4)); down = null; } }, 650); });
+img.addEventListener('pointerup', e => { clearTimeout(hold); if (!down) return; const p = at(e), d = Math.hypot(p[0] - down.p[0], p[1] - down.p[1]);
+  send('/mouse', d > 0.03 ? `w ${down.p[0].toFixed(4)} ${down.p[1].toFixed(4)} ${p[0].toFixed(4)} ${p[1].toFixed(4)}` : `a ${p[0].toFixed(4)} ${p[1].toFixed(4)}`); down = null; });
+img.addEventListener('pointercancel', () => { clearTimeout(hold); down = null; });
+for (const b of document.querySelectorAll('#bar [data-k]')) b.onclick = () => send('/key', b.dataset.k);
+for (const b of document.querySelectorAll('#bar [data-m]')) b.onclick = () => send('/mouse', b.dataset.m);
+addEventListener('keydown', e => { const k = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'ok', Escape: 'back', Backspace: 'back' }[e.key]; if (k) { e.preventDefault(); k === 'back' ? send('/mouse', 'b') : send('/key', k); } });
+</script>
+</body>
+</html>

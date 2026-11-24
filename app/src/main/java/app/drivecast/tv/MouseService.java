@@ -78,6 +78,15 @@ public class MouseService extends AccessibilityService {
             case "s":
                 try { scroll(Integer.parseInt(p[1])); } catch (Exception ignored) { }
                 break;
+            // 📡 the screen viewer: a tap / long press / swipe where the finger is on the picture (fractions 0..1 of the screen)
+            case "a": case "al":
+                try { float ax = Float.parseFloat(p[1]) * w, ay = Float.parseFloat(p[2]) * h; Path ap = new Path(); ap.moveTo(ax, ay);
+                    dispatchGesture(new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(ap, 0, p[0].equals("al") ? 700 : 60)).build(), null, null); } catch (Exception ignored) { }
+                break;
+            case "w":
+                try { Path sp = new Path(); sp.moveTo(Float.parseFloat(p[1]) * w, Float.parseFloat(p[2]) * h); sp.lineTo(Float.parseFloat(p[3]) * w, Float.parseFloat(p[4]) * h);
+                    dispatchGesture(new GestureDescription.Builder().addStroke(new GestureDescription.StrokeDescription(sp, 0, 280)).build(), null, null); } catch (Exception ignored) { }
+                break;
             case "b": performGlobalAction(GLOBAL_ACTION_BACK); break;
             case "h": performGlobalAction(GLOBAL_ACTION_HOME); break;
             case "r": performGlobalAction(GLOBAL_ACTION_RECENTS); break;
