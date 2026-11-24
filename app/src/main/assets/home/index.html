@@ -561,6 +561,7 @@ html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!importan
 /* ===== ⚡ the speed layer: the sliding focus frame, the light look, the cards off the screen not laid out ===== */
 #fring{position:fixed;left:0;top:0;width:0;height:0;z-index:8999;pointer-events:none;opacity:0;border:4px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 18px 40px rgba(0,0,0,.45);will-change:transform,width,height;contain:strict;transition:transform .11s cubic-bezier(.2,.8,.2,1),width .11s,height .11s,opacity .08s}
 #fring.jump{transition:opacity .08s}
+html.ring .serv .f:focus{box-shadow:0 0 0 4px #fff!important;transform:scale(1.05)!important}
 html.ring .f:focus:not(input):not(textarea):not(.tab):not(.ri):not(.bi){box-shadow:none!important;transform:none!important}
 html.ring .ichan.big:focus{transform:none!important}
 #hud{position:fixed;top:8px;left:8px;z-index:10000;display:none;padding:6px 14px;border-radius:10px;background:rgba(0,0,0,.78);color:#7CFC9A;font:600 18px/1.4 monospace;pointer-events:none;direction:rtl}
@@ -5510,7 +5511,7 @@ function fxApply() {
 // ---- 2) the sliding focus frame
 const RING = document.createElement('div'); RING.id = 'fring'; document.documentElement.appendChild(RING);
 let RINGEL = null, RINGF = 0;
-const ringOk = el => el && el.classList && el.classList.contains('f') && !el.matches('input,textarea,.tab,.ri,#ctxBody button,.bi,.srow button,.sopt button') && document.documentElement.classList.contains('ring');
+const ringOk = el => el && el.classList && el.classList.contains('f') && !el.matches('input,textarea,.tab,.ri,#ctxBody button,.bi,.srow button,.sopt button,.serv *') && document.documentElement.classList.contains('ring');
 function ringDraw() {
   RINGF = 0;
   const el = RINGEL;
