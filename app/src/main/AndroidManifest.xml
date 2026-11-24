@@ -62,6 +62,9 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Shows phone messages on the TV" />
         </service>
 
+        <activity android:name=".VodActivity" android:exported="false" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape" android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode" />
+
         <service android:name=".Cast" android:exported="false" android:foregroundServiceType="mediaProjection" />
 
         <service android:name=".MouseService" android:exported="true" android:label="@string/mouse_name"

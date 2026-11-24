@@ -458,6 +458,10 @@ public class HomeActivity extends Activity {
             } catch (Exception ignored) { }
         }
 
+        /** 🎞️ episodes and films in the media player (VodActivity), not the channels' player: [{url,name,st}] */
+        @JavascriptInterface
+        public void vod(String itemsJson, int index) { try { startActivity(VodActivity.of(HomeActivity.this, itemsJson, index)); } catch (Exception e) { Crash.note(HomeActivity.this, "vod: " + e); } }
+
         /** IPTV with each channel's logo and group too (the player's info bar): [{url,name,logo,group}] */
         @JavascriptInterface
         public void watchFull(String channelsJson, int index) {

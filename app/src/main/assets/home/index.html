@@ -3267,7 +3267,7 @@ function suggestHtml() {
 }
 function appsHtml(n) {
   return APPS.slice(0, n).map(a => a.tv ? `<button class="app f" data-pkg="${a.pkg}" aria-label="${a.label}"><img src="${a.art}" alt=""></button>`
-    : `<button class="app icon f" data-pkg="${a.pkg}"><img class="icon" src="${a.art}" alt=""><span>${a.label}</span></button>`).join('');
+    : `<button class="app icon f" data-pkg="${a.pkg}"><img class="icon" src="${a.art}" alt="" loading="lazy"><span>${a.label}</span></button>`).join('');
 }
 function loadApps() {
   try { APPS = JSON.parse(TV.apps()); } catch (e) { APPS = []; }
@@ -3275,7 +3275,8 @@ function loadApps() {
   // the most used first: a simple count kept on the TV
   let use = {}; try { use = JSON.parse(localStorage.use || '{}'); } catch (e) {}
   APPS.sort((a, b) => (use[b.pkg] || 0) - (use[a.pkg] || 0) || (b.tv - a.tv) || a.label.localeCompare(b.label, 'ar'));
-  $('#s-apps').innerHTML = appsHtml(200) || '<div class="empty">لا تطبيقات</div>';
+  $('#s-apps').innerHTML = appsHtml(24) ||   // the home: the 24 most used (all 200 were drawn — a heavy page, a slow remote)
+    '<div class="empty">لا تطبيقات</div>';
   $('#s-apps2').innerHTML = appsHtml(200) || '<div class="empty">ما لقيت تطبيقات على الجهاز — افتح «الإعدادات» وجرّب مرة ثانية</div>';
   for (const id of ['#sugg1', '#sugg2']) if ($(id)) $(id).innerHTML = suggestHtml();
 }
@@ -4869,7 +4870,7 @@ document.addEventListener('click', e => {
   if (b.dataset.mpen != null) return mpickOpen(+b.dataset.mpen);
   if (b.dataset.mpk != null || b.dataset.mpw != null) return mpickDo(b);
   if (b.dataset.mi != null) return playMatch(+b.dataset.mi);
-  if (b.dataset.vod != null) return playChannel(VODL, +b.dataset.vod);   // 🎬 a film of your lists
+  if (b.dataset.vod != null) { const c = VODL[+b.dataset.vod]; if (c && TV.vod) return TV.vod(JSON.stringify([{ url: c.url, name: c.name, st: 0 }]), 0); return playChannel(VODL, +b.dataset.vod); }   // 🎬 a film of your lists
   if (b.dataset.act === 'm3u-add') return m3uAdd($('#m3uIn').value);
   if (b.dataset.act === 'm3u-file') return $('#m3uFileIn').click();
   if (b.dataset.act === 'm3u-star') { const u = b.dataset.u; try { localStorage.setItem('m3ustar', m3uStar() === u ? '' : u); } catch (e) {} listsAt = 0; loadLists(); m3uUi(); return; }
@@ -5667,11 +5668,11 @@ function serUi() {
   const isProg = x => /برامج|tv ?show/i.test(x.cat), seenX = new Set(), take = l => l.filter(x => !seenX.has(x.id) && seenX.add(x.id));
   const xs1 = take(XS.filter(x => x.ns.some(q => pr0.some(p => q.includes(p))))), xs2 = take(XS.filter(x => !isProg(x) && x.now && known(x)).sort(byAt));
   const xs3 = take(XS.filter(x => /مسلسلات عربية تعرض حاليا/.test(x.cat)).sort(byAt)), xs4 = take(XS.filter(x => isProg(x) && known(x)).sort(byAt));
-  const xsNow = [...xs1, ...xs2, ...xs3, ...xs4].slice(0, 90);
+  const xsNow = [...xs1, ...xs2, ...xs3, ...xs4].slice(0, 30);   // 30 cards (90 slowed the remote)
   h += xsNow.map(x => { let sh = null; for (const q of x.ns) { const y = shFind(q); if (y && y.logo) { sh = y; break; } } const g = g0; let gg = null; for (const q of x.ns) if (g.has(q)) { gg = g.get(q); break; }
     const lg = sh ? SHIMG(sh.logo, 480) : (gg && gg.img) || x.cover;
     return card(`data-xs="${x.id}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.remove()">` : `<em>${esc(ini(x.t))}</em>`}</div><span>${esc(x.t)}</span><small>${gg ? '📺 ' + esc(gg.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${esc(x.cat.replace(/[\[\]|]/g, ' ').trim())}</small>`, sh ? 'mbcg' : ''); }).join('');
-  h += [...top, ...rest].slice(0, 40).map(({ r, k, g }) => {   // 852 cards were drawn (a heavy page): the first 40
+  h += [...top, ...rest].slice(0, 16).map(({ r, k, g }) => {   // 852 cards were drawn (a heavy page): the first 40
  const lg = (g && g.img) || shLogo(r) || r.logo;
     return card(`data-ser="${k}"`, `<div class="skl">${lg ? `<img src="${esc(lg)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('em'),{textContent:'${esc(ini(r.title)).replace(/'/g, '')}'}))">` : `<em>${esc(ini(r.title))}</em>`}</div><span>${esc(r.title)}</span><small>${g ? '📺 ' + esc(g.c.name.replace(/\s*\(.*$/, '')) + ' · ' : ''}${AR(r.eps.length)} حلقة</small>`, g ? 'mbcg' : ''); }).join('');
   $('#s-ser').innerHTML = h;
@@ -5704,7 +5705,7 @@ function serPlay(r, x, st) {
   if (!x) return; const list = r.eps, k = list.indexOf(x);
   const items = list.map((y, j) => ({ url: y.c.url, name: r.title + ' · ' + (list.some(z => z.s > 1) ? 'م' + AR(y.s) + ' ' : '') + 'ح' + AR(y.e), logo: r.logo || y.c.logo || '', vod: 1, group: r.title, pl: y.c.pl || '', ua: y.c.ua || '', ref: y.c.ref || '', org: y.c.org || '', st: j === k ? (st || 0) : 0 }));
   if (SERV) serClose();
-  if (TV.watchFull) TV.watchFull(JSON.stringify(items), k); else if (TV.watch) TV.watch(JSON.stringify(items.map(i => i.url)), JSON.stringify(items.map(i => i.name)), k); else TV.link(x.c.url);
+  if (TV.vod) TV.vod(JSON.stringify(items), k); else if (TV.watchFull) TV.watchFull(JSON.stringify(items), k); else if (TV.watch) TV.watch(JSON.stringify(items.map(i => i.url)), JSON.stringify(items.map(i => i.name)), k); else TV.link(x.c.url);
 }
 // 📺 MBC on Shahid: what MBC 1 · MBC 4 · MBC Masr · MBC Drama show (their guide), and Shahid's newest Arabic series, programmes and
 // films — each with Shahid's own logo and poster. OK plays it from your M3U lists (the series' episodes, the film), else the MBC
