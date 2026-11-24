@@ -173,6 +173,7 @@ public class HomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Access.keep(this);   // the mouse / remote keys service back in the list if anything took it out
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { if (front != null) Access.madar(getApplicationContext()); }, 6000);   // 📡 Madar reachable (once per update / boot)
         MessageServer.start(this);   // the phone remote's server: back if the system stopped it while the TV slept
         Reminder.regrant(getApplicationContext());   // 🔑 the box may have taken the apps' permissions back
         quiet(getWindow().getDecorView());
