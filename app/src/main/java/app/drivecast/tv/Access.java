@@ -82,7 +82,7 @@ final class Access {
     static void keep(Context c) { if (wanted(c)) force(c); }
     /** 📡 Madar back up after an update (this box never delivers MY_PACKAGE_REPLACED): its start receiver, nudged every minute —
      *  it starts its always-on link only when it was linked to «المركز» once */
-    static void madar(Context c) { try { c.getPackageManager().getPackageInfo("com.madar.app", 0); c.sendBroadcast(new android.content.Intent("com.madar.app.KEEP").setClassName("com.madar.app", "com.madar.app.BootReceiver")); } catch (Exception ignored) { } }
+    static void madar(Context c) { try { c.getPackageManager().getPackageInfo("com.madar.app", 0); c.sendBroadcast(new android.content.Intent("com.madar.app.KEEP").setClassName("com.madar.app", "com.madar.app.BootReceiver").addFlags(android.content.Intent.FLAG_INCLUDE_STOPPED_PACKAGES)); } catch (Exception ignored) { } }
 
     /** from the long-lived message service: back on the moment the TV switches it off, and a check every minute */
     static void watch(Context c) {
