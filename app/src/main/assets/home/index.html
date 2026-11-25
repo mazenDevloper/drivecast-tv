@@ -1698,7 +1698,7 @@ function radioUi() {
   if (radioOn && RNOW) { $('#plTitle').textContent = '📻 سورة ' + SURAHS[RNOW.s - 1]; $('#plSub').textContent = RNAME[RNOW.r] + ' · راديو القرآن — التلاوات الأكثر شيوعًا'; }
   homeCards(); miniAudio();
 }
-function liteRadioUi() { const b = $('#s-radio'); if (b && LITE) b.innerHTML = radioHtml(); }
+function liteRadioUi() { const b = $('#s-radio'); if (b && LITE) b.innerHTML = omanRadioHtml() + radioHtml(); }
 function radioStart() { SND = null; if (playing) { audio.pause(); playing = null; } radioOn = true; RNOW = null; quranUi(); radioTune(false); }
 /** a browser that refuses sound before a touch: the radio starts at the first one */
 function radioBlocked() {
@@ -3244,6 +3244,9 @@ function lastHtml() {
   const img = x.k === 'yt' ? `https://i.ytimg.com/vi/${esc(x.id)}/mqdefault.jpg` : x.logo;
   return `<button class="card f last ${x.k === 'ch' ? 'ch' : ''}" data-act="last" style="${img ? `background-image:url('${esc(img)}')` : ''}"><span>${x.k === 'yt' ? '▶ كمّل المشاهدة' : '📺 آخر قناة'}</span><b>${esc(x.k === 'yt' ? (x.t || 'آخر مقطع') : x.name)}</b></button>`;
 }
+// 📻 Oman's own Holy Quran radio (Ministry of Information, live HLS on its Mangomolo CDN): before the reciters; the player (ExoPlayer) plays it
+const OMAN_RADIO = { name: 'إذاعة سلطنة عُمان — القرآن الكريم', url: 'https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8', logo: '', group: '📻 راديو', pl: 'راديو' };
+const omanRadioHtml = () => `<button class="card f radio" data-act="omanradio"><div class="pic"></div><div class="txt"><b>إذاعة سلطنة عُمان</b><span>القرآن الكريم · بث مباشر</span></div></button>`;
 const radioHtml = () => `<button class="card f radio${radioOn ? ' on' : ''}" data-act="radio"><div class="pic"></div><div class="txt"><b>التلاوات الأكثر شيوعًا</b><span>${radioOn && RNOW ? esc('الآن: سورة ' + SURAHS[RNOW.s - 1] + ' · ' + RNAME[RNOW.r]) : 'تلاوات يومية منتقاة'}</span></div></button>`;
 function homeCards() {
   const sh = $('#s-quran'); if (!sh) return;
@@ -3256,7 +3259,7 @@ function cardsHtml(home) {
   const card = c => `<button class="card f radio cover${(c.sura && playing === c.sura) || (c.snd && SND && SND.k === c.snd) ? ' on' : ''}" ${c.sura ? `data-sura="${c.sura}"` : `data-yt="${c.v}"`}><div class="pic" style="background-image:url('https://i.ytimg.com/vi/${c.v}/hqdefault.jpg');background-color:${c.c}"></div><div class="txt"><b>${c.t}</b><span>${c.s}</span></div></button>`;
   const yt = APPS.find(a => /youtube/i.test(a.pkg) && !/music|kids|creator/i.test(a.pkg)) || { pkg: 'com.google.android.youtube.tv' };
   const ytCard = `<button class="card f radio yt" data-pkg="${esc(yt.pkg)}"><div class="pic"></div><div class="txt"><b>يوتيوب</b><span>افتح التطبيق</span></div></button>`;
-  return (home ? ytCard + lastHtml() + radioHtml() : '') + CARDS.map(c => c.snd ? `<div class="cw">${card(c)}<button class="snd f${SND && SND.k === c.snd ? ' on' : ''}" data-snd="${c.snd}" title="صوت">${SND && SND.k === c.snd ? '⏹ إيقاف' : '🔊 صوت'}</button></div>` : card(c)).join('')
+  return (home ? ytCard + lastHtml() + omanRadioHtml() + radioHtml() : '') + CARDS.map(c => c.snd ? `<div class="cw">${card(c)}<button class="snd f${SND && SND.k === c.snd ? ' on' : ''}" data-snd="${c.snd}" title="صوت">${SND && SND.k === c.snd ? '⏹ إيقاف' : '🔊 صوت'}</button></div>` : card(c)).join('')
     + `<button class="card f glass" data-act="phone"><span>${u ? u.replace('http://', '') : 'على نفس الواي فاي'}</span><b>💌 اكتب أو ارسم من جوالك</b></button>`;
 }
 let APPS = [];
@@ -3624,7 +3627,7 @@ function matchChannels(league, sources) {
 const BRANDS = [
   [/b[ea]in\s*-?\s*sports?|بي\s*[اإأآ]?ن\s*(سبورت[س]?|الرياضي[ةه])|بين\s*سبورت[س]?|\bbein\b|بي\s*[اإأ]ن/gi, " bein "],
   [/starz\s*-?\s*play(\s*sports?)?|ستارز\s*بلاي(\s*سبورت[س]?)?/gi, " starzplay "],
-  [/thmanyah|thamanyah?|thmanya|thamaniya|ثمانية|ثمانيه/gi, " thmanyah "],
+  [/thmanyah|thamanyah?|thamanyh|thmanyh|thmanya|thamaniya|thamania|ثمانية|ثمانيه/gi, " thmanyah "],
   [/mbc\s*-?\s*action|[اإأ]م\s*بي\s*سي\s*[اأإ]كشن/gi, " mbc action "],
   [/[اإأ]م\s*بي\s*سي/gi, " mbc "],
   [/oman\s*(tv\s*)?sports?(\s*tv)?|عُ?م[اآ]ن\s*(ال)?رياضي[ةه]/gi, " oman sport "],
@@ -3835,6 +3838,30 @@ function looseFor(want, pools) {
   }
   return bs > 0 ? best : null;
 }
+// ⭐ the M3U groups named Thmanyah, the Italian and German leagues, Alwan sports (MLS), MY HD (with MBC Action…) come first for a carrier,
+// and the name need not be exact: 1–3 letters off and the words in another order still match (thamanyh = Thmanyah)
+const PRIO_G = /ثماني|thm?a?manyh?|thamani|الدوري\s*(ال)?[اإ]يطالي|الدوري\s*(ال)?[اأ]لماني|ital(y|ian)|serie ?a|german|bundes|[اأ]لوان|alwan|\bmls\b|my ?hd|mbc ?action|[اإ]م ?بي ?سي ?[اأإ]كشن/i;
+function lev(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let p = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) { const q = [i]; let mn = i; for (let j = 1; j <= b.length; j++) { q[j] = Math.min(p[j] + 1, q[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (q[j] < mn) mn = q[j]; } if (mn > max) return max + 1; p = q; }
+  return p[b.length];
+}
+function prioFor(want, pools) {
+  const t = chToks(want), wn = t.w.filter(isNum).join(','), wk = wkey(want).replace(/\s+/g, '');
+  if (wk.length < 3) return null;
+  let best = null, bs = 0;
+  for (const c of pools) {
+    if (!c || !c.name || !/^https?:/.test(c.url || '') || /geo-blocked/i.test(c.name) || !PRIO_G.test(c.group || '')) continue;
+    const ct = chToks(c.name), cn = ct.w.filter(isNum).join(',');
+    if (cn !== wn && !(wn === '' && cn === '1') && !(cn === '' && wn === '1')) continue;
+    const ck = wkey(c.name).replace(/\s+/g, ''), d = lev(wk, ck, 3);
+    if (d > 3 || (wk.length <= 4 && d > 1)) continue;
+    const sc = 100 - d * 10 + (c.st === 'ok' || (typeof isOk === 'function' && isOk(c)) ? 20 : 0) - (c.st === 'bad' || SCAN[c.url] === 0 ? 40 : 0);
+    if (sc > bs) { bs = sc; best = c; }
+  }
+  return best;
+}
 const listsSig = () => m3uList().slice().sort().join('|');
 const jget = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
 const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -3875,7 +3902,7 @@ function matchLinks(m) {
   const ok = (want, c) => c && !THMDYN(c) && (!NEWSCH.test(c.name) || NEWSCH.test(want)) ? c : null;   // 📰 never a news channel for a sports carrier
   let yt = YTLIVE.filter(c => c.ytl.test(m.league?.name || '')).map(c => ({ want: c.name, c, found: 1 }));   // ▶️ its league live on YouTube
   if (!yt.length) yt = YTLG.filter(([, , re]) => re.test(m.league?.name || '')).map(([name, h]) => ({ want: name + ' · YouTube', c: { name: name + ' · YouTube', url: 'yt-live:' + h, logo: '', group: '▶️ دوريات على يوتيوب' }, found: 1 }));
-  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const hp = mpFind(want, pools); if (hp) return { want, c: hp, hand: 1 }; const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
+  const pools = MPOOLS(), v = mChannels(m).filter(w => !NEWSCH.test(w)).map(want => { const hp = mpFind(want, pools); if (hp) return { want, c: hp, hand: 1 }; const pf = ok(want, prioFor(want, pools)); if (pf) return { want, c: pf }; const c = ok(want, bestFor(want, pools)); if (c) return { want, c }; const f = ok(want, carrierFind(want, pools)); if (f) return { want, c: f, found: 1 }; const z = ok(want, srchFor(want)); return z ? { want, c: z, found: 1 } : { want, c: null }; });
   for (const x of yt) if (!v.some(y => y.c && y.c.url === x.c.url)) v.unshift(x);
   // 🌍 the two sides' local sports channels join the carriers (after the named ones)
   for (const c of localChannels(m).filter(c => !THMDYN(c)).slice(0, 3)) if (!v.some(x => x.c && favKey(x.c) === favKey(c))) v.push({ want: '🌍 ' + c.name, c, local: 1 });
@@ -4880,6 +4907,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'm3u-star') { const u = b.dataset.u; try { localStorage.setItem('m3ustar', m3uStar() === u ? '' : u); } catch (e) {} listsAt = 0; loadLists(); m3uUi(); return; }
   if (b.dataset.act === 'm3u-del') return m3uDel(b.dataset.u);
   if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
+  if (b.dataset.act === 'omanradio') { if (radioOn) closePlayer(); return playChannel([OMAN_RADIO], 0); }
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
   if (b.dataset.store) { TV.store ? TV.store(b.dataset.store) : TV.link('https://play.google.com/store/apps/details?id=' + b.dataset.store); return; }
   if (b.dataset.snd) return SND && SND.k === b.dataset.snd ? closePlayer() : sndPlay(b.dataset.snd);
