@@ -1104,6 +1104,7 @@ public class PlayerActivity extends Activity {
             favs = favSet(); pins = pinned();
             menuRow("fav", favs.contains(key) ? "☆  إزالة من المفضّلة" : "⭐  أضف إلى المفضّلة");
             menuRow("home", onHome(key) ? "🗑  إزالة من الرئيسية" : "🏠  أضف إلى الرئيسية");
+            menuRow("rec", tsRecOn(key) ? "⏺  إيقاف تسجيل هذي القناة (آخر 20 دقيقة)" : "⏺  سجّل هذي القناة (آخر 20 دقيقة · ◀ ▶ ترجع وتقدّم)");
             menuRow("mpin", mpinHas(key) ? "⚽  إلغاء تثبيتها للمباريات" : "⚽  ثبّت للمباريات");
             if (HomeActivity.alive != null) menuRow("reorder", "↔  رتّب قنوات الرئيسية");
             if (mts.length() > 0) menuRow("matches", "⚽  المباريات الآن  (" + mts.length() + ")");
@@ -1189,6 +1190,11 @@ public class PlayerActivity extends Activity {
     }
     private void menuAct(String k) {
         int ch = cur >= 0 ? cur : i; HomeActivity hm = HomeActivity.alive;
+        if (k.equals("rec")) {
+            String key = nOf(ch).trim().toLowerCase(Locale.ROOT); boolean on = !tsRecOn(key); tsRecSet(key, on); menuShow(false);
+            if (on) { tsLater(); flash("⏺ بسجّل هذي القناة طول ما تشغّلها · ◀ ▶ ترجع وتقدّم"); } else { tsStop(); flash("⏹ وقف التسجيل وانحذف"); }
+            return;
+        }
         if (k.startsWith("m") && menuLv == 1) { menuM = Integer.parseInt(k.substring(1)); menuLv = 2; menuSel = 0; menuFill(); return; }
         if (k.startsWith("c") && menuLv == 2) {
             org.json.JSONObject m = mts.optJSONObject(menuM); if (m == null) return;
@@ -1272,8 +1278,7 @@ public class PlayerActivity extends Activity {
                 else if (!guideOn && nextBox != null && nextBox.getVisibility() == View.VISIBLE) {
                     nextAt = Math.max(0, nextShown + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
                 }
-                else if (!guideOn && !menuOn && tsWind(right)) { }   // ◀ ▶ wind the last 30 minutes (when they are being kept)
-                else if (!guideOn) { guideCh = cur >= 0 ? cur : i; guideAt = right ? 1 : 0; guideShow(true); }
+                else if (!guideOn && !menuOn && tsWind(right)) { }   // ◀ ▶ wind the last 20 minutes (when they are being kept)
                 return true;
             }
         } catch (Throwable t) { Crash.note(this, "player list: " + t); }
@@ -1499,11 +1504,13 @@ public class PlayerActivity extends Activity {
         return out;
     }
     private void flash(String s) { setNote(s); fill(); showBar(3500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 3500); }
-    // ⏪ the last 30 minutes of the channel in front (full edition, HLS channels): Timeshift records it, ◀ ▶ in the player wind through it
+    // ⏪ the last 20 minutes of a channel chosen for recording (full edition, HLS channels): Timeshift records it, ◀ ▶ in the player wind through it
     // (taps close together step further: 10 s · 30 s · 1 · 2 · 5 min). Change channel or leave the player: the recording is deleted.
     private Timeshift ts; private boolean tsLocal; private int tsIdx; private long tsLastAt; private String tsUrl;
     private final Handler tsH = new Handler(Looper.getMainLooper());
     private static final int[] TS_STEPS = {10, 30, 60, 120, 300};
+    private boolean tsRecOn(String key) { try { return getSharedPreferences("tsrec", MODE_PRIVATE).getStringSet("n", new java.util.HashSet<>()).contains(key); } catch (Throwable t) { return false; } }
+    private void tsRecSet(String key, boolean on) { try { android.content.SharedPreferences p = getSharedPreferences("tsrec", MODE_PRIVATE); java.util.Set<String> n = new java.util.HashSet<>(p.getStringSet("n", new java.util.HashSet<>())); if (on) n.add(key); else n.remove(key); p.edit().putStringSet("n", n).apply(); } catch (Throwable t) { } }
     private void tsStop() {
         tsH.removeCallbacksAndMessages(null);
         if (ts != null) { ts.stop(); ts = null; }
@@ -1514,6 +1521,7 @@ public class PlayerActivity extends Activity {
         final int at = i; final String u = urls[i];
         if (ts != null && u.equals(tsUrl)) return;
         if (!u.startsWith("http") || ytIdOf(u) != null) return;
+        if (!tsRecOn(nOf(at).trim().toLowerCase(Locale.ROOT))) return;   // only the channels chosen for recording, and only while it is playing
         tsH.removeCallbacksAndMessages(null);
         tsH.postDelayed(() -> {
             if (at != i || player == null || (ts != null && u.equals(tsUrl))) return;
@@ -1530,7 +1538,11 @@ public class PlayerActivity extends Activity {
     /** ◀ (back) / ▶ (forward) in the player: true when it wound (or told why not), false to leave the key to the guide as before */
     private boolean tsWind(boolean right) {
         if (player == null || urls == null) return false;
-        if (ts == null || ts.fail() != null) return false;   // Lite, a channel it cannot record (raw .ts, encrypted), or not started yet: the key keeps its old job
+        if (ts == null || ts.fail() != null) {   // ◀ ▶ only wind here (never the guide): say why nothing is there
+            boolean chosen = tsRecOn(nOf(i).trim().toLowerCase(Locale.ROOT));
+            flash(!chosen ? "⏺ هذي القناة مو مسجّلة — من القائمة (OK مطوّل) اختر «سجّل هذي القناة»" : ts != null && ts.fail() != null ? "ما أقدر أسجّل هذي القناة (" + ts.fail() + ")" : "⏳ التسجيل يبدأ بعد لحظات");
+            return true;
+        }
         long now = System.currentTimeMillis();
         tsIdx = now - tsLastAt < 1500 ? Math.min(TS_STEPS.length - 1, tsIdx + 1) : 0; tsLastAt = now;
         long step = TS_STEPS[tsIdx] * 1000L, win = ts.windowMs();
