@@ -1959,7 +1959,9 @@ function togglePin(c) {
 }
 function pinUi() {
   const raw = pinRaw(), pools = [DYNCH, GSP, MYFAV, typeof allChannels === 'function' ? allChannels() : []];
-  PINS = raw.map(p => { for (const l of pools) { const x = (l || []).find(y => favKey(y) === favKey(p) && !/^dyn:/.test(y.url) || favKey(y) === favKey(p) && y.dyn); if (x) return x; } return p; });
+  const stale = p => p && (p.dyn || /^dyn:/.test(p.url || ''));   // an old «رياضية متجددة» pin: the same channel from the M3U lists now (its own name there: «thamanyah 1 hd»…)
+  let allc = null;
+  PINS = raw.map(p => { if (stale(p)) { try { allc = allc || (typeof allChannels === 'function' ? allChannels() : []); const m = bestFor(p.name, allc) || looseFor(p.name, allc); if (m) return m; } catch (e) {} return null; } return p; }).filter(Boolean).map(p => { for (const l of pools) { const x = (l || []).find(y => favKey(y) === favKey(p) && !/^dyn:/.test(y.url) || favKey(y) === favKey(p) && y.dyn); if (x) return x; } return p; });
   const w = $('#pinwrap'); if (w) w.hidden = !PINS.length;
   const box = $('#s-pin'); if (box) { box.innerHTML = PINS.map((c, i) => ichHtml(c, i, 'pin')).join(''); box.querySelectorAll('[data-ilist="pin"]').forEach(b => { const c = PINS[+b.dataset.i]; if (c && (c.st === 'ok' || GSP.includes(c))) b.classList.add('ok'); }); }
 }
@@ -3169,7 +3171,7 @@ async function resolveChannel(c) {
   if (/^yt-live:/.test(c.url)) {
     const h = c.url.slice(8), t = await getText(`https://www.youtube.com/${h}/live`);
     const id = (/"canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/.exec(t || '') || /"videoId":"([\w-]{11})"/.exec(t || '') || [])[1];
-    return id ? { ...c, url: 'https://www.youtube.com/watch?v=' + id } : c;
+    return id ? { ...c, url: 'https://www.youtube.com/watch?v=' + id, sched: !/"isLiveNow":true/.test(t || '') } : c;   // not live yet → YouTube's own page (its countdown)
   }
   if (/^https?:/.test(c.url) && (isOk(c) || c.palts)) return c;   // a home channel already chosen as the one that works
   if (Date.now() - listsAt > 30 * 60e3) { listsAt = 0; await loadLists(); }
@@ -3205,6 +3207,7 @@ async function playChannel(list, i) {
   if (radioOn) closePlayer();
   const auto = MATCHPLAY; MATCHPLAY = false;
   const inYt = TV.watchFull && TV.ytIn && TV.ytIn();   // ▶ YouTube inside the player (its official embed) when the app can
+  if (/youtu\.?be/.test(c.url) && (c.sched || (c.live === false && c.at)) && TV.youtube) { const id = ytId(c.url); if (id) return TV.youtube(id); }   // a match set for later: YouTube shows the countdown, not a failed stream
   if (/youtu\.?be/.test(c.url) && !inYt) { const id = ytId(c.url); return id ? TV.youtube(id) : TV.link(c.url); }
   if (S('player', 'in') === 'ext' && TV.external && !/youtu\.?be/.test(c.url)) return TV.external(c.url);   // the settings: always another player
   const streams = list.filter(x => !/^yt-live:|^yt-search:/.test(x.url) && (inYt || !/youtu\.?be/.test(x.url))), k = streams.indexOf(c);

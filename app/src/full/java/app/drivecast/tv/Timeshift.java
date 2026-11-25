@@ -18,7 +18,7 @@ import java.util.Locale;
  *  TV's own app storage) and a local playlist of them — a 30-minute live window — is what ◀ ▶ in the player wind through.
  *  Change channel (or leave the player) and all of it is deleted. Only the channel in front is ever recorded. */
 final class Timeshift {
-    static final long WINDOW_MS = 30 * 60_000L;
+    static final long WINDOW_MS = 20 * 60_000L;
     private static final class Seg { long seq; double dur; boolean disc; File f; }
 
     private final String src, ua, ref, org; private final File dir;
