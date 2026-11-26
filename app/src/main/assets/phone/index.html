@@ -177,6 +177,10 @@ body.simple .kids{display:grid}
   <div id="pll"><p class="s">أجيب القوائم…</p></div>
 </section>
 
+<section id="g" class="hide">
+  <h2 style="margin:6px 0 10px">🎬 الأهداف والملخصات <small style="opacity:.6;font-size:.6em">الأحدث أولاً · beIN · ثمانية · AD · دبي · عمان</small></h2>
+  <div id="gl" style="display:flex;flex-direction:column;gap:10px"><div style="opacity:.7">جارٍ التحميل…</div></div>
+</section>
 <section id="mt" class="hide">
   <div id="pushBox" class="hide"><button id="pushOn" class="big" style="margin-bottom:12px">🔔 فعّل تنبيهات المباريات على هذا الجوال</button></div>
   <div class="mseg" id="mseg"><button data-md="y">أمس</button><button data-md="t" class="on">اليوم</button><button data-md="m">الغد</button><button data-md="f">⭐ فرقي</button></div>
@@ -268,8 +272,8 @@ const post = (u, b) => fetch(u, { method: 'POST', body: b }).then(r => { $('st')
 const buzz = () => navigator.vibrate && navigator.vibrate(10);
 // ---- the tabs: at the bottom (the thumb's place); «المزيد» holds what is used now and then
 const NAV = [['r', '🎮', 'ريموت'], ['mt', '⚽', 'المباريات'], ['pl', '📂', 'القوائم'], ['w', '⌨️', 'اكتب'], ['a', '🧩', 'التطبيقات'], ['x', '☰', 'المزيد']];
-const MORE = [['m', '🖱️ ماوس'], ['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
-const ALLS = ['r', 'mt', 'pl', 'a', 'w', 'm', 'q', 'z', 'b', 'd', 'sx'];
+const MORE = [['g', '🎬 الأهداف'], ['m', '🖱️ ماوس'], ['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
+const ALLS = ['r', 'mt', 'pl', 'a', 'w', 'g', 'm', 'q', 'z', 'b', 'd', 'sx'];
 let cur = 'r', moreAt = 'q';
 document.body.insertAdjacentHTML('beforeend', `<nav class="nav" id="nav">${NAV.map(([t, i, l]) => `<button data-nav="${t}"><i>${i}</i>${l}</button>`).join('')}</nav>`);
 $('subnav').innerHTML = MORE.map(([t, l]) => `<button data-more="${t}">${l}</button>`).join('');
@@ -283,6 +287,7 @@ function go(t) {
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === (more ? 'x' : t)));
   document.querySelectorAll('[data-more]').forEach(b => b.classList.toggle('on', b.dataset.more === t));
   clearInterval(window.__mtT); if (t === 'mt') { matches(); window.__mtT = setInterval(matches, 10000); }
+  clearInterval(window.__gT); if (t === 'g') { goals(); window.__gT = setInterval(goals, 60000); }
   if (t === 'pl' && !PL.loaded) plGo([]);
   clearInterval(window.__lvT); if (t === 'r') { liveBar(); window.__lvT = setInterval(liveBar, 45000); }
   if (t === 'd') fit(); if (t === 'q') reciters(); if (t === 'z') azkar(); if (t === 'b') boardLoad(); if (t === 'm') status(); if (t === 'a') apps();
@@ -465,6 +470,24 @@ async function yday() {
     box.innerHTML = j.m.map(m => mCard(m, md === 'f')).join('');
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
 }
+// 🎬 goals and summaries (the TV gathers them): 📺 plays it on the TV, 📱 here
+let GSEEN = null;
+async function goals() {
+  const box = $('gl');
+  try {
+    const j = await (await fetch('/goals')).json(), g = j.g || [];
+    if (!g.length) { box.innerHTML = '<div style="opacity:.7">ما وصلت الأهداف بعد — ثواني وتطلع</div>'; setTimeout(() => { if (cur === 'g') goals(); }, 6000); return; }
+    const old = GSEEN; GSEEN = new Set(g.map(x => x.id));
+    const ago = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + m + ' د' : m < 1440 ? 'قبل ' + Math.round(m / 60) + ' س' : 'قبل ' + Math.round(m / 1440) + ' يوم'; };
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    box.innerHTML = g.map(x => `<div style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.06);border-radius:14px;padding:8px">
+      <img src="https://i.ytimg.com/vi/${esc(x.id)}/mqdefault.jpg" alt="" style="width:132px;height:74px;object-fit:cover;border-radius:10px;flex:none" loading="lazy">
+      <div style="flex:1;min-width:0"><div style="font-size:15px;line-height:1.35">${old && !old.has(x.id) ? '<b style="background:#e0263f;color:#fff;border-radius:6px;padding:0 6px;font-size:12px">جديد</b> ' : ''}${esc(x.t)}</div>
+        <div style="font-size:12px;opacity:.65;margin-top:3px">${esc(x.ch)} · ${ago(x.at)}</div>
+        <div style="display:flex;gap:8px;margin-top:6px"><button data-gtv="${esc(x.id)}" style="flex:1">📺 على التلفزيون</button><a href="https://youtu.be/${esc(x.id)}" target="_blank" rel="noopener" style="flex:none;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,.1);color:inherit;text-decoration:none">📱 هنا</a></div></div></div>`).join('');
+  } catch (e) { box.innerHTML = '<div style="opacity:.7">التلفزيون مو متصل</div>'; }
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-gtv]'); if (!b) return; buzz(); post('/goalplay', b.dataset.gtv); $('s').textContent = '▶ على التلفزيون'; });
 async function matches() {
   if (MDAY !== 't') return yday();
   const box = $('mtl');

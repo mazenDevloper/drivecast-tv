@@ -4076,6 +4076,24 @@ const rmRow = (m, i) => ({ i, h: m.home?.name || '', a: m.away?.name || '', hl: 
   t: m.timestamp ? hm24(m.timestamp) : '', s: (m.status === 'live' || m.status === 'finished') && m.score ? `${m.score.home ?? 0} - ${m.score.away ?? 0}` : '',
   lg: m.league?.name || '', k: mKey(m), rem: REMIND().includes(mKey(m)) ? 1 : 0, mine: m.mine ? 1 : 0,
   dy: m.timestamp ? new Date(m.timestamp * 1000).toLocaleDateString('ar', { weekday: 'long', timeZone: 'Asia/Muscat' }) : '' });
+// 🎬 goals and summaries for the web remote («الأهداف»): the official channels' YouTube feeds (open, no key) — beIN SPORTS, ثمانية,
+// AD Sports, دبي الرياضية, عمان الرياضية — only goals / summaries, the newest first; asked again 4 min after the last time
+const RGCH = [['UCJUCcJUeh0Cz2xyKwkw5Q1w', 'beIN SPORTS'], ['UCj-2hfXdYPPNcLqcBeW3y8g', 'ثمانية'], ['UCF8Fpc7bPHC8Jrflci-mUiQ', 'AD Sports'], ['UCmJr9VRnC8Q1TCIrf2G8bcg', 'دبي الرياضية'], ['UClz2SvkY_nUDfnIMAmTPTgw', 'عمان الرياضية']];
+const RGRE = /ملخص|هدف|أهداف|اهداف|الأهداف|ركلات الترجيح|highlights?|goals?\b/i;
+let RGOALS = [], RGAT = 0;
+async function rgLoad() {
+  if (rgLoad.busy) return; rgLoad.busy = 1;
+  try {
+    const all = [];
+    await Promise.all(RGCH.map(async ([id, ch]) => { const x = await getText('https://www.youtube.com/feeds/videos.xml?channel_id=' + id); if (!x) return;
+      for (const e of x.split('<entry>').slice(1)) { const v = (/<yt:videoId>([^<]+)/.exec(e) || [])[1], t = ((/<title>([^<]+)/.exec(e) || [])[1] || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+        const at = Date.parse((/<published>([^<]+)/.exec(e) || [])[1] || '') || 0;
+        if (v && t && RGRE.test(t)) all.push({ id: v, t, ch, at }); } }));
+    if (all.length) { const seen = new Set(); RGOALS = all.filter(g => !seen.has(g.id) && seen.add(g.id)).sort((a, b) => b.at - a.at).slice(0, 50); RGAT = Date.now(); }
+  } finally { rgLoad.busy = 0; }
+}
+window.remoteGoals = () => { if (Date.now() - RGAT > 4 * 60e3) rgLoad().catch(() => {}); return JSON.stringify({ g: RGOALS, at: RGAT }); };
+window.remoteGoalPlay = id => { if (/^[\w-]{11}$/.test(String(id || '').trim())) { lastSet({ k: 'yt', id: String(id).trim(), t: '' }); TV.youtube(String(id).trim()); } };
 window.remoteMatches = () => {
   if ((!MLIST || !MLIST.length) && Date.now() - (window.__rmAt || 0) > 60e3) { window.__rmAt = Date.now(); try { loadMatches(); } catch (e) {} }
   if ((MLIST || []).length && Date.now() - (window.__rmFix || 0) > 15e3) { window.__rmFix = Date.now(); liveFix(MLIST).catch(() => {}); }   // the next ask carries the new scores
