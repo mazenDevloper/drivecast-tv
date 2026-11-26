@@ -128,7 +128,7 @@ public class HomeActivity extends Activity {
         final android.widget.TextView sp = new android.widget.TextView(this); sp.setText("DriveCast TV\nجاري التحميل…"); sp.setTextColor(0xCCFFFFFF); sp.setTextSize(28); sp.setGravity(android.view.Gravity.CENTER); sp.setBackgroundColor(0xFF0B1210);
         box.addView(sp, new android.widget.FrameLayout.LayoutParams(-1, -1));
         splash = sp; new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { if (splash == sp) { sp.setVisibility(android.view.View.GONE); splash = null; } }, 9000);   // never longer than that
-        setContentView(box);
+        setContentView(box); quiet(box); web.setSoundEffectsEnabled(false);   // no navigation clicks
         web.requestFocus();
     }
 

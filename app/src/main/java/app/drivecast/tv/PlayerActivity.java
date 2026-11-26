@@ -527,7 +527,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root); buildGuide(root); buildMenu(root); buildSearch(root); buildDig(root);
+        buildBar(root); buildList(root); buildGuide(root); buildMenu(root); buildSearch(root); buildDig(root); HomeActivity.quiet(root);
         ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
         GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);

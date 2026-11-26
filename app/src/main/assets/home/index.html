@@ -2046,9 +2046,18 @@ async function m3uUpload(f) {
   } catch (e) { say('ما انرفع — تأكد من الإنترنت'); }
 }
 document.addEventListener('change', e => { if (e.target && e.target.id === 'm3uFileIn') { m3uUpload(e.target.files[0]); e.target.value = ''; } });   // address → how many channels it gave
+// 🔁 a list whose live links are «.ts» (Xtream: /live/user/pass/id.ts, or output=ts) read as «.m3u8» (HLS): those channels can be wound back / recorded
+const m3uHlsOn = u => { try { return (JSON.parse(localStorage.getItem('m3uhls') || '[]')).includes(u); } catch (e) { return false; } };
+const m3uHls = (u, t) => typeof t === 'string' && m3uHlsOn(u) ? t.replace(/(\/live\/[^\/\s]+\/[^\/\s]+\/\d+)\.ts\b/g, '$1.m3u8').replace(/output=ts\b/g, 'output=m3u8') : t;
+function m3uHlsToggle(u) {
+  let l = []; try { l = JSON.parse(localStorage.getItem('m3uhls') || '[]'); } catch (e) {}
+  l = l.includes(u) ? l.filter(x => x !== u) : [...l, u]; try { localStorage.setItem('m3uhls', JSON.stringify(l)); } catch (e) {}
+  m3uUi(); listsAt = 0; loadLists();
+}
+function m3uEdit(u) { const q = $('#m3uIn'); if (!q) return; q.value = u; m3uDel(u); q.focus(); const n = $('#m3un'); if (n) n.textContent = '· عدّل الرابط ثم اضغط «إضافة»'; }
 function m3uUi() {
   const l = m3uList(), box = $('#s-m3u'); if (!box) return;
-  box.innerHTML = l.map((u, i) => `<span class="m3urow"><button class="chip f" data-m3uv="${esc(u)}" title="افتح وتصفّح">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : (isM3uFile(u) ? '📂 ' : '📁 ') + esc(u.replace(/^https?:\/\//, '').slice(0, 46)) + (M3UFILE[u] && M3UFILE[u] !== u ? ' → ' + esc(decodeURIComponent(M3UFILE[u].split('/').pop())) : '')}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;▶</button><button class="chip f m3ux${m3uStar() === u ? ' on' : ''}" data-act="m3u-star" data-u="${esc(u)}" title="مصدر قنوات المباريات">${m3uStar() === u ? '⭐' : '☆'}</button><button class="chip f m3ux" data-act="m3u-del" data-u="${esc(u)}" title="احذف القائمة">✕</button></span>`).join('')
+  box.innerHTML = l.map((u, i) => `<span class="m3urow"><button class="chip f" data-m3uv="${esc(u)}" title="افتح وتصفّح">${/\/hub\/m3u\?/.test(u) ? '☁️ ' + esc(M3UNAME[u] || 'قائمة في السحابة') : (isM3uFile(u) ? '📂 ' : '📁 ') + esc(u.replace(/^https?:\/\//, '').slice(0, 46)) + (M3UFILE[u] && M3UFILE[u] !== u ? ' → ' + esc(decodeURIComponent(M3UFILE[u].split('/').pop())) : '')}${M3UN[u] != null ? ` · ${AR(M3UN[u])} قناة` : ''} &nbsp;▶</button><button class="chip f m3ux${m3uStar() === u ? ' on' : ''}" data-act="m3u-star" data-u="${esc(u)}" title="مصدر قنوات المباريات">${m3uStar() === u ? '⭐' : '☆'}</button><button class="chip f m3ux${m3uHlsOn(u) ? ' on' : ''}" data-act="m3u-hls" data-u="${esc(u)}" title="اقرأ روابط البث من ts إلى m3u8 (HLS)">${m3uHlsOn(u) ? 'm3u8 ✓' : 'ts→m3u8'}</button><button class="chip f m3ux" data-act="m3u-edit" data-u="${esc(u)}" title="عدّل رابط القائمة">✏️</button><button class="chip f m3ux" data-act="m3u-del" data-u="${esc(u)}" title="احذف القائمة">✕</button></span>`).join('')
     + (l.length ? `<div class="empty" style="width:100%;margin:6px">⭐ = القائمة اللي تنربط منها قنوات المباريات أول${m3uStar() ? '' : ' — اختر قائمة بالنجمة'}</div>` : '');
   const n = $('#m3un'); if (n) n.textContent = l.length ? `· ${AR(l.length)} قائمة — قنواتها تحت «كل القنوات» في مجموعة «📂 قائمتي»` : '· أضف رابط قائمتك وتنضاف قنواتها مع الفحص والمصادر الاحتياطية';
 }
@@ -2765,7 +2774,7 @@ async function loadLists() {
   if (Date.now() - listsAt < 30 * 60000) return; listsAt = Date.now();
   await pullFavs();
   const mineU = m3uList();
-  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(async u => m3uText(u, await m3uResolve(u)))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
+  const [ftv, mineT, ...texts] = await Promise.all([getText(FREETV), Promise.all(mineU.map(async u => m3uHls(u, await m3uText(u, await m3uResolve(u))))), ...LISTS.map(l => getText('https://iptv-org.github.io/iptv/' + l[0] + '.m3u'))]);
   const seen = new Set(), names = new Set(); ILIST = []; ALT = new Map();
   const alt = c => { const k = chKey(c.name); if (!ALT.has(k)) ALT.set(k, []); const a = ALT.get(k); if (!a.includes(c.url) && !/^yt-live:|youtu/.test(c.url)) a.push(c.url); };
   // Free-TV/IPTV: the first source. Its marks (Ⓢ SD, Ⓖ geo-blocked, Ⓨ YouTube) off the names; Arab countries first, in Arabic
@@ -4919,6 +4928,8 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'm3u-file') return $('#m3uFileIn').click();
   if (b.dataset.act === 'm3u-star') { const u = b.dataset.u; try { localStorage.setItem('m3ustar', m3uStar() === u ? '' : u); } catch (e) {} listsAt = 0; loadLists(); m3uUi(); return; }
   if (b.dataset.act === 'm3u-del') return m3uDel(b.dataset.u);
+  if (b.dataset.act === 'm3u-hls') return m3uHlsToggle(b.dataset.u);
+  if (b.dataset.act === 'm3u-edit') return m3uEdit(b.dataset.u);
   if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
   if (b.dataset.act === 'omanradio') return ORADIO ? closePlayer() : omanStart();
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
