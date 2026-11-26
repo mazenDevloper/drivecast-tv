@@ -522,6 +522,7 @@ body.ambient .phrase.on{display:block}
 /* 📺 the Channels tab: a side menu of the lists, one list beside it (made for a TV box remote) */
 .liteonly{display:none}html.lite .liteonly{display:block}html.lite .fullonly{display:none!important}
 #s-radio .card{width:520px}
+html.noanim *,html.noanim *::before,html.noanim *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition-duration:0s!important}
 /* ⚡ the arrows: the focus moves at once */
 .f,.ichan,.tab,.chip,.ri{transition-duration:.05s!important}
@@ -897,10 +898,10 @@ const LITE = (() => { try { return !!(TV.lite && TV.lite()) || /[?&]lite=1\b/.te
 if (LITE) document.documentElement.classList.add('lite');
 // ---- the settings (kept on the TV: the adhan, the player and the mouse read the same ones)
 let SET = {};
-function loadSet() { setTimeout(() => window.DCW && DCW.refresh(), 0); setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
+function loadSet() { setTimeout(() => window.DCW && DCW.refresh(), 0); setTimeout(() => document.body.classList.toggle('dev', S('dev', 'off') === 'on'), 0); setTimeout(() => document.documentElement.classList.toggle('noanim', S('anim', 'off') !== 'on'), 0); try { SET = JSON.parse(window.TV && TV.prefs ? TV.prefs() : (localStorage.set || '{}')) || {}; } catch (e) { SET = {}; } }
 let QMODE = ''; try { QMODE = new URLSearchParams(location.search).get('mode') || ''; } catch (e) {}   // ?mode=series (the web page): that mode, whatever the TV has
 const S = (k, d) => (k === 'mode' && QMODE) || (SET[k] ?? d);
-function setPref(k, v) { SET[k] = v; if ((k === 'fx' || k === 'ring' || k === 'hud') && typeof fxApply === 'function') setTimeout(fxApply, 0); try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
+function setPref(k, v) { SET[k] = v; if (k === 'anim') document.documentElement.classList.toggle('noanim', v !== 'on'); if ((k === 'fx' || k === 'ring' || k === 'hud') && typeof fxApply === 'function') setTimeout(fxApply, 0); try { window.TV && TV.setPref ? TV.setPref(k, String(v)) : (localStorage.set = JSON.stringify(SET)); } catch (e) {} }
 loadSet();
 // one clock for the whole page (a test can move it: window.__simTime)
 const NOW = () => window.__simTime ? window.__simTime() : new Date();
@@ -4449,6 +4450,7 @@ function allSections() {
     ['🎛️', 'الواجهة لهذا الجهاز', [
       { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['couch', '🏟️ الرياضة · ساعة زجاج خلف المسجد'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
       { in: 1, k: 'mbcprio', l: '⭐ أولوية MBC من شاهد (أسماء مفصولة بفاصلة — أول الصف)', ph: 'The Floor, المدينة البعيدة' },
+      { k: 'anim', l: '✨ حركات الانتقال بين البطاقات والشاشات (مطفأة = أخف وأسرع)', o: [['off', 'مطفأة'], ['on', 'تعمل']], d: 'off' },
       { k: 'devperf', l: '📊 أداة قياس الثقل: عدّاد في الزاوية (FPS · أطول مهمة · تأخير الأزرار · أثقل بطاقة)', o: [['off', 'مطفأ'], ['on', 'تعمل']], d: 'off' },
       { in: 1, k: 'newlogo', l: '🖼️ شعار كرت «الجديد» في المسلسلات (رابط صورة)', ph: 'https://…/logo.png' },
       { k: 'cclkx', l: '🏟️ مكان الساعة', o: [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], d: 'center' },
