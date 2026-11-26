@@ -1095,7 +1095,7 @@ public class PlayerActivity extends Activity {
             menuLv = 0; menuSel = 0; menuFill(); HomeActivity.quiet(menuPanel); menuPanel.setVisibility(View.VISIBLE);
         } else { h.removeCallbacks(menuHide); menuPanel.setVisibility(View.GONE); }
     }
-    private void menuRow(String k, String label) { menuRows.add(new String[] { k, label }); }
+    private void menuRow(String k, String label) { int n = menuRows.size() + 1; menuRows.add(new String[] { k, (n <= 9 ? "[" + n + "]  " : "      ") + label }); }   // [1]…[9]: the number key goes straight to the row
     private void menuFill() {
         menuRows.clear();
         int ch = cur >= 0 ? cur : i; String key = nOf(ch).trim().toLowerCase(Locale.ROOT);
@@ -1158,6 +1158,7 @@ public class PlayerActivity extends Activity {
     }
     private boolean menuKey(int code, KeyEvent e) {
         int n = menuRows.size();
+        if (code >= KeyEvent.KEYCODE_1 && code <= KeyEvent.KEYCODE_9) { int r = code - KeyEvent.KEYCODE_1; if (r < n && e.getRepeatCount() == 0) { menuSel = r; menuMark(); menuAct(menuRows.get(r)[0]); } return true; }
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_UP: if (n > 0) { menuSel = (menuSel - 1 + n) % n; menuMark(); } return true;
             case KeyEvent.KEYCODE_DPAD_DOWN: if (n > 0) { menuSel = (menuSel + 1) % n; menuMark(); } return true;
