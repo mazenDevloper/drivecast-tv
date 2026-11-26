@@ -1978,7 +1978,7 @@ public class PlayerActivity extends Activity {
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
             boolean right = code == KeyEvent.KEYCODE_DPAD_RIGHT;
             if (wind && vod()) { vodWind(right, e); return true; }
-            if (wind) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }
+            if (wind && !player.isCurrentMediaItemLive()) { wind((right ? 1 : -1) * (e.getRepeatCount() > 2 ? 30000L : 10000L)); return true; }   // a live channel's ◀ ▶ are the recording's (short, on release) and recall / picture size (held)
             if (e.getRepeatCount() == 0) { lrCode = code; lrHeld = false; return true; }   // short: the guide, on release
             if (!(e.getRepeatCount() == 4 || e.isLongPress()) || lrCode != code || lrHeld) return true;
             lrHeld = true;

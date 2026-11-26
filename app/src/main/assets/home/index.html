@@ -1748,8 +1748,8 @@ audio.addEventListener('pause', () => qaShow(null)); audio.addEventListener('end
 let miniT = 0; audio.addEventListener('timeupdate', () => { if (Date.now() - miniT > 5000) { miniT = Date.now(); miniAudio(); } });
 audio.addEventListener('play', miniAudio); audio.addEventListener('pause', miniAudio);
 audio.onended = () => { if (SND) { if (++SND.i < SND.list.length) return sndGo(); return closePlayer(); } if (radioOn) return radioTune(true); if (playing && playing < 114) playSurah(playing + 1); else closePlayer(); };
-audio.onerror = () => { if (radioOn && audio.src) setTimeout(() => radioOn && radioTune(true), 4000); };
-function closePlayer() { SND = null; const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
+audio.onerror = () => { if (ORADIO) return omanFail(); if (radioOn && audio.src) setTimeout(() => radioOn && radioTune(true), 4000); };
+function closePlayer() { ORADIO = false; SND = null; const wasRadio = radioOn; radioOn = false; RNOW = null; rTuning++; document.body.classList.remove('radio'); setTimeout(homeCards, 0); audio.pause(); audio.removeAttribute('src'); audio.load(); playing = null; $('#player').hidden = true; if ($('#player').contains(document.activeElement)) $('.tab.on')?.focus(); quranUi(); }
 let pauseT = 0;
 audio.onpause = () => { clearTimeout(pauseT); pauseT = setTimeout(() => { if (audio.paused && playing) closePlayer(); }, 8000); };
 audio.onplay = () => clearTimeout(pauseT);
@@ -3204,7 +3204,7 @@ async function playChannel(list, i) {
     list = [...(fromHome ? list.map(x => ({ ...x, og: '', group: '🏠 الرئيسية', pl: x.pl || 'الرئيسية' })) : list), ...rest]; i = list.findIndex(x => x.url === c0.url); }
   const c = list[i]; if (!c) return;
   lastSet({ k: 'ch', name: c.name, url: c.url, logo: c.logo || '', group: c.group || '' });
-  if (radioOn) closePlayer();
+  if (radioOn || ORADIO) closePlayer();
   const auto = MATCHPLAY; MATCHPLAY = false;
   const inYt = TV.watchFull && TV.ytIn && TV.ytIn();   // ▶ YouTube inside the player (its official embed) when the app can
   if (/youtu\.?be/.test(c.url) && (c.sched || (c.live === false && c.at)) && TV.youtube) { const id = ytId(c.url); if (id) return TV.youtube(id); }   // a match set for later: YouTube shows the countdown, not a failed stream
@@ -3245,8 +3245,17 @@ function lastHtml() {
   return `<button class="card f last ${x.k === 'ch' ? 'ch' : ''}" data-act="last" style="${img ? `background-image:url('${esc(img)}')` : ''}"><span>${x.k === 'yt' ? '▶ كمّل المشاهدة' : '📺 آخر قناة'}</span><b>${esc(x.k === 'yt' ? (x.t || 'آخر مقطع') : x.name)}</b></button>`;
 }
 // 📻 Oman's own Holy Quran radio (Ministry of Information, live HLS on its Mangomolo CDN): before the reciters; the player (ExoPlayer) plays it
+// 📻 plays in the background through the page's audio (like the reciters' radio); a channel / series opening stops it (playChannel → closePlayer)
+let ORADIO = false;
+function omanStart() {
+  SND = null; if (radioOn) { radioOn = false; RNOW = null; rTuning++; } playing = null; ORADIO = true;
+  document.body.classList.add('radio'); $('#player').hidden = false; $('#plToggle').textContent = 'إيقاف';
+  $('#plTitle').textContent = '📻 إذاعة سلطنة عُمان'; $('#plSub').textContent = 'القرآن الكريم · بث مباشر';
+  audio.src = OMAN_RADIO.url; audio.play().catch(() => omanFail()); homeCards();
+}
+function omanFail() { if (!ORADIO) return; closePlayer(); playChannel([OMAN_RADIO], 0); }   // this WebView cannot play HLS audio itself: the native player does
 const OMAN_RADIO = { name: 'إذاعة سلطنة عُمان — القرآن الكريم', url: 'https://partwota.cdn.mgmlcdn.com/quranrdoorg/quranrdo.stream_aac/chunklist.m3u8', logo: '', group: '📻 راديو', pl: 'راديو' };
-const omanRadioHtml = () => `<button class="card f radio" data-act="omanradio"><div class="pic"></div><div class="txt"><b>إذاعة سلطنة عُمان</b><span>القرآن الكريم · بث مباشر</span></div></button>`;
+const omanRadioHtml = () => `<button class="card f radio${ORADIO ? ' on' : ''}" data-act="omanradio"><div class="pic"></div><div class="txt"><b>إذاعة سلطنة عُمان</b><span>القرآن الكريم · بث مباشر</span></div></button>`;
 const radioHtml = () => `<button class="card f radio${radioOn ? ' on' : ''}" data-act="radio"><div class="pic"></div><div class="txt"><b>التلاوات الأكثر شيوعًا</b><span>${radioOn && RNOW ? esc('الآن: سورة ' + SURAHS[RNOW.s - 1] + ' · ' + RNAME[RNOW.r]) : 'تلاوات يومية منتقاة'}</span></div></button>`;
 function homeCards() {
   const sh = $('#s-quran'); if (!sh) return;
@@ -4870,6 +4879,7 @@ document.addEventListener('click', e => {
   if (b.dataset.sura && b.closest('#s-quran') && playing === +b.dataset.sura && !audio.paused) return closePlayer();   // the card again: stop
   if (b.dataset.sura) return playSurah(+b.dataset.sura);
   if (b.dataset.act === 'pl-toggle' && SND) { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
+  if (b.dataset.act === 'pl-toggle' && ORADIO) { if (audio.paused) { audio.play().catch(() => {}); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle' && radioOn) { if (audio.paused) radioTune(false); else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-toggle') { if (audio.paused) { audio.play(); b.textContent = 'إيقاف'; } else { audio.pause(); b.textContent = 'تشغيل'; } return; }
   if (b.dataset.act === 'pl-close') return closePlayer();
@@ -4907,7 +4917,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'm3u-star') { const u = b.dataset.u; try { localStorage.setItem('m3ustar', m3uStar() === u ? '' : u); } catch (e) {} listsAt = 0; loadLists(); m3uUi(); return; }
   if (b.dataset.act === 'm3u-del') return m3uDel(b.dataset.u);
   if (b.dataset.act === 'dyn-again') { loadGarden(true); return loadDyn(true); }
-  if (b.dataset.act === 'omanradio') { if (radioOn) closePlayer(); return playChannel([OMAN_RADIO], 0); }
+  if (b.dataset.act === 'omanradio') return ORADIO ? closePlayer() : omanStart();
   if (b.dataset.act === 'radio') return radioOn ? closePlayer() : radioStart();
   if (b.dataset.store) { TV.store ? TV.store(b.dataset.store) : TV.link('https://play.google.com/store/apps/details?id=' + b.dataset.store); return; }
   if (b.dataset.snd) return SND && SND.k === b.dataset.snd ? closePlayer() : sndPlay(b.dataset.snd);
