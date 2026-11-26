@@ -1768,21 +1768,38 @@ function quranUi() {
 const BIN = id => `https://studio.c-p.workers.dev/bin/${id}`;
 const BINS = { channels: '68ef1b3dd0ea881f40a38bd1', reciters: '6909c1cd43b1c97be997b522', master: '69c782cbb7ec241ddcb0b99a', iptv: '69a87b8bd0ea881f40eeec0c' };
 let cbN = 0;
-// 🔁 plain GETs too (fetch): the same address within 4 s shares one request (each caller reads its own copy)
+// 🔁 ONE rule for what is asked of the Internet: each kind of address has its own life — what never changes is fetched once (and kept on the device,
+// also across restarts); what changes slowly is asked now and then; what is live is asked as often as it is needed, never twice at once.
+// (identical GETs in the same moment always share one request; a failed one is asked again)
+const TTL = [   // [pattern, memory ms, kept on the device ms]
+  [/qurancdn\.com|\/api\/quran|\/epg\/(logos|k4)\.json/, 6 * 36e5, 6 * 36e5],        // reciters, surahs, logos: static
+  [/\/epg\/(epg\.json|sports\.js)|Free-TV|iptv-org\.github\.io/, 30 * 6e4, 0],        // guides and public lists: a few times a day
+  [/open-meteo|moonpng|phasesmoon/, 30 * 6e4, 0],                                      // weather, moon
+  [/youtube\.com\/results|winwin\.com/, 5 * 6e4, 0],                                      // searches: minutes
+  [/\/hub\/|\/bin\//, 45e3, 0],                                                         // your own data that the phone can change
+  [/365scores|\/api\/matches|workers\.dev\/now/, 8e3, 0],                                  // live scores
+];
+const ttlOf = u => { for (const t of TTL) if (t[0].test(u)) return t; return [null, 4e3, 0]; };
+const dxGet = u => { try { const o = JSON.parse(localStorage.getItem('dcx:' + u) || 'null'); return o && Date.now() - o.t < o.ttl ? o.v : null; } catch (e) { return null; } };
+const dxSet = (u, v, ttl) => { try { if (typeof v === 'string' && v.length < 300000) localStorage.setItem('dcx:' + u, JSON.stringify({ t: Date.now(), ttl, v })); } catch (e) { } };
 (() => { const of = window.fetch.bind(window), C = new Map();
   window.fetch = (u, o) => {
     if (typeof u !== 'string' || (o && ((o.method && o.method !== 'GET') || o.body || o.signal || o.cache))) return of(u, o);
-    const now = Date.now(); let h = C.get(u);
-    if (!h || now - h.t > 4000) { if (C.size > 60) C.clear(); const p = of(u, o); h = { p, t: now }; C.set(u, h); p.then(r => { if (!r.ok) C.delete(u); }, () => C.delete(u)); }
+    const now = Date.now(), [, mem, keep] = ttlOf(u); let h = C.get(u);
+    if (h && now - h.t > mem) h = null;
+    if (!h && keep) { const v = dxGet(u); if (v != null) { h = { p: Promise.resolve(new Response(v, { status: 200 })), t: now }; C.set(u, h); } }
+    if (!h) { if (C.size > 80) C.clear(); const p = of(u, o); h = { p, t: now }; C.set(u, h); p.then(r => { if (!r.ok) C.delete(u); else if (keep) r.clone().text().then(t => dxSet(u, t, keep)).catch(() => {}); }, () => C.delete(u)); }
     return h.p.then(r => r.clone());
   };
 })();
 // the same address asked again while it is still on its way (or just answered, 4 s): one request, not two (boot asked the scores 3 times)
 const GTC = new Map();
 function getText(url) {
-  const h = GTC.get(url), now = Date.now(); if (h && now - h.t < 4000) return h.p;
-  const p = getText0(url); GTC.set(url, { p, t: now }); if (GTC.size > 80) for (const [k, v] of GTC) if (now - v.t > 4000) GTC.delete(k);
-  p.then(t => { if (t == null) GTC.delete(url); });   // a failed one is asked again
+  const now = Date.now(), [, mem, keep] = ttlOf(url); let h = GTC.get(url);
+  if (h && now - h.t < mem) return h.p;
+  if (keep) { const v = dxGet(url); if (v != null) { const p = Promise.resolve(v); GTC.set(url, { p, t: now }); return p; } }
+  const p = getText0(url); GTC.set(url, { p, t: now }); if (GTC.size > 80) for (const [k, v] of GTC) if (now - v.t > 36e5) GTC.delete(k);
+  p.then(t => { if (t == null || t === '') GTC.delete(url); else if (keep) dxSet(url, t, keep); });   // a failed one is asked again
   return p;
 }
 function getText0(url) {   // through the app (no CORS limits); in a browser preview, plain fetch
