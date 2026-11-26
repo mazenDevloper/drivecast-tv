@@ -1275,6 +1275,7 @@ public class PlayerActivity extends Activity {
                 boolean held = lrHeld, right = code == KeyEvent.KEYCODE_DPAD_RIGHT; lrCode = 0; lrHeld = false;
                 if (held) return true;
                 if (listOn) { if (level == 0 && !right && lists.size() > 1) { li = (li - 1 + lists.size()) % lists.size(); listView(); sel = Math.max(0, posOf(cur)); listFill(); listMark(); } }
+                else if (!guideOn && !menuOn && tsRecOn(nOf(i).trim().toLowerCase(Locale.ROOT)) && tsWind(right)) { }   // a channel chosen for recording: ◀ ▶ are its winding first, even while the next-programmes box shows
                 else if (!guideOn && nextBox != null && nextBox.getVisibility() == View.VISIBLE) {
                     nextAt = Math.max(0, nextShown + (right ? 1 : -1)); nextUrl = "\u0000"; nextFill(); cd.removeCallbacks(nextBack); cd.postDelayed(nextBack, 8000);
                 }
