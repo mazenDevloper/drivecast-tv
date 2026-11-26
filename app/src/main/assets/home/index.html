@@ -4449,6 +4449,7 @@ function allSections() {
     ['🎛️', 'الواجهة لهذا الجهاز', [
       { k: 'mode', l: 'الوضع', o: [['sport', '⚽ الرياضة (المباراة القادمة)'], ['couch', '🏟️ الرياضة · ساعة زجاج خلف المسجد'], ['series', '📺 المسلسلات (الآن في MBC 1)']], d: MODE0 },
       { in: 1, k: 'mbcprio', l: '⭐ أولوية MBC من شاهد (أسماء مفصولة بفاصلة — أول الصف)', ph: 'The Floor, المدينة البعيدة' },
+      { k: 'devperf', l: '📊 أداة قياس الثقل: عدّاد في الزاوية (FPS · أطول مهمة · تأخير الأزرار · أثقل بطاقة)', o: [['off', 'مطفأ'], ['on', 'تعمل']], d: 'off' },
       { in: 1, k: 'newlogo', l: '🖼️ شعار كرت «الجديد» في المسلسلات (رابط صورة)', ph: 'https://…/logo.png' },
       { k: 'cclkx', l: '🏟️ مكان الساعة', o: [['right', 'يمين'], ['center', 'وسط'], ['left', 'يسار']], d: 'center' },
       { k: 'cclks', l: '🏟️ حجم الساعة', o: [['28', 'صغيرة'], ['34', 'وسط'], ['40', 'كبيرة']], d: '34' },
@@ -5882,6 +5883,24 @@ function mbcGo(k) {
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-mbc]'); if (b) { e.stopPropagation(); mbcGo(+b.dataset.mbc); } }, true);
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-xs]'); if (b) { e.stopPropagation(); const x = XS.find(y => String(y.id) === b.dataset.xs); if (x) xsOpen(x); } }, true);
 async function mbcLoad() { if (!SERIES() && !couchOn()) return; await Promise.all([shahidCat(), xsLoad().catch(() => {})]); serUi(); mbcUi(); }
+// 📊 the measuring tool (Settings → devperf): a small box top-left — frames/s, the longest task and the slow key presses (with the card the key landed on),
+// so the heaviness while moving around shows on the TV itself
+(function () {
+  let box = null, fps = 0, fr = 0, t0 = performance.now(), lt = [], slow = [], keyAt = 0, raf = 0;
+  try { new PerformanceObserver(l => l.getEntries().forEach(e => lt.push([performance.now(), e.duration]))).observe({ entryTypes: ['longtask'] }); } catch (e) {}
+  const tick = () => { fr++; raf = requestAnimationFrame(tick); };
+  addEventListener('keydown', () => { if (!box) return; keyAt = performance.now(); requestAnimationFrame(() => requestAnimationFrame(() => { const d = performance.now() - keyAt, a = document.activeElement; if (d > 120) { slow.push(Math.round(d) + 'ms ' + ((a && (a.dataset.act || a.dataset.id || a.className || a.tagName)) + '').slice(0, 24)); if (slow.length > 4) slow.shift(); } })); }, true);
+  setInterval(() => {
+    const on = S('devperf', 'off') === 'on';
+    if (on && !box) { box = document.createElement('div'); box.style.cssText = 'position:fixed;top:6px;left:6px;z-index:99999;background:#000c;color:#7CFC9A;font:600 14px/1.4 monospace;padding:6px 10px;border-radius:10px;pointer-events:none;direction:ltr;white-space:pre'; document.body.appendChild(box); fr = 0; t0 = performance.now(); raf = requestAnimationFrame(tick); }
+    if (!on && box) { box.remove(); box = null; cancelAnimationFrame(raf); return; }
+    if (!box) return;
+    const now = performance.now(); fps = Math.round(fr * 1000 / (now - t0)); fr = 0; t0 = now; lt = lt.filter(x => now - x[0] < 15000);
+    const mx = Math.round(Math.max(0, ...lt.map(x => x[1]))), mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + 'MB' : '-';
+    box.style.color = fps < 20 || mx > 300 ? '#ff6b6b' : fps < 40 || mx > 100 ? '#ffd166' : '#7CFC9A';
+    box.textContent = fps + ' fps · task ' + mx + 'ms (' + lt.length + ' in 15s)\nDOM ' + document.getElementsByTagName('*').length + ' · heap ' + mem + (slow.length ? '\nslow: ' + slow.join('\n      ') : '');
+  }, 1000);
+})();
 setTimeout(mbcLoad, 8000); setInterval(() => { if (SERIES() || couchOn()) mbcLoad(); }, 10 * 60e3);
 // the player says where it stopped (its pause, back, or another episode): kept per series, so «كمّل المشاهدة» starts there
 window.vodPos = (url, pos, dur) => {
