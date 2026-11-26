@@ -667,6 +667,10 @@ public class HomeActivity extends Activity {
         public void playerScores(String j) { runOnUiThread(() -> PlayerActivity.scores(j)); }
         @JavascriptInterface
         public void playerScoresClear() { runOnUiThread(PlayerActivity::clearScores); }
+        /** ⏪ «شاهد الهدف»: the channel that opens next (or the one playing) winds back ~75 s, to the goal */
+        @JavascriptInterface
+        public void replayNext() { PlayerActivity.replayAt = System.currentTimeMillis(); runOnUiThread(PlayerActivity::replaySoon); }
+
         /** ⚽ a goal over a playing channel: the card with «حوّل للقناة» (OK), gone after 6 s; false when no channel plays */
         @JavascriptInterface
         public boolean playerGoal(String t) {

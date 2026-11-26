@@ -131,6 +131,7 @@ public class MessageServer extends Service {
                 if (first.startsWith("GET /screen.jpg")) { byte[] j = Cast.frame(getApplicationContext()); replyBytes(s.getOutputStream(), j == null ? "text/plain" : "image/jpeg", j == null ? "wait".getBytes(StandardCharsets.UTF_8) : j); }
                 else { Cast.frame(getApplicationContext()); try (InputStream a = getAssets().open("screen.html")) { ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b2 = new byte[8192]; int n; while ((n = a.read(b2)) > 0) o.write(b2, 0, n); reply(s.getOutputStream(), "text/html", o.toString("UTF-8")); } }
             }
+            else if (first.startsWith("GET /goalnow")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteGoalNow ? remoteGoalNow() : '{\"g\":[]}'", true));   // ⚽ the last goals (🔔 matches)
             else if (first.startsWith("GET /goals")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteGoals ? remoteGoals() : '{\"g\":[]}'", true));   // 🎬 the web remote's goals
             else if (first.startsWith("GET /madar")) reply(s.getOutputStream(), "text/plain", Access.set(this).getString("madarRelay", ""));   // the relay's code (sys-…)
             else if (first.startsWith("GET /crash")) reply(s.getOutputStream(), "text/plain", Crash.read(this));   // the last problems (Crash.java)
@@ -186,6 +187,8 @@ public class MessageServer extends Service {
             if (r == null) { r = RC_CACHE.get(q); if (r == null) r = "{\"busy\":1}"; }
             else if (q.contains("\"playlists\"") || q.contains("\"groups\"") || q.contains("\"channels\"") || q.contains("\"now\"")) { if (RC_CACHE.size() > 40) RC_CACHE.clear(); RC_CACHE.put(q, r); }
             reply(s.getOutputStream(), "application/json", r);
+        } else if (first.startsWith("POST /goalreplay")) {   // ⏪ the phone: watch that goal on the TV (the carrier, wound back)
+            pageCall("window.remoteGoalReplay && remoteGoalReplay(" + org.json.JSONObject.quote(body.trim()) + ")", false); reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /goalplay")) {   // 🎬 a goal / summary played on the TV
             pageCall("window.remoteGoalPlay && remoteGoalPlay(" + org.json.JSONObject.quote(body.trim()) + ")", false); reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /matchplay")) {   // «i k»: match i, its k-th channel, played on the TV

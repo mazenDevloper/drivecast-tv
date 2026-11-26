@@ -4140,13 +4140,19 @@ function rMatcher(q) {
 // 🔔 reminders: a match the phone asked about — the TV offers it at kick-off, and every goal (also to the phone)
 const mKey = m => (m.home?.name || '') + '|' + (m.away?.name || '');
 const REMIND = () => { try { return JSON.parse(localStorage.getItem('mremind') || '[]'); } catch (e) { return []; } };
+// ⏪ «شاهد الهدف»: a goal's offer opens the carrier and winds back ~75 s (the player does it when the stream allows) — and the
+// last goals are kept for the web remote («الأهداف الآن»), each one watchable from the phone
+const GOALNOW = [];
+window.remoteGoalNow = () => JSON.stringify({ g: GOALNOW.map((x, i) => ({ i, t: x.t, at: x.at })) });
+window.remoteGoalReplay = i => { const x = GOALNOW[+i]; if (x && x.f) { if (TV.replayNext) TV.replayNext(); x.f(); } };
 function rOffer(t, logo, f, goal) {
+  if (goal && f) { const g = f; f = () => { if (TV.replayNext) TV.replayNext(); return g(); }; GOALNOW.unshift({ t, at: Date.now(), f: g }); GOALNOW.length = Math.min(GOALNOW.length, 20); }
   OFFERP = f;
   if (goal && TV.playerGoal && TV.playerGoal(t)) return;   // ⚽ over a channel: the card, «حوّل للقناة» ready for OK, 6 s
   if (TV.playerAlert && TV.playerAlert(t)) return;
   if (document.body.classList.contains('ambient')) ambient(false);
   CTX = { offerp: 1, b: document.activeElement }; $('#ctxName').textContent = t; $('#ctxLogo').src = logo || '';
-  $('#ctxBody').innerHTML = `<button class="f" data-ctx="oplay"><i>▶︎</i>حوّل للقناة</button><button class="f" data-ctx="later"><i>✕</i>لا</button>`;
+  $('#ctxBody').innerHTML = `<button class="f" data-ctx="oplay"><i>${goal ? '⏪' : '▶︎'}</i>${goal ? 'شاهد الهدف (الناقلة، دقيقة للخلف)' : 'حوّل للقناة'}</button><button class="f" data-ctx="later"><i>✕</i>لا</button>`;
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
   if (goal) { const mine = CTX; clearTimeout(window.__goalT); window.__goalT = setTimeout(() => { if (CTX === mine && $('#ctx').classList.contains('on')) $('#ctx').classList.remove('on'), CTX = null, mine.b && mine.b.focus && mine.b.focus(); }, 6000); }   // untouched: gone after 6 s
 }

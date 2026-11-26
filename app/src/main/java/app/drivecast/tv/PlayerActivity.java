@@ -189,7 +189,7 @@ public class PlayerActivity extends Activity {
         GradientDrawable b = new GradientDrawable(); b.setColor(0xEE101216); b.setCornerRadius(dp(22)); b.setStroke((int) dp(2), 0xFF34C759); gbox.setBackground(b);
         gbox.setPadding((int) dp(24), (int) dp(16), (int) dp(24), (int) dp(16));
         gtxt = text(22, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF); gtxt.setGravity(Gravity.CENTER); gtxt.setTextDirection(View.TEXT_DIRECTION_RTL);
-        TextView btn = text(19, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFF101216); btn.setText("▶  حوّل للقناة  ·  OK");
+        TextView btn = text(19, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFF101216); btn.setText("⏪  شاهد الهدف  ·  OK");
         GradientDrawable bb = new GradientDrawable(); bb.setColor(0xFFFFFFFF); bb.setCornerRadius(dp(16)); btn.setBackground(bb);   // drawn as the focused button: OK does it
         btn.setPadding((int) dp(22), (int) dp(10), (int) dp(22), (int) dp(10));
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-2, -2); blp.topMargin = (int) dp(12);
@@ -201,6 +201,18 @@ public class PlayerActivity extends Activity {
         root.addView(sbox, sp); sbox.setVisibility(View.GONE);
         scoresFill();
         sk.removeCallbacks(scoresKick); sk.postDelayed(scoresKick, 1500);
+    }
+    // ⏪ «شاهد الهدف»: once the carrier is ready, back ~75 s — through the stream's own window (most live HLS keep minutes), else
+    // the channel's recording; said plainly when neither is there
+    static volatile long replayAt;
+    static void replaySoon() { PlayerActivity p = live; if (p != null) p.h.postDelayed(p::replayTry, 2500); }
+    private void replayTry() {
+        if (replayAt == 0 || System.currentTimeMillis() - replayAt > 45000 || player == null) return;
+        if (player.getPlaybackState() != Player.STATE_READY) return;   // the ready event tries again
+        replayAt = 0;
+        if (canWind()) { long d = player.getDuration(); player.seekTo(Math.max(0, d - 75_000)); flash("⏪ إعادة الهدف · ▶ لين المباشر"); return; }
+        if (ts != null && ts.fail() == null && tsWind(false)) { for (int k = 0; k < 2; k++) tsWind(false); flash("⏪ إعادة الهدف من التسجيل"); return; }
+        flash("📺 هذا البث ما يسمح بالرجوع — مباشر الآن");
     }
     static void offer(String text) {
         PlayerActivity p = live; if (p == null) return;
@@ -555,6 +567,7 @@ public class PlayerActivity extends Activity {
         if (up4k) try { player.setVideoEffects(Up4K.effects(this)); } catch (Throwable t) { up4k = false; }   // 🔷 sharpened at its own size; scaled only on a 4K output
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
+                if (s == Player.STATE_READY && replayAt != 0) h.postDelayed(PlayerActivity.this::replayTry, 1500);   // ⏪ «شاهد الهدف»
                 if (s == Player.STATE_READY) { net.removeCallbacks(stall); net.postDelayed(() -> errors = 0, 20000); if (errors > 0 || retryNote) { retryNote = false; setNote(null); if (bar.getAlpha() > 0.01f && player.getPlayWhenReady()) showBar(2500); } fill(); h.removeCallbacks(warmNext); h.postDelayed(warmNext, 3000); }
                 if (s == Player.STATE_BUFFERING) { net.removeCallbacks(stall); net.postDelayed(stall, 12000); }
                 if (s == Player.STATE_ENDED) retry();   // a live stream that "ends" has dropped
