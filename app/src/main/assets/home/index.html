@@ -909,8 +909,11 @@ const NOW = () => window.__simTime ? window.__simTime() : new Date();
 // whatever the background is refreshing (matches, guide, lists, the series)
 (() => { const d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML'); if (!d || !d.set) return;
   Object.defineProperty(Element.prototype, 'innerHTML', { configurable: true, enumerable: d.enumerable, get: d.get, set(v) {
+    // ⚡ the same big HTML again (a refresh that found nothing new): not rebuilt — no layout, no lost hover/focus, no work
+    const big = typeof v === 'string' && v.length > 600;
+    if (big && this.__ih === v && this.__ic === this.childElementCount && this.firstChild) return;
     const a = document.activeElement;
-    if (!a || a === document.body || a === this || !this.contains(a) || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return d.set.call(this, v);
+    if (!a || a === document.body || a === this || !this.contains(a) || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { d.set.call(this, v); if (big) { this.__ih = v; this.__ic = this.childElementCount; } else this.__ih = null; return; }
     const path = []; for (let n = a; n && n !== this; n = n.parentNode) path.unshift(Array.prototype.indexOf.call(n.parentNode.children, n));
     const ds = JSON.stringify(a.dataset || {}), keyed = ds !== '{}';
     d.set.call(this, v);
@@ -918,6 +921,7 @@ const NOW = () => window.__simTime ? window.__simTime() : new Date();
     const same = el => el && el.focus && (!keyed || JSON.stringify(el.dataset || {}) === ds);
     if (!same(t)) { t = null; if (keyed) for (const el of this.querySelectorAll('[data-sep],[data-ser],[data-id],[data-k],[tabindex],button,a')) if (JSON.stringify(el.dataset || {}) === ds) { t = el; break; } }
     if (t && t.focus && document.activeElement !== t) { try { t.focus({ preventScroll: true }); } catch (e) {} }
+    if (big) { this.__ih = v; this.__ic = this.childElementCount; } else this.__ih = null;
   } });
 })();
 const $ = s => document.querySelector(s), AR = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
@@ -1764,7 +1768,24 @@ function quranUi() {
 const BIN = id => `https://studio.c-p.workers.dev/bin/${id}`;
 const BINS = { channels: '68ef1b3dd0ea881f40a38bd1', reciters: '6909c1cd43b1c97be997b522', master: '69c782cbb7ec241ddcb0b99a', iptv: '69a87b8bd0ea881f40eeec0c' };
 let cbN = 0;
-function getText(url) {   // through the app (no CORS limits); in a browser preview, plain fetch
+// 🔁 plain GETs too (fetch): the same address within 4 s shares one request (each caller reads its own copy)
+(() => { const of = window.fetch.bind(window), C = new Map();
+  window.fetch = (u, o) => {
+    if (typeof u !== 'string' || (o && ((o.method && o.method !== 'GET') || o.body || o.signal || o.cache))) return of(u, o);
+    const now = Date.now(); let h = C.get(u);
+    if (!h || now - h.t > 4000) { if (C.size > 60) C.clear(); const p = of(u, o); h = { p, t: now }; C.set(u, h); p.then(r => { if (!r.ok) C.delete(u); }, () => C.delete(u)); }
+    return h.p.then(r => r.clone());
+  };
+})();
+// the same address asked again while it is still on its way (or just answered, 4 s): one request, not two (boot asked the scores 3 times)
+const GTC = new Map();
+function getText(url) {
+  const h = GTC.get(url), now = Date.now(); if (h && now - h.t < 4000) return h.p;
+  const p = getText0(url); GTC.set(url, { p, t: now }); if (GTC.size > 80) for (const [k, v] of GTC) if (now - v.t > 4000) GTC.delete(k);
+  p.then(t => { if (t == null) GTC.delete(url); });   // a failed one is asked again
+  return p;
+}
+function getText0(url) {   // through the app (no CORS limits); in a browser preview, plain fetch
   if (!window.TV || !TV.fetch || TV === FAKE) return fetch(url).then(r => r.text()).catch(() => null);
   return new Promise(res => { const n = '__cb' + (++cbN); window[n] = t => { delete window[n]; res(t); }; TV.fetch(url, n); });
 }
