@@ -527,7 +527,7 @@ public class PlayerActivity extends Activity {
         view.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         view.setShutterBackgroundColor(Color.BLACK);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
-        buildBar(root); buildList(root); buildGuide(root); buildMenu(root); buildSearch(root);
+        buildBar(root); buildList(root); buildGuide(root); buildMenu(root); buildSearch(root); buildDig(root);
         ticker = text(17, Typeface.create("sans-serif-medium", Typeface.BOLD), 0xFFFFFFFF);
         ticker.setSingleLine(true); ticker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE); ticker.setMarqueeRepeatLimit(-1); ticker.setHorizontallyScrolling(true);
         GradientDrawable tb = new GradientDrawable(); tb.setColor(0xE6101216); tb.setCornerRadius(dp(18)); ticker.setBackground(tb);
@@ -1568,6 +1568,15 @@ public class PlayerActivity extends Activity {
     // channels show under it; up/down pick, OK plays, BACK closes
     private LinearLayout sBox, sRes; private android.widget.EditText sIn; private boolean sOn; private int sSel;
     private final java.util.List<Integer> sHits = new java.util.ArrayList<>();
+    // 🔢 the number being typed: its own big box, drawn the moment a digit is pressed (not through the bar, which may be hidden or busy)
+    private TextView dig;
+    private void buildDig(FrameLayout root) {
+        dig = new TextView(this); dig.setTextColor(Color.WHITE); dig.setTextSize(44); dig.setTypeface(Typeface.DEFAULT_BOLD); dig.setGravity(Gravity.CENTER);
+        dig.setPadding((int) dp(34), (int) dp(14), (int) dp(34), (int) dp(14)); dig.setVisibility(View.GONE);
+        GradientDrawable d = new GradientDrawable(); d.setColor(0xE6101216); d.setCornerRadius(dp(24)); d.setStroke((int) dp(2), 0x66FFFFFF); dig.setBackground(d);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL); lp.topMargin = (int) dp(40);
+        root.addView(dig, lp);
+    }
     private void buildSearch(FrameLayout root) {
         sBox = new LinearLayout(this); sBox.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable d = new GradientDrawable(); d.setColor(0xF2101216); d.setCornerRadius(dp(22)); d.setStroke((int) dp(1), 0x40FFFFFF);
@@ -1879,7 +1888,7 @@ public class PlayerActivity extends Activity {
         } });
     }
     private final Runnable jump = () -> {
-        String d = digits; digits = "";
+        String d = digits; digits = ""; if (dig != null) dig.setVisibility(View.GONE);
         org.json.JSONObject own = d.length() == 3 ? chNumGet(this, d) : null;
         if (own != null) {   // 🔢 a channel's own number: here if the list has it, else the home page plays it
             String u = own.optString("url");
@@ -1952,6 +1961,7 @@ public class PlayerActivity extends Activity {
         if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_CHANNEL_DOWN) { i = (i - 1 + urls.length) % urls.length; play(); return true; }
         if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
             digits += (code - KeyEvent.KEYCODE_0);
+            if (dig != null) { dig.setText(digits + "_"); dig.setVisibility(View.VISIBLE); dig.bringToFront(); }
             num.setText(digits + "_"); setNote("🔢 " + digits + "_"); showBar(2500); h.removeCallbacks(clearNote); h.postDelayed(clearNote, 2500);
             h.removeCallbacks(jump); h.postDelayed(jump, digits.length() >= 3 ? 600 : 1300); return true;
         }

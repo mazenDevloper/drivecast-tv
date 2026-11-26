@@ -104,6 +104,7 @@ public class HomeActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= 26) { web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false); s.setSafeBrowsingEnabled(false); }
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView v, String u) { final android.view.View sp = splash; if (sp != null) new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { sp.setVisibility(android.view.View.GONE); if (splash == sp) splash = null; }, 700); }
             @Override
             public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail d) {
                 Crash.note(HomeActivity.this, "page " + (d.didCrash() ? "crashed" : "stopped to free memory"));
@@ -122,10 +123,16 @@ public class HomeActivity extends Activity {
         // problem on the TV itself
         try { android.webkit.WebView.setWebContentsDebuggingEnabled(android.provider.Settings.Global.getInt(getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0) == 1); } catch (Throwable ignored) { }
         web.loadUrl("file:///android_asset/home/index.html");
-        setContentView(web);
+        // while the page loads (the first start, or after the system took its memory back) a dark «loading» screen instead of black
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this); box.setBackgroundColor(0xFF0B1210); box.addView(web);
+        final android.widget.TextView sp = new android.widget.TextView(this); sp.setText("DriveCast TV\nجاري التحميل…"); sp.setTextColor(0xCCFFFFFF); sp.setTextSize(28); sp.setGravity(android.view.Gravity.CENTER); sp.setBackgroundColor(0xFF0B1210);
+        box.addView(sp, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        splash = sp; new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { if (splash == sp) { sp.setVisibility(android.view.View.GONE); splash = null; } }, 9000);   // never longer than that
+        setContentView(box);
         web.requestFocus();
     }
 
+    private android.view.View splash;
     @Override
     protected void onDestroy() {
         if (alive == this) alive = null;
