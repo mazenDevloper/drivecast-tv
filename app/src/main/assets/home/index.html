@@ -5253,7 +5253,7 @@ document.addEventListener('click', e => {
   if (b.dataset.mg != null) { M3UV.group = b.dataset.mg; m3uvUi(); const n = $('#m3uvList .f'); if (n) n.focus(); return; }
   if (b.dataset.igroup != null) setTimeout(() => { const n = $('#s-ilist .f'); if (n) n.focus(); }, 0);   // OK on a group → into its channels
 });
-function move(dir) {
+function move(dir, full) {
   if (MOVING) return moveStep(dir);
   if (document.body.classList.contains('ambient')) { if (dir === 'down') ambient(false); return; }
   const scope = $('#ctx').classList.contains('on') ? $('#ctx') : $('#ytp').classList.contains('on') ? $('#ytp') : $('#bedit').classList.contains('on') ? $('#bedit') : $('#panel').classList.contains('on') ? $('#panel') : document;
@@ -5263,6 +5263,9 @@ function move(dir) {
   const sel = () => pg ? [...document.querySelectorAll('.tabs .f'), ...(pane ? [...document.querySelectorAll('#iRail .f'), ...pane.querySelectorAll('.f')] : pg.querySelectorAll('.f'))] : [...scope.querySelectorAll('.f')];
   const all = focusables(fkey, () => sel().filter(visible));
   if (!all.includes(cur)) return all[0]?.focus();
+  // ⚡ a long list (hundreds of cards): only the cards around this one are measured (the ones next to it in the page order — a card's
+  // neighbours are always there); nothing found there → the whole list, as before. Measuring every card on each press was the lag
+  const ci = all.indexOf(cur), pool = !full && all.length > 400 ? all.slice(Math.max(0, ci - 140), ci + 140) : all;
   // ⚙️ the settings: ▲▼ stay in their own column (the sections, or the section's choices), ◀ from a section goes into its
   // choices, ▶ from the choices back to that section (a ▼ in the choices jumped back to the sections)
   if (scope.id === 'panel' && cur.closest) {
@@ -5304,7 +5307,7 @@ function move(dir) {
   if (lcw && dir === 'up' && cur.classList.contains('lar')) { const c = lcw.querySelector('[data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'nearest', behavior: 'auto' }); return; } }
   if (!(inPane && scope === document)) {
     const H = dir === 'left' || dir === 'right', cand = [];
-    for (const el of all) {
+    for (const el of pool) {
       if (el === cur || el.disabled) continue;   // a disabled button takes no focus
       const r = el.getBoundingClientRect(); if (!r.width && !r.height) continue;
       const dx = r.left + r.width / 2 - ax, dy = r.top + r.height / 2 - ay;
@@ -5326,7 +5329,7 @@ function move(dir) {
       if (!pick && levels.length) pick = near(levels[0]);
     }
     best = pick && pick.el;
-  } else for (const el of all) {
+  } else for (const el of pool) {
     if (el === cur) continue;
     if (inPane && scope === document && !$('#iPanes').contains(el)) continue;   // inside a list: its own cards only
     const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, dx = x - ax, dy = y - ay;
@@ -5338,6 +5341,7 @@ function move(dir) {
     if (inPane && scope === document && ((dir === 'left' || dir === 'right') ? (r.bottom <= a.top + 4 || r.top >= a.bottom - 4) : (r.right <= a.left + 4 || r.left >= a.right - 4))) d += 2000;
     if (d < bd) { bd = d; best = el; }
   }
+  if (!best && pool !== all) return move(dir, true);   // nothing near: look at the whole list
   // inside a list with nothing on the same row: ▶ goes back to the side menu, ◀ stays
   if (inPane && scope === document && (!best || ((dir === 'left' || dir === 'right') && bd >= 2000))) { if (dir === 'right') return iRailFocus(); if (dir === 'up' && !best) return $('.tab.on')?.focus(); if (!best || dir === 'left') return; }
   if (!best) { if (dir === 'up' && cur.classList.contains('tab') && !$('#panel').classList.contains('on')) ambient(true); return; }
@@ -5617,9 +5621,11 @@ function memPick(cur, best, dir) {
 
 // ---- 1b) the focusable list kept between presses (rebuilt only when the page changes), not searched again on each press
 let FGEN = 0;
-new MutationObserver(ms => { for (const m of ms) { if (m.type === 'childList' || !(m.target.classList && m.target.classList.contains('f'))) { FGEN++; return; } } })
+// (the moving focus ring, the meter and the transient notes change on every press: not a change of the page)
+const FQUIET = el => el.id === 'fring' || el.id === 'hud' || el.id === 'hint' || (el.style && el.style.position === 'fixed' && el.style.pointerEvents === 'none');
+new MutationObserver(ms => { for (const m of ms) { if (m.type === 'childList' ? !(m.target.nodeType === 1 && FQUIET(m.target)) : !(m.target.classList && m.target.classList.contains('f')) && !FQUIET(m.target)) { FGEN++; return; } } })
   .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'disabled', 'style'] });
-document.addEventListener('scroll', () => { FGEN++; }, true);
+// (a scroll does not change which cards exist or have a size: the list stays)
 addEventListener('resize', () => { FGEN++; });
 const FCACHE = { key: '', gen: -1, all: null };
 function focusables(key, make) {
