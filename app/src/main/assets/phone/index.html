@@ -460,6 +460,7 @@ async function yday() {
   const box = $('mtl'), md = MDAY, nm = { y: 'أمس', m: 'الغد', f: 'فرقك' }[md];
   try {
     const j = await rc({ f: 'day', k: md }); if (MDAY !== md) return;
+    if (j.busy) { box.innerHTML = '<p class="s">التلفزيون مشغول لحظات… أعيد المحاولة</p>'; setTimeout(matches, 1500); return; }
     if (!j.m || !j.m.length) { box.innerHTML = `<p class="s">${j.loading ? 'أجيب مباريات ' + nm + '…' : 'ما فيه مباريات ' + nm}</p>`; if (j.loading) setTimeout(yday, 2500); return; }
     box.innerHTML = j.m.map(m => mCard(m, md === 'f')).join('');
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }
@@ -505,7 +506,7 @@ async function plGo(path) {
   $('crumb').innerHTML = path.length ? `<button class="bk" id="plBack">→ رجوع</button><span>${E(pl)}${g ? ' › ' + E(g) : ''}</span>` : '<span>📂 قوائمك على التلفزيون</span>';
   box.innerHTML = '<p class="s">…</p>';
   try {
-    if (!path.length) { const j = await rc({ f: 'playlists' }); box.innerHTML = j.l && j.l.length ? j.l.map(x => `<button class="li fold" data-pl="${E(x.n)}"><span class="tx">📂 ${E(x.n)}</span><span class="n">${x.c}</span></button>`).join('') : '<p class="s">ما فيه قوائم بعد على التلفزيون</p>'; }
+    if (!path.length) { const j = await rc({ f: 'playlists' }); if (j.busy) { box.innerHTML = '<p class="s">التلفزيون مشغول لحظات… أعيد المحاولة</p>'; setTimeout(() => PL.path === path && !PL.q && plGo(path), 1500); return; } box.innerHTML = j.l && j.l.length ? j.l.map(x => `<button class="li fold" data-pl="${E(x.n)}"><span class="tx">📂 ${E(x.n)}</span><span class="n">${x.c}</span></button>`).join('') : '<p class="s">ما فيه قوائم بعد على التلفزيون</p>'; }
     else if (path.length === 1) { const j = await rc({ f: 'groups', pl }); box.innerHTML = `<button class="li fold" data-g=""><span class="tx">كل القنوات</span></button>` + (j.l || []).map(x => `<button class="li fold" data-g="${E(x.n)}"><span class="tx">${E(x.n)}</span><span class="n">${x.c}</span></button>`).join(''); }
     else { const j = await rc({ f: 'channels', pl, g: g === 'كل القنوات' ? '' : g }); box.innerHTML = (j.l || []).map(chRow).join('') + (j.more ? `<p class="s">و${j.more} قناة ثانية — استخدم البحث</p>` : ''); }
   } catch (e) { box.innerHTML = '<p class="s">ما وصلت للتلفزيون — تأكد إنه شغّال</p>'; }

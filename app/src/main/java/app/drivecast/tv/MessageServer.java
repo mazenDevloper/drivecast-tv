@@ -115,7 +115,7 @@ public class MessageServer extends Service {
             else if (first.startsWith("GET /board")) reply(s.getOutputStream(), "application/json", HomeActivity.readBoard(this));
             else if (first.startsWith("GET /phrase")) reply(s.getOutputStream(), "text/plain", getSharedPreferences("ui", MODE_PRIVATE).getString("phrase", ""));
             else if (first.startsWith("GET /cloudkey")) reply(s.getOutputStream(), "application/json", "{\"tv\":\"" + Remote.id(this) + "\",\"key\":\"" + Remote.key(this) + "\"}");   // for the phone page's upload of an M3U file to the hub
-            else if (first.startsWith("GET /matches")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteMatches ? remoteMatches() : '{}'", true));
+            else if (first.startsWith("GET /matches")) { String r = pageAsk("window.remoteMatches ? remoteMatches() : '{}'", 6); if (r == null) r = RC_CACHE.get("matches"); if (r == null) r = HomeActivity.alive == null ? "{\"m\":[],\"off\":true}" : "{\"busy\":1}"; else if (r.length() > 20) RC_CACHE.put("matches", r); reply(s.getOutputStream(), "application/json", r); }
             else if (first.startsWith("GET /update")) reply(s.getOutputStream(), "application/json", Update.status(this));
             else if (first.startsWith("GET /adbsetup")) reply(s.getOutputStream(), "text/plain", SelfAdb.last);
             else if (first.startsWith("GET /regrant")) reply(s.getOutputStream(), "text/plain", Reminder.grantLast);   // 🔑 the last re-grant's report
@@ -180,7 +180,11 @@ public class MessageServer extends Service {
             if (rec.matches("[a-z]{0,3}[0-9a-z.]{0,30}") && n.matches("\\d{1,3}")) main.post(() -> toHome("playRemote('" + rec + "'," + n + ")"));
         } else if (first.startsWith("POST /rc")) {   // the phone remote's questions (playlists, groups, channels, search, play, 🔔): answered by the home page
             String q = body.length() > 2000 ? body.substring(0, 2000) : body;
-            reply(s.getOutputStream(), "application/json", pageCall("window.remoteCall ? remoteCall(" + org.json.JSONObject.quote(q) + ") : '{}'", true));
+            // the page can be busy for seconds (its own heavy work): then the last good answer to the same question (lists never go blank), else «busy» and the phone asks again
+            String r = pageAsk("window.remoteCall ? remoteCall(" + org.json.JSONObject.quote(q) + ") : '{}'", 6);
+            if (r == null) { r = RC_CACHE.get(q); if (r == null) r = "{\"busy\":1}"; }
+            else if (q.contains("\"playlists\"") || q.contains("\"groups\"") || q.contains("\"channels\"") || q.contains("\"now\"")) { if (RC_CACHE.size() > 40) RC_CACHE.clear(); RC_CACHE.put(q, r); }
+            reply(s.getOutputStream(), "application/json", r);
         } else if (first.startsWith("POST /matchplay")) {   // «i k»: match i, its k-th channel, played on the TV
             String[] q = body.trim().split("\\s+");
             if (q.length == 2 && q[0].matches("\\d{1,3}") && q[1].matches("\\d{1,2}")) pageCall("window.remotePlayMatch && remotePlayMatch(" + q[0] + "," + q[1] + ")", false);
@@ -375,6 +379,14 @@ public class MessageServer extends Service {
     }
 
     /** a line run in the home page (HomeActivity's WebView); with wait, its string answer (up to 3 s) */
+    private static final java.util.Map<String, String> RC_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    /** like pageCall (waiting) but null when the page did not answer in time */
+    private String pageAsk(String js, int secs) {
+        HomeActivity a = HomeActivity.alive; if (a == null || a.web == null) return null;
+        final String[] out = { null }; final java.util.concurrent.CountDownLatch l = new java.util.concurrent.CountDownLatch(1);
+        main.post(() -> { try { a.web.evaluateJavascript(js, v -> { out[0] = v; l.countDown(); }); } catch (Throwable t) { l.countDown(); } });
+        try { if (!l.await(secs, java.util.concurrent.TimeUnit.SECONDS) || out[0] == null) return null; Object v = new org.json.JSONTokener(out[0]).nextValue(); return v instanceof String ? (String) v : null; } catch (Exception e) { return null; }
+    }
     private String pageCall(String js, boolean wait) {
         HomeActivity a = HomeActivity.alive; if (a == null || a.web == null) return "{\"m\":[],\"off\":true}";
         final String[] out = { null }; final java.util.concurrent.CountDownLatch l = new java.util.concurrent.CountDownLatch(1);
