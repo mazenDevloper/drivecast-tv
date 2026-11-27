@@ -205,6 +205,8 @@ public class PlayerActivity extends Activity {
     // ⏪ «شاهد الهدف»: once the carrier is ready, back ~75 s — through the stream's own window (most live HLS keep minutes), else
     // the channel's recording; said plainly when neither is there
     static volatile long replayAt;
+    /** ⏺ the channel (or episode) on screen now — the recorder waits rather than take its connection */
+    static String nowUrl() { PlayerActivity p = live; try { if (p != null && p.urls != null && p.i >= 0 && p.i < p.urls.length) return p.urls[p.i]; } catch (Throwable ignored) { } return VodActivity.playing; }
     static void replaySoon() { PlayerActivity p = live; if (p != null) p.h.postDelayed(p::replayTry, 2500); }
     private void replayTry() {
         if (replayAt == 0 || System.currentTimeMillis() - replayAt > 45000 || player == null) return;

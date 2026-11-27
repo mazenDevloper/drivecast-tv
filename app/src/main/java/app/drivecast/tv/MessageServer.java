@@ -64,6 +64,7 @@ public class MessageServer extends Service {
         srv = new Thread(this::serve, "msg-server"); srv.start();
         Access.watch(this);   // the mouse stays on, even when the TV switches it off
         Remote.start(this);   // the web version: DriveCast TV from anywhere, through DriveCast's hub
+        Recorder.init(this);   // ⏺ «تسجيلاتي»: the guide's programmes and the goals of 🔔 matches, recorded in the background
         MadarRelay.start(this);   // 📡 Madar's always-on link, kept here (boxes that never let Madar run it)
     }
 
@@ -131,6 +132,12 @@ public class MessageServer extends Service {
                 if (first.startsWith("GET /screen.jpg")) { byte[] j = Cast.frame(getApplicationContext()); replyBytes(s.getOutputStream(), j == null ? "text/plain" : "image/jpeg", j == null ? "wait".getBytes(StandardCharsets.UTF_8) : j); }
                 else { Cast.frame(getApplicationContext()); try (InputStream a = getAssets().open("screen.html")) { ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] b2 = new byte[8192]; int n; while ((n = a.read(b2)) > 0) o.write(b2, 0, n); reply(s.getOutputStream(), "text/html", o.toString("UTF-8")); } }
             }
+            else if (first.startsWith("GET /recs")) reply(s.getOutputStream(), "application/json", Recorder.list(this));   // ⏺ «تسجيلاتي»
+            else if (first.startsWith("GET /rec/")) {   // ⏺ a recording's playlist / segments, for the phone's player
+                String p = first.split(" ")[1].substring(5); int q = p.indexOf('?'); if (q >= 0) p = p.substring(0, q); String[] a = p.split("/");
+                java.io.File f = a.length == 2 ? Recorder.file(this, a[0], a[1]) : null;
+                if (f == null) reply(s.getOutputStream(), "text/plain", "gone"); else replyFile(s.getOutputStream(), f);
+            }
             else if (first.startsWith("GET /goalnow")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteGoalNow ? remoteGoalNow() : '{\"g\":[]}'", true));   // ⚽ the last goals (🔔 matches)
             else if (first.startsWith("GET /goals")) reply(s.getOutputStream(), "application/json", pageCall("window.remoteGoals ? remoteGoals() : '{\"g\":[]}'", true));   // 🎬 the web remote's goals
             else if (first.startsWith("GET /madar")) reply(s.getOutputStream(), "text/plain", Access.set(this).getString("madarRelay", ""));   // the relay's code (sys-…)
@@ -187,6 +194,9 @@ public class MessageServer extends Service {
             if (r == null) { r = RC_CACHE.get(q); if (r == null) r = "{\"busy\":1}"; }
             else if (q.contains("\"playlists\"") || q.contains("\"groups\"") || q.contains("\"channels\"") || q.contains("\"now\"")) { if (RC_CACHE.size() > 40) RC_CACHE.clear(); RC_CACHE.put(q, r); }
             reply(s.getOutputStream(), "application/json", r);
+        } else if (first.startsWith("POST /recdel")) { Recorder.del(this, body.trim()); pageCall("window.recUi && recUi(1)", false); reply(s.getOutputStream(), "text/plain", "ok");
+        } else if (first.startsWith("POST /recplay")) {   // ⏺ a recording on the TV (its media player)
+            pageCall("window.recPlay && recPlay(" + org.json.JSONObject.quote(body.trim()) + ")", false); reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /goalreplay")) {   // ⏪ the phone: watch that goal on the TV (the carrier, wound back)
             pageCall("window.remoteGoalReplay && remoteGoalReplay(" + org.json.JSONObject.quote(body.trim()) + ")", false); reply(s.getOutputStream(), "text/plain", "ok");
         } else if (first.startsWith("POST /goalplay")) {   // 🎬 a goal / summary played on the TV
@@ -299,6 +309,20 @@ public class MessageServer extends Service {
         out.flush();
     }
 
+    /** a recording's file, streamed (HLS: the playlist, then each 6-second piece) */
+    private static void replyFile(OutputStream out, java.io.File f) throws Exception {
+        String type = f.getName().endsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";
+        out.write(("HTTP/1.1 200 OK
+Content-Type: " + type + "
+Cache-Control: no-store
+Access-Control-Allow-Origin: *
+Content-Length: " + f.length() + "
+Connection: close
+
+").getBytes(StandardCharsets.UTF_8));
+        try (InputStream in = new java.io.FileInputStream(f)) { byte[] b = new byte[64 * 1024]; int n; while ((n = in.read(b)) > 0) out.write(b, 0, n); }
+        out.flush();
+    }
     private static void replyBytes(OutputStream out, String type, byte[] b) throws Exception {
         out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + type + "\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " + b.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         out.write(b); out.flush();

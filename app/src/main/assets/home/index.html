@@ -152,7 +152,8 @@ html.tfont h1,html.tfont h2,html.tfont h3,html.tfont .bhead b,html.tfont .spirit
 .epgp b{font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .epgp .eplg{height:24px;max-width:84px;width:auto;object-fit:contain;vertical-align:middle;margin-left:8px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.8))}.epgp small{font-size:16px;color:#9aa3ad}
 .epgp.now{background:rgba(52,140,255,.22);border-color:rgba(90,160,255,.45)}.epgp.now small{color:#cfe3ff}
-.epgp.rem{box-shadow:inset 0 0 0 2px #ffd60a}
+.epgp.rem{box-shadow:inset 0 0 0 2px #ffd60a}.epgp.recd{box-shadow:inset 0 0 0 2px #ff453a}
+.vid.rec{position:relative}.vid.rec img{object-fit:contain;background:#16202b;padding:26px 40px;box-sizing:border-box}.vid.rec em{display:block;padding:0 14px 12px;font-size:14px;opacity:.75;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vid.rec .rbadge{position:absolute;margin:10px;padding:2px 10px;border-radius:10px;background:#e0263f;font-size:13px;font-weight:700}.vid.rec .rbadge.g{background:#1f9d55}
 .epgp:focus{outline:none;background:#fff;color:#111;transform:scale(1.03)}.epgp:focus small{color:#444}
 .epgh{display:flex;gap:6px;margin-inline-start:258px;font-size:17px;color:var(--dim)}
 .mhour{margin:0 0 26px}.mhour .mh{display:flex;align-items:center;gap:16px;margin:0 6px 14px}.mhour .mh b{font-size:30px;font-weight:800;color:#fff;min-width:90px}.mhour .mh i{flex:1;height:2px;background:linear-gradient(90deg,rgba(255,255,255,.25),rgba(255,255,255,0))}
@@ -692,6 +693,7 @@ body:not(.mode-series):not(.couch) #shSer,body:not(.mode-series) #shMbc{display:
     <div id="shSer" hidden><h2>🎞️ المسلسلات</h2><div class="serrow" id="s-ser"></div></div>
     <div id="shMbc" hidden><h2>📺 مسلسلات وبرامج وأفلام MBC <small style="opacity:.6;font-size:.6em">من شاهد</small></h2><div class="serrow" id="s-mbc"></div></div>
     <div class="cRow" id="shHl" style="display:none"><h2>🎬 ملخصات beIN <small style="opacity:.6;font-size:.6em">الأحدث أولاً</small></h2><div class="mrow" id="s-hl"></div></div>
+    <div class="cRow" id="shRecs" style="display:none"><h2>⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">OK يشغّل · OK مطوّل يحذف · الأهداف تنحذف بعد ساعة · البرامج بعد يومين</small></h2><div class="mrow" id="s-recs"></div></div>
     <div class="cRow" id="shVod"><h2>🎬 أفلام</h2><div class="vrow" id="s-vod"></div></div>
     <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -998,6 +1000,78 @@ async function hlLoad(force) {
       if (vid && t) all.push({ id: vid, t: t.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim(), at: at || 0 }); } }
   if (all.length) { const seen = new Set(); HL = all.filter(v => !seen.has(v.id) && seen.add(v.id)).sort((a, b) => b.at - a.at).slice(0, 30); HLAT = Date.now(); try { localStorage.hl = JSON.stringify({ at: HLAT, v: HL }); } catch (e) {} }
   hlUi();
+}
+// ⏺ «تسجيلاتي»: what the TV recorded in the background (Recorder.java) — the guide's programmes (kept 2 days) and the goals of
+// your 🔔 matches (a clip from the carrier, kept an hour). OK plays it in the media player; a long OK deletes it
+let RECS = [], RECJ = '';
+const recOf = (c, r) => RECS.find(x => x.kind === 'epg' && x.ch === c.name && x.s === r[0] * 1000 && x.st !== 'fail');
+function recState(r) {
+  const mins = ms => AR(Math.max(1, Math.round(ms / 60e3))) + ' د';
+  if (r.st === 'wait') return '⏳ يبدأ ' + hm(Math.round(r.from / 1000));
+  if (r.st === 'rec') return r.note || '🔴 يسجّل الآن · ' + mins(r.dur || 0);
+  if (r.st === 'fail') return '⚠️ ' + (r.note || 'ما تسجّل');
+  return mins(r.dur || 0) + (r.kind === 'goal' ? ' · ينحذف بعد ساعة' : ' · يبقى يومين');
+}
+function recUi(force) {
+  const el = $('#shRecs'); if (!el || !TV.recList) return;
+  let j = '[]'; try { j = TV.recList() || '[]'; } catch (e) {}
+  if (j === RECJ && !force) return; RECJ = j;
+  try { RECS = JSON.parse(j) || []; } catch (e) { RECS = []; }
+  el.style.display = RECS.length ? '' : 'none'; if (!RECS.length) { $('#s-recs').innerHTML = ''; return; }
+  const had = document.activeElement?.dataset?.rec;
+  $('#s-recs').innerHTML = RECS.map(r => `<button class="vid rec f" data-rec="${esc(r.id)}">${r.kind === 'goal' ? '<b class="rbadge g">⚽ هدف</b>' : r.st === 'rec' ? '<b class="rbadge">● يسجّل</b>' : ''}<img src="${esc(r.logo || '')}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(r.t || r.ch)}</span><em>${esc(r.ch)} · ${esc(recState(r))}</em></button>`).join('');
+  if (had) $(`[data-rec="${had}"]`)?.focus();
+}
+function recPlay(id) {
+  recUi(); const r = RECS.find(x => x.id === String(id)); if (!r) return;
+  if (r.st === 'wait') return toast('⏳ «' + r.t + '» يبدأ تسجيله ' + hm(Math.round(r.from / 1000)));
+  const url = TV.recUrl ? TV.recUrl(r.id) : ''; if (!url) return toast('⚠️ ما فيه شي مسجّل بعد');
+  if (TV.vod) TV.vod(JSON.stringify([{ url, name: '⏺ ' + (r.t || r.ch), st: 0 }]), 0);
+}
+window.recPlay = recPlay; window.recUi = recUi;
+function recMenu(id) {
+  const r = RECS.find(x => x.id === id); if (!r) return;
+  CTX = { b: document.activeElement, rec: id }; $('#ctxName').textContent = (r.t || r.ch) + ' · ' + recState(r); $('#ctxLogo').src = r.logo || '';
+  $('#ctxBody').innerHTML = (r.st !== 'wait' ? '<button class="f" data-ctx="rplay"><i>▶︎</i>شغّل</button>' : '') + `<button class="f" data-ctx="rdel"><i>🗑</i>${r.st === 'wait' ? 'ألغِ التسجيل' : r.st === 'rec' ? 'أوقف واحذف' : 'احذف'}</button><button class="f" data-ctx="later"><i>✕</i>رجوع</button>`;
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+// the guide: a programme's menu — ▶ (now) or ⏰ (later), and ⏺ record it
+function epgMenu(v) {
+  const [ci, ri] = v.split(':').map(Number), c = EPGL[ci]; if (!c) return;
+  const r = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600)[ri]; if (!r) return;
+  recUi(); const now = r[0] <= Date.now() / 1000, rc = recOf(c, r), rem = REMS.some(x => x.ch === c.name && x.at === r[0]);
+  CTX = { b: document.activeElement, epgrec: { v, ci, c, r } }; $('#ctxName').textContent = r[2] + ' — ' + c.name + ' · ' + hm(r[0]) + '–' + hm(r[1]); $('#ctxLogo').src = c.logo || '';
+  $('#ctxBody').innerHTML = (now ? `<button class="f" data-ctx="eplay"><i>▶︎</i>شغّل ${esc(c.name)}</button>` : `<button class="f" data-ctx="erem"><i>${rem ? '🔕' : '⏰'}</i>${rem ? 'ألغِ التذكير' : 'ذكّرني'}</button>`)
+    + `<button class="f" data-ctx="erec"><i>${rc ? '🗑' : '⏺'}</i>${rc ? 'ألغِ التسجيل' : now ? 'سجّل باقي البرنامج (يبقى يومين)' : 'سجّل البرنامج (يبقى يومين)'}</button><button class="f" data-ctx="later"><i>✕</i>رجوع</button>`;
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+async function epgRec(x) {
+  const rc = recOf(x.c, x.r);
+  if (rc) { TV.recDel(rc.id); toast('🗑 ألغيت تسجيل «' + x.r[2] + '»'); }
+  else {
+    if (!TV.recAdd) return toast('التسجيل في النسخة الكاملة');
+    const ch = await resolveChannel(x.c).catch(() => x.c);
+    const id = String(TV.recAdd(JSON.stringify({ t: x.r[2], ch: x.c.name, logo: x.c.logo || x.r[4] || '', url: ch.url, s: x.r[0], e: x.r[1] })) || '');
+    toast(id.startsWith('err:') ? '⚠️ ' + id.slice(4) : '⏺ «' + x.r[2] + '» بيتسجّل في الخلفية — تلقاه في «تسجيلاتي»');
+  }
+  recUi(1); epgUi(); $(`[data-epg="${x.v}"]`)?.focus();
+}
+setTimeout(() => recUi(), 4000); setInterval(() => { if (!document.hidden) recUi(); }, 20e3);
+// ⚽ the 🔔 matches live now: their carrier (the lists' channel) handed to the recorder, which keeps 5 minutes of it for the goals
+const RECCH = {};
+async function recFeed(live) {
+  if (!TV.recWatch || !live.length) return;
+  const out = [];
+  for (const m of live.slice(0, 2)) {
+    const k = mKey(m); let x = RECCH[k];
+    if (!x || Date.now() - x.at > 10 * 60e3) {
+      x = { at: Date.now(), url: '' };
+      try { const r = matchRoute(m); if (r && r.c) { const c = await resolveChannel(r.c); if (/^https?:/.test(c.url || '') && !/youtube\.com|youtu\.be/.test(c.url)) x = { at: Date.now(), url: c.url, ch: c.name, logo: c.logo || m.home?.logo || '' }; } } catch (e) {}
+      RECCH[k] = x;
+    }
+    if (x.url) out.push({ k, t: `${m.home?.name || ''} × ${m.away?.name || ''}`, ch: x.ch, logo: x.logo, url: x.url });
+  }
+  if (out.length) try { TV.recWatch(JSON.stringify(out)); } catch (e) {}
 }
 function hlAgo(t) { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + AR(m) + ' د' : m < 1440 ? 'قبل ' + AR(Math.round(m / 60)) + ' س' : 'قبل ' + AR(Math.round(m / 1440)) + ' يوم'; }
 function hlUi() {
@@ -2135,6 +2209,7 @@ function epgUi() {
   // ⚡ the guide grid (~3 500 elements) only while its pane is open; drawn again when it opens (iPane)
   if (!$('#epgwrap')?.classList.contains('on') || !$('#p-iptv')?.classList.contains('on')) { if (box.firstChild) box.innerHTML = ''; return; }
   if (!Object.keys(EPG || {}).length) { box.innerHTML = '<div class="empty">أجيب الدليل…</div>'; return; }
+  try { recUi(); } catch (e) {}
   const seen = new Set(), pools = [...PINS, ...MOST, ...MYFAV, ...IFAV, ...DYNCH, ...ILIST.filter(c => isOk(c)), ...ILIST];
   EPGL = [];
   for (const c of pools) { if (!c || seen.has(favKey(c))) continue; const rows = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600); if (!rows.length) continue; seen.add(favKey(c)); EPGL.push(c); if (EPGL.length >= 400) break; }
@@ -2147,16 +2222,17 @@ function epgUi() {
   box.innerHTML = `<div class="epgh">${heads}</div>` + EPGL.map((c, ci) => {
     const rows = epgRows(c).filter(r => r[0] < now + span);
     const cells = rows.map((r, ri) => { const a = Math.max(r[0], now), isNow = r[0] <= now, w = Math.max(isNow ? 230 : 130, (Math.min(r[1], now + span) - a) / span * W);
-      const rem = REMS.some(x => x.ch === c.name && x.at === r[0]);
-      return `<button class="epgp f ${isNow ? 'now' : ''} ${rem ? 'rem' : ''}" style="width:${w.toFixed(0)}px" data-epg="${ci}:${ri}"><b dir="auto">${r[4] && ri < 4 ? `<img class="eplg" src="${esc(r[4])}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ''}${esc(r[2])}</b><small>${isNow ? '▶ الآن · باقي ' + minutesAr(Math.max(1, Math.round((r[1] - now) / 60))) : (rem ? '⏰ ' : '') + hm(r[0]) + ' – ' + hm(r[1])}</small></button>`; }).join('');
+      const rem = REMS.some(x => x.ch === c.name && x.at === r[0]), rcd = RECS.length && recOf(c, r);
+      return `<button class="epgp f ${isNow ? 'now' : ''} ${rem ? 'rem' : ''} ${rcd ? 'recd' : ''}" style="width:${w.toFixed(0)}px" data-epg="${ci}:${ri}"><b dir="auto">${r[4] && ri < 4 ? `<img class="eplg" src="${esc(r[4])}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ''}${esc(r[2])}</b><small>${isNow ? '▶ الآن · باقي ' + minutesAr(Math.max(1, Math.round((r[1] - now) / 60))) : (rem ? '⏰ ' : '') + hm(r[0]) + ' – ' + hm(r[1])}</small></button>`; }).join('');
     return `<div class="epgr"><div class="ch">${c.logo ? `<img src="${esc(c.logo)}" alt="" onerror="this.remove()">` : ''}${flagOf(c)} ${esc(c.name)}</div><div class="tl">${cells}</div></div>`;
   }).join('');
-  const n = $('#epgn'); if (n) n.textContent = `· ${AR(EPGL.length)} قناة · OK على البرنامج الحالي يشغّل القناة · على برنامج قادم ⏰ يذكّرك`;
+  const n = $('#epgn'); if (n) n.textContent = `· ${AR(EPGL.length)} قناة · OK على الحالي يشغّل (مطوّل: ⏺ سجّله) · على القادم ⏰ ذكّرني أو ⏺ سجّل`;
 }
 function epgPress(v) {
   const [ci, ri] = v.split(':').map(Number), c = EPGL[ci]; if (!c) return;
   const r = epgRows(c).filter(r => r[0] < Date.now() / 1000 + 6 * 3600)[ri]; if (!r) return;
   if (r[0] <= Date.now() / 1000) return playChannel(EPGL, ci);
+  if (TV.recAdd) return epgMenu(v);   // ⏰ or ⏺
   const i = REMS.findIndex(x => x.ch === c.name && x.at === r[0]);
   if (i >= 0) REMS.splice(i, 1); else REMS.push({ ch: c.name, url: c.url, title: r[2], at: r[0] });
   remSave(); const was = v; epgUi(); $(`[data-epg="${was}"]`)?.focus();
@@ -4154,6 +4230,7 @@ const rgClip = x => { if (!x.h || !x.a) return ''; const H = rMatcher(x.h), A = 
 window.remoteGoalNow = () => { if (Date.now() - RGAT > 90e3) rgLoad().catch(() => {}); return JSON.stringify({ g: GOALNOW.map((x, i) => ({ i, t: x.t, at: x.at, v: rgClip(x) })) }); };
 window.remoteGoalReplay = i => { const x = GOALNOW[+i]; if (x && x.f) { if (TV.replayNext) TV.replayNext(); x.f(); } };
 function rOffer(t, logo, f, goal, meta) {
+  if (goal && TV.recGoal) try { TV.recGoal(String(meta && meta.k || ''), t); } catch (e) {}   // ⏺ the clip of this goal (the carrier's last minutes)
   if (goal && f) { const g = f; f = () => { if (TV.replayNext) TV.replayNext(); return g(); }; GOALNOW.unshift({ t, at: Date.now(), f: g, ...(meta || {}) }); GOALNOW.length = Math.min(GOALNOW.length, 20); }
   OFFERP = f;
   if (goal && TV.playerGoal && TV.playerGoal(t)) return;   // ⚽ over a channel: the card, «حوّل للقناة» ready for OK, 6 s
@@ -4177,7 +4254,7 @@ window.hubMatch = a => {
   const mid = String(a.match || ''), i = (MLIST || []).findIndex(m => ID365(m) === mid || m.id === mid), m = i >= 0 ? MLIST[i] : null;
   const k = mid + ':' + a.kind;
   if (Date.now() - (GOALAT[k] || 0) < 120e3) return; GOALAT[k] = Date.now();
-  rOffer(a.title + (a.body && a.kind === 'goal' ? ' · ' + a.body : ''), m?.home?.logo || '', () => i >= 0 ? playMatch(i) : null, a.kind === 'goal' ? 1 : 0);
+  rOffer(a.title + (a.body && a.kind === 'goal' ? ' · ' + a.body : ''), m?.home?.logo || '', () => i >= 0 ? playMatch(i) : null, a.kind === 'goal' ? 1 : 0, m ? { k: mKey(m), h: m.home?.name || '', a: m.away?.name || '' } : null);
   setTimeout(() => { remindLoop(true); }, 300);   // the corner's score moves now, not in 20 s
 };
 // ⏱ the worker's live scores (each minute): onto every list the TV holds (today's, your teams', the phone's), and the cards
@@ -4253,6 +4330,7 @@ async function remindRun() {
     t: m.st365 && !/^\d/.test(m.st365) ? m.st365 : m.elapsed != null ? m.elapsed + '′' : '',
     e: m.st365 && !/^\d/.test(m.st365) ? 0 : +m.elapsed || 0, at: m.elAt || Date.now() })))); } catch (e) {}
   const now = {};
+  recFeed(watch.filter(m => m.status === 'live')).catch(() => {});   // ⏺ the goals of these matches, kept as clips
   for (const m of watch) {
     const k = mKey(m); if (!rem.includes(k)) continue;
     const sh = m.score?.home ?? 0, sa = m.score?.away ?? 0, g = sh + sa, p = RSTATE[k]; now[k] = { st: m.status, g, sc: [sh, sa] };
@@ -5001,6 +5079,7 @@ document.addEventListener('click', e => {
   if (b.dataset.act === 'upd') return updGo();
   if (b.dataset.ib) return ibToggle(b.dataset.ib);
   if (b.dataset.epg) return epgPress(b.dataset.epg);
+  if (b.dataset.rec) return recPlay(b.dataset.rec);
   if (b.dataset.mt === 'refresh') { for (const k in mCache) delete mCache[k]; for (const k in S365) delete S365[k]; loadMatches.busy = 0; toast('↻ أحدّث المباريات…', 1500); loadNext(); return loadMatches(); }
   if (b.dataset.mt) { if (b.dataset.mt === MTAB) delete mCache[MTAB === 'tom' || MTAB === 'yday' ? MTAB : 'all']; MTAB = b.dataset.mt; document.querySelectorAll('[data-mt]').forEach(x => x.classList.toggle('on', x === b)); $('#s-matches').innerHTML = ''; return loadMatches(); }
   if (b.dataset.mpen != null) return mpickOpen(+b.dataset.mpen);
@@ -5439,6 +5518,8 @@ function move(dir, full) {
 }
 let HOLD = null, MVF = 0, HOLDS = 0, HOLDL = 0;
 function holdPlay(b) {
+  if (b.dataset.rec) return recMenu(b.dataset.rec);
+  if (b.dataset.epg) return epgMenu(b.dataset.epg);
   if (b.dataset.mg != null) return M3UV.url && mgroupToggle(M3UV.url, b.dataset.mg);
   if (b.dataset.mi != null) return matchPanel(+b.dataset.mi);
   if (b.dataset.ilist === 'live' && S('hold', 'menu') !== 'ext') return reorderStart(+b.dataset.i);   // ↔ like Google TV: a long press picks the channel up
@@ -5578,6 +5659,14 @@ function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; 
 async function ctxDo(k) {
   const x = CTX; if (!x) return; ctxClose();
   if (x.news) return;
+  if (x.rec) { if (k === 'rplay') return recPlay(x.rec); if (k === 'rdel') { TV.recDel(x.rec); toast('🗑 انحذف'); recUi(1); } return; }
+  if (x.epgrec) {
+    const e = x.epgrec;
+    if (k === 'eplay') return playChannel(EPGL, e.ci);
+    if (k === 'erec') return epgRec(e);
+    if (k === 'erem') { const i = REMS.findIndex(y => y.ch === e.c.name && y.at === e.r[0]); if (i >= 0) REMS.splice(i, 1); else REMS.push({ ch: e.c.name, url: e.c.url, title: e.r[2], at: e.r[0] }); remSave(); epgUi(); $(`[data-epg="${e.v}"]`)?.focus(); }
+    return;
+  }
   if (x.epgpick) { epgMapSet(x.c, k === 'eauto' ? null : k === 'enone' ? '-' : x.epgpick[+k.slice(1)]?.id); iptvUi(); liveRefresh(); return; }
   if (x.offerp) { if (k === 'oplay' && OFFERP) { const f = OFFERP; OFFERP = null; f(); } return; }
   if (x.offer) { if (k === 'oplay') { MLIST = [x.offer]; playMatch(0); } return; }
@@ -5602,7 +5691,7 @@ async function ctxDo(k) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && HOLD === 'done') { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the long press's own OK, still held
   if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
-  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
+  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.rec || (b.dataset.epg && TV.recAdd) || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
   HOLD = setTimeout(() => { HOLD = 'done'; try { holdPlay(b); } catch (er) {} }, 600);

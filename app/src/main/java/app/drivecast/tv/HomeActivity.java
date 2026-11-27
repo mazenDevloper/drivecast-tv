@@ -667,6 +667,15 @@ public class HomeActivity extends Activity {
         public void playerScores(String j) { runOnUiThread(() -> PlayerActivity.scores(j)); }
         @JavascriptInterface
         public void playerScoresClear() { runOnUiThread(PlayerActivity::clearScores); }
+        /** ⏺ «تسجيلاتي»: the list, a guide programme to record ({t,ch,logo,url,s,e}), one deleted, the live 🔔 matches' carriers
+         *  (their goals cut into clips), a goal */
+        @JavascriptInterface public String recList() { return Recorder.list(HomeActivity.this); }
+        @JavascriptInterface public String recAdd(String json) { return Recorder.add(HomeActivity.this, json); }
+        @JavascriptInterface public void recDel(String id) { Recorder.del(HomeActivity.this, id); }
+        @JavascriptInterface public String recUrl(String id) { return Recorder.playUrl(HomeActivity.this, id); }
+        @JavascriptInterface public void recWatch(String json) { Recorder.watch(HomeActivity.this, json); }
+        @JavascriptInterface public void recGoal(String key, String title) { Recorder.goal(HomeActivity.this, key, title); }
+
         /** ⏪ «شاهد الهدف»: the channel that opens next (or the one playing) winds back ~75 s, to the goal */
         @JavascriptInterface
         public void replayNext() { PlayerActivity.replayAt = System.currentTimeMillis(); runOnUiThread(PlayerActivity::replaySoon); }

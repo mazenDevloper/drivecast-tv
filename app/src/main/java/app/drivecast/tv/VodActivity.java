@@ -73,12 +73,12 @@ public class VodActivity extends Activity {
 
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
             .setUserAgent("Mozilla/5.0 (Linux; Android 12) DriveCastTV").setConnectTimeoutMs(15000).setReadTimeoutMs(20000);
-        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new DefaultMediaSourceFactory(http))
+        player = new ExoPlayer.Builder(this).setMediaSourceFactory(new DefaultMediaSourceFactory(new androidx.media3.datasource.DefaultDataSource.Factory(this, http)))   // http, and the TV's own recordings (file://)
             .setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).build();
         view.setPlayer(player);
         player.setMediaItems(items, Math.max(0, Math.min(index, items.size() - 1)), start > 0 ? start : C.TIME_UNSET);
         player.addListener(new Player.Listener() {
-            @Override public void onMediaItemTransition(MediaItem m, int why) { report(); showTitle(); }
+            @Override public void onMediaItemTransition(MediaItem m, int why) { report(); showTitle(); nowSrc(); }
             @Override public void onPlayerError(PlaybackException e) { title.setText("⚠️ ما اشتغلت هالحلقة — جرّب التالية (▼)"); title.setVisibility(View.VISIBLE); }
         });
         player.prepare(); player.play();
@@ -116,7 +116,10 @@ public class VodActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
-    @Override protected void onPause() { super.onPause(); report(); if (player != null) player.pause(); }
-    @Override protected void onResume() { super.onResume(); if (player != null) player.play(); }
+    /** ⏺ what plays here now (the recorder never takes this subscription's one connection) */
+    static volatile String playing;
+    private void nowSrc() { try { int k = player == null ? -1 : player.getCurrentMediaItemIndex(); playing = k >= 0 && k < urls.size() ? urls.get(k) : null; } catch (Throwable t) { playing = null; } }
+    @Override protected void onPause() { super.onPause(); report(); if (player != null) player.pause(); playing = null; }
+    @Override protected void onResume() { super.onResume(); if (player != null) player.play(); nowSrc(); }
     @Override protected void onDestroy() { h.removeCallbacksAndMessages(null); report(); if (player != null) { player.release(); player = null; } super.onDestroy(); }
 }

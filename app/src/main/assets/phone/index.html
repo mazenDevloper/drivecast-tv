@@ -182,6 +182,11 @@ body.simple .kids{display:grid}
   <div id="gnow" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
   <div id="gl" style="display:flex;flex-direction:column;gap:10px"><div style="opacity:.7">جارٍ التحميل…</div></div>
 </section>
+<section id="rc" class="hide">
+  <h2 style="margin:6px 0 10px">⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">التلفزيون يسجّل بالخلفية · الأهداف ساعة · البرامج يومين</small></h2>
+  <div id="rcv" class="hide" style="margin-bottom:12px"><video id="rvid" controls playsinline style="width:100%;border-radius:14px;background:#000"></video><div id="rvt" style="font-size:14px;opacity:.8;margin-top:4px"></div></div>
+  <div id="rcl" style="display:flex;flex-direction:column;gap:10px"><div style="opacity:.7">جارٍ التحميل…</div></div>
+</section>
 <section id="mt" class="hide">
   <div id="pushBox" class="hide"><button id="pushOn" class="big" style="margin-bottom:12px">🔔 فعّل تنبيهات المباريات على هذا الجوال</button></div>
   <div class="mseg" id="mseg"><button data-md="y">أمس</button><button data-md="t" class="on">اليوم</button><button data-md="m">الغد</button><button data-md="f">⭐ فرقي</button></div>
@@ -273,8 +278,8 @@ const post = (u, b) => fetch(u, { method: 'POST', body: b }).then(r => { $('st')
 const buzz = () => navigator.vibrate && navigator.vibrate(10);
 // ---- the tabs: at the bottom (the thumb's place); «المزيد» holds what is used now and then
 const NAV = [['r', '🎮', 'ريموت'], ['mt', '⚽', 'المباريات'], ['pl', '📂', 'القوائم'], ['w', '⌨️', 'اكتب'], ['a', '🧩', 'التطبيقات'], ['x', '☰', 'المزيد']];
-const MORE = [['g', '🎬 الأهداف'], ['m', '🖱️ ماوس'], ['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
-const ALLS = ['r', 'mt', 'pl', 'a', 'w', 'g', 'm', 'q', 'z', 'b', 'd', 'sx'];
+const MORE = [['g', '🎬 الأهداف'], ['rc', '⏺ تسجيلاتي'], ['m', '🖱️ ماوس'], ['q', '📖 القرآن'], ['z', '📿 الأذكار'], ['b', '📌 اللوحة'], ['d', '🎨 ارسم'], ['sx', '⚙️ التلفزيون']];
+const ALLS = ['r', 'mt', 'pl', 'a', 'w', 'g', 'rc', 'm', 'q', 'z', 'b', 'd', 'sx'];
 let cur = 'r', moreAt = 'q';
 document.body.insertAdjacentHTML('beforeend', `<nav class="nav" id="nav">${NAV.map(([t, i, l]) => `<button data-nav="${t}"><i>${i}</i>${l}</button>`).join('')}</nav>`);
 $('subnav').innerHTML = MORE.map(([t, l]) => `<button data-more="${t}">${l}</button>`).join('');
@@ -288,6 +293,7 @@ function go(t) {
   document.querySelectorAll('[data-nav]').forEach(b => b.classList.toggle('on', b.dataset.nav === (more ? 'x' : t)));
   document.querySelectorAll('[data-more]').forEach(b => b.classList.toggle('on', b.dataset.more === t));
   clearInterval(window.__mtT); if (t === 'mt') { matches(); window.__mtT = setInterval(matches, 10000); }
+  clearInterval(window.__rcT); if (t === 'rc') { recs(); window.__rcT = setInterval(recs, 20000); } else recStop();
   clearInterval(window.__gT); clearInterval(window.__gnT); if (t === 'g') { goals(); window.__gT = setInterval(goals, 60000); window.__gnT = setInterval(goalNow, 15000); }
   if (t === 'pl' && !PL.loaded) plGo([]);
   clearInterval(window.__lvT); if (t === 'r') { liveBar(); window.__lvT = setInterval(liveBar, 45000); }
@@ -484,6 +490,40 @@ document.addEventListener('click', e => {
   if (!box) { box = document.createElement('div'); box.className = 'gpl'; box.dataset.gpl = id; (b.closest('div[style*="display:flex"]') || document.body).after(box); }
   box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) + '?autoplay=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:6px;background:#000"></iframe>';
   box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
+// ⏺ «تسجيلاتي»: the TV's recordings — 📱 plays here (HLS from the TV, on the home Wi-Fi), 📺 on the TV, 🗑 deletes
+let RHLS = null;
+function recStop() { try { const v = $('rvid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } if (RHLS) { RHLS.destroy(); RHLS = null; } $('rcv').classList.add('hide'); } catch (e) { } }
+async function recs() {
+  const box = $('rcl');
+  try {
+    const r = await (await fetch('/recs')).json();
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const mins = ms => Math.max(1, Math.round((ms || 0) / 60e3)) + ' د';
+    const hm = t => new Date(t).toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
+    const st = x => x.st === 'wait' ? '⏳ يبدأ ' + hm(x.from) : x.st === 'rec' ? (x.note || '🔴 يسجّل الآن · ' + mins(x.dur)) : x.st === 'fail' ? '⚠️ ' + (x.note || 'ما تسجّل') : mins(x.dur) + (x.kind === 'goal' ? ' · ينحذف بعد ساعة' : ' · يبقى يومين');
+    box.innerHTML = r.length ? r.map(x => `<div style="display:flex;gap:10px;align-items:center;background:${x.kind === 'goal' ? 'rgba(52,199,89,.14)' : 'rgba(255,255,255,.06)'};border-radius:14px;padding:8px">
+      ${x.logo ? `<img src="${esc(x.logo)}" alt="" style="width:64px;height:44px;object-fit:contain;flex:none" onerror="this.remove()">` : ''}
+      <div style="flex:1;min-width:0"><div style="font-size:15px;line-height:1.35">${x.kind === 'goal' ? '⚽ ' : ''}${esc(x.t || x.ch)}</div><div style="font-size:12px;opacity:.65;margin-top:3px">${esc(x.ch)} · ${esc(st(x))}</div>
+        <div style="display:flex;gap:8px;margin-top:6px">${x.st !== 'wait' && x.st !== 'fail' ? `<button data-rph="${esc(x.id)}" data-rt="${esc(x.t || x.ch)}" style="flex:1">📱 هنا</button><button data-rtv="${esc(x.id)}" style="flex:1">📺 على التلفزيون</button>` : ''}<button data-rdel="${esc(x.id)}" style="flex:none">🗑</button></div></div></div>`).join('')
+      : '<div style="opacity:.75;line-height:1.6">ما فيه تسجيلات الحين.<br>⚽ أهداف مبارياتك 🔔 تتسجّل لحالها (ساعة).<br>📺 من دليل البرامج في التلفزيون: OK على برنامج ← ⏺ سجّل (يومين).</div>';
+  } catch (e) { box.innerHTML = '<div style="opacity:.7">التسجيلات تشتغل على واي فاي البيت (نفس شبكة التلفزيون)</div>'; }
+}
+async function recWatchHere(id, t) {
+  const v = $('rvid'), src = '/rec/' + id + '/index.m3u8'; recStop(); $('rcv').classList.remove('hide'); $('rvt').textContent = '⏺ ' + t;
+  if (v.canPlayType('application/vnd.apple.mpegurl')) { v.src = src; }
+  else {
+    if (!window.Hls) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js'; s.onload = ok; s.onerror = no; document.head.appendChild(s); }).catch(() => {});
+    if (!window.Hls) { $('rvt').textContent = 'هالمتصفح ما يشغّل التسجيل — جرّب 📺 على التلفزيون'; return; }
+    RHLS = new Hls(); RHLS.loadSource(src); RHLS.attachMedia(v);
+  }
+  v.play().catch(() => {}); v.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-rph],[data-rtv],[data-rdel]'); if (!a) return; buzz();
+  if (a.dataset.rph) recWatchHere(a.dataset.rph, a.dataset.rt || '');
+  else if (a.dataset.rtv) { post('/recplay', a.dataset.rtv); $('s').textContent = '▶ على التلفزيون'; }
+  else if (a.dataset.rdel && confirm('أحذف التسجيل؟')) { recStop(); post('/recdel', a.dataset.rdel).then(() => recs()); }
 });
 async function goalNow() {
   try {
