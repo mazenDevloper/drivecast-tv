@@ -38,14 +38,14 @@ final class Recorder {
     private static JSONArray jobs = new JSONArray();
     private static volatile boolean diskBad;
 
-    // ---------- storage
+    // ---------- storage: the USB SSD only — never the TV's own memory (null when no SSD is mounted)
+    static final String NOSSD = "الـSSD مو موصول — التسجيلات بس على الـSSD";
     static synchronized File root(Context c) {
         try {
             File[] all = c.getExternalFilesDirs(null);
-            if (!diskBad && all != null) for (File f : all) if (f != null && Environment.isExternalStorageRemovable(f) && f.canWrite()) return new File(f, "recordings");
-            File e = c.getExternalFilesDir(null); if (e != null && e.canWrite()) return new File(e, "recordings");
+            if (all != null) for (File f : all) if (f != null && Environment.isExternalStorageRemovable(f) && f.canWrite()) return new File(f, "recordings");
         } catch (Throwable ignored) { }
-        return new File(c.getFilesDir(), "recordings");
+        return null;
     }
     private static void wipe(File f) { try { File[] k = f.listFiles(); if (k != null) for (File x : k) wipe(x); f.delete(); } catch (Throwable ignored) { } }
     private static long size(File d) { long s = 0; File[] k = d.listFiles(); if (k != null) for (File x : k) s += x.length(); return s; }
@@ -77,7 +77,7 @@ final class Recorder {
              .put("s", s).put("e", e).put("from", Math.max(now, s - 120_000)).put("to", e + 300_000).put("keep", e + 300_000 + EPG_KEEP).put("st", "wait").put("at", now);
             jobs.put(j); save();
             startTick(); tick.interrupt();
-            return id;
+            return root(c) == null ? "nossd:" + id : id;
         } catch (Throwable t) { return "err:" + t.getMessage(); }
     }
     private static void startTick() {
@@ -147,7 +147,8 @@ final class Recorder {
         try {
             ArrayList<Seg> pick = b.between(from, to); if (pick.isEmpty()) return;
             String id = "g" + Long.toString(System.currentTimeMillis(), 36);
-            File d = new File(root(app), id); if (!d.mkdirs() && !d.isDirectory()) return;
+            File r = root(app); if (r == null) return;
+            File d = new File(r, id); if (!d.mkdirs() && !d.isDirectory()) return;
             ArrayList<Seg> out = new ArrayList<>();
             for (Seg s : pick) { File f = new File(d, s.f.getName()); copy(s.f, f); Seg n = new Seg(); n.f = f; n.dur = s.dur; n.disc = s.disc; n.at = s.at; out.add(n); }
             writeList(d, out, true, 0);
@@ -181,7 +182,8 @@ final class Recorder {
         String player = PlayerActivity.nowUrl();
         ArrayList<String> gone = new ArrayList<>();
         synchronized (Recorder.class) {
-            long free = root(app).getParentFile() != null ? root(app).getParentFile().getUsableSpace() : Long.MAX_VALUE;
+            File rt = root(app);
+            long free = rt != null && rt.getParentFile() != null ? rt.getParentFile().getUsableSpace() : 0;
             for (int k = 0; k < jobs.length(); k++) {
                 JSONObject j = jobs.optJSONObject(k); if (j == null) continue;
                 String id = j.optString("id"), kind = j.optString("kind"), st = j.optString("st");
@@ -197,15 +199,17 @@ final class Recorder {
                         if (cap.fail != null) j.put("note", cap.fail);
                         continue;
                     }
+                    if (cap == null && inWin && ("wait".equals(st) || "rec".equals(st)) && rt == null) { if ("buf".equals(kind)) gone.add(id); else j.put("st", "wait").put("note", "⚠️ " + NOSSD); continue; }
                     if (cap == null && inWin && ("wait".equals(st) || "rec".equals(st))) {
                         if (free < MIN_FREE) { if (!"buf".equals(kind)) j.put("st", "fail").put("note", "المساحة ما تكفي"); else gone.add(id); continue; }
-                        File d = j.optString("dir").isEmpty() ? new File(root(app), id) : new File(j.optString("dir"));
+                        File d = j.optString("dir").isEmpty() ? new File(rt, id) : new File(j.optString("dir"));
+                        j.remove("note");
                         if (!d.mkdirs() && !d.isDirectory()) { j.put("st", "fail").put("note", "ما قدرت أكتب على القرص"); continue; }
                         j.put("dir", d.getAbsolutePath()).put("st", "rec");
                         cap = new Cap(d, j.optString("url"), "buf".equals(kind)); RUN.put(id, cap); cap.start();
                     }
                     if (cap == null && !inWin && "buf".equals(kind)) gone.add(id);
-                    else if (cap == null && now >= j.optLong("to") && "wait".equals(st)) j.put("st", "fail").put("note", "التلفزيون كان مطفّي وقت البرنامج");
+                    else if (cap == null && now >= j.optLong("to") && "wait".equals(st)) j.put("st", "fail").put("note", rt == null ? "الـSSD ما كان موصول وقت البرنامج" : "التلفزيون كان مطفّي وقت البرنامج");
                     if (cap != null) {
                         cap.waiting = clash(cap.src, player);
                         if (free < MIN_FREE / 2) { cap.fail = "المساحة امتلأت"; cap.stop(); }
@@ -309,7 +313,7 @@ final class Recorder {
                     } catch (NotHls e) { raw = true; }
                     catch (Throwable e) {
                         if (!run) break;
-                        if (e instanceof DiskError) { diskBad = true; fail = "القرص ما يقبل الكتابة"; break; }
+                        if (e instanceof DiskError) { diskBad = true; fail = "الـSSD ما يقبل الكتابة (الكيبل أو الطاقة)"; break; }
                         if (++bad > 12) { fail = "انقطع البث"; break; }
                         media = null; gap = true; sleep(3000);
                     }

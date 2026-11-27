@@ -183,7 +183,7 @@ body.simple .kids{display:grid}
   <div id="gl" style="display:flex;flex-direction:column;gap:10px"><div style="opacity:.7">جارٍ التحميل…</div></div>
 </section>
 <section id="rc" class="hide">
-  <h2 style="margin:6px 0 10px">⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">التلفزيون يسجّل بالخلفية · الأهداف ساعة · البرامج يومين</small></h2>
+  <h2 style="margin:6px 0 10px">⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">على الـSSD · الأهداف ساعة · البرامج يومين</small></h2>
   <div id="rcv" class="hide" style="margin-bottom:12px"><video id="rvid" controls playsinline style="width:100%;border-radius:14px;background:#000"></video><div id="rvt" style="font-size:14px;opacity:.8;margin-top:4px"></div></div>
   <div id="rcl" style="display:flex;flex-direction:column;gap:10px"><div style="opacity:.7">جارٍ التحميل…</div></div>
 </section>
@@ -501,7 +501,7 @@ async function recs() {
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const mins = ms => Math.max(1, Math.round((ms || 0) / 60e3)) + ' د';
     const hm = t => new Date(t).toLocaleTimeString('ar', { hour: 'numeric', minute: '2-digit' });
-    const st = x => x.st === 'wait' ? '⏳ يبدأ ' + hm(x.from) : x.st === 'rec' ? (x.note || '🔴 يسجّل الآن · ' + mins(x.dur)) : x.st === 'fail' ? '⚠️ ' + (x.note || 'ما تسجّل') : mins(x.dur) + (x.kind === 'goal' ? ' · ينحذف بعد ساعة' : ' · يبقى يومين');
+    const st = x => x.st === 'wait' ? (x.note || '⏳ يبدأ ' + hm(x.from)) : x.st === 'rec' ? (x.note || '🔴 يسجّل الآن · ' + mins(x.dur)) : x.st === 'fail' ? '⚠️ ' + (x.note || 'ما تسجّل') : mins(x.dur) + (x.kind === 'goal' ? ' · ينحذف بعد ساعة' : ' · يبقى يومين');
     box.innerHTML = r.length ? r.map(x => `<div style="display:flex;gap:10px;align-items:center;background:${x.kind === 'goal' ? 'rgba(52,199,89,.14)' : 'rgba(255,255,255,.06)'};border-radius:14px;padding:8px">
       ${x.logo ? `<img src="${esc(x.logo)}" alt="" style="width:64px;height:44px;object-fit:contain;flex:none" onerror="this.remove()">` : ''}
       <div style="flex:1;min-width:0"><div style="font-size:15px;line-height:1.35">${x.kind === 'goal' ? '⚽ ' : ''}${esc(x.t || x.ch)}</div><div style="font-size:12px;opacity:.65;margin-top:3px">${esc(x.ch)} · ${esc(st(x))}</div>

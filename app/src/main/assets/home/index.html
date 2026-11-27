@@ -693,7 +693,7 @@ body:not(.mode-series):not(.couch) #shSer,body:not(.mode-series) #shMbc{display:
     <div id="shSer" hidden><h2>🎞️ المسلسلات</h2><div class="serrow" id="s-ser"></div></div>
     <div id="shMbc" hidden><h2>📺 مسلسلات وبرامج وأفلام MBC <small style="opacity:.6;font-size:.6em">من شاهد</small></h2><div class="serrow" id="s-mbc"></div></div>
     <div class="cRow" id="shHl" style="display:none"><h2>🎬 ملخصات beIN <small style="opacity:.6;font-size:.6em">الأحدث أولاً</small></h2><div class="mrow" id="s-hl"></div></div>
-    <div id="shRecs" style="display:none"><h2>⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">OK يشغّل · OK مطوّل يحذف · الأهداف تنحذف بعد ساعة · البرامج بعد يومين</small></h2><div class="mrow" id="s-recs"></div></div>
+    <div id="shRecs" style="display:none"><h2>⏺ تسجيلاتي <small style="opacity:.6;font-size:.6em">على الـSSD · OK يشغّل · OK مطوّل يحذف · الأهداف تنحذف بعد ساعة · البرامج بعد يومين</small></h2><div class="mrow" id="s-recs"></div></div>
     <div class="cRow" id="shVod"><h2>🎬 أفلام</h2><div class="vrow" id="s-vod"></div></div>
     <div id="shRec"><h2>القرّاء</h2><div class="shelf recrow" id="s-hrec"><div class="empty">جارٍ التحميل…</div></div></div>
     <div id="shApps"><h2>التطبيقات</h2><div class="appgrid" id="s-apps"></div><div id="sugg1"></div></div>
@@ -1007,7 +1007,7 @@ let RECS = [], RECJ = '';
 const recOf = (c, r) => RECS.find(x => x.kind === 'epg' && x.ch === c.name && x.s === r[0] * 1000 && x.st !== 'fail');
 function recState(r) {
   const mins = ms => AR(Math.max(1, Math.round(ms / 60e3))) + ' د';
-  if (r.st === 'wait') return '⏳ يبدأ ' + hm(Math.round(r.from / 1000));
+  if (r.st === 'wait') return r.note || '⏳ يبدأ ' + hm(Math.round(r.from / 1000));
   if (r.st === 'rec') return r.note || '🔴 يسجّل الآن · ' + mins(r.dur || 0);
   if (r.st === 'fail') return '⚠️ ' + (r.note || 'ما تسجّل');
   return mins(r.dur || 0) + (r.kind === 'goal' ? ' · ينحذف بعد ساعة' : ' · يبقى يومين');
@@ -1052,7 +1052,7 @@ async function epgRec(x) {
     if (!TV.recAdd) return toast('التسجيل في النسخة الكاملة');
     const ch = await resolveChannel(x.c).catch(() => x.c);
     const id = String(TV.recAdd(JSON.stringify({ t: x.r[2], ch: x.c.name, logo: x.c.logo || x.r[4] || '', url: ch.url, s: x.r[0], e: x.r[1] })) || '');
-    toast(id.startsWith('err:') ? '⚠️ ' + id.slice(4) : '⏺ «' + x.r[2] + '» بيتسجّل في الخلفية — تلقاه في «تسجيلاتي»');
+    toast(id.startsWith('err:') ? '⚠️ ' + id.slice(4) : id.startsWith('nossd:') ? '⏺ انحفظ موعد «' + x.r[2] + '» — بس الـSSD مو موصول: وصّله قبل البرنامج (التسجيل على الـSSD بس)' : '⏺ «' + x.r[2] + '» بيتسجّل على الـSSD — تلقاه في «تسجيلاتي»', 6000);
   }
   recUi(1); epgUi(); $(`[data-epg="${x.v}"]`)?.focus();
 }
