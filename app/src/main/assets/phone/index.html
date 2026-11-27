@@ -473,13 +473,25 @@ async function yday() {
 }
 // 🎬 goals and summaries (the TV gathers them): 📺 plays it on the TV, 📱 here
 let GSEEN = null;
+const dur = s => { const m = Math.floor(s / 60), r = s % 60; return m >= 60 ? Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') + ':' + String(r).padStart(2, '0') : m + ':' + String(r).padStart(2, '0'); };
+// 📱 watch right here: the YouTube player opens under the card (a second tap closes it, one at a time)
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-gph]'); if (!b) return; buzz();
+  const id = b.dataset.gph; let box = document.querySelector('.gpl[data-gpl="' + id + '"]');
+  const open = document.querySelector('.gpl iframe'), same = open && open.parentNode === box;
+  document.querySelectorAll('.gpl').forEach(x => x.innerHTML = '');
+  if (same) return;
+  if (!box) { box = document.createElement('div'); box.className = 'gpl'; box.dataset.gpl = id; (b.closest('div[style*="display:flex"]') || document.body).after(box); }
+  box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) + '?autoplay=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:6px;background:#000"></iframe>';
+  box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
 async function goalNow() {
   try {
     const j = await (await fetch('/goalnow')).json(), g = j.g || [], box = $('gnow');
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const ago = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + m + ' د' : 'قبل ' + Math.round(m / 60) + ' س'; };
     box.innerHTML = g.length ? '<div style="font-weight:700">⚽ الأهداف الآن <small style="opacity:.6;font-weight:400">(مبارياتك 🔔)</small></div>' + g.map(x => `<div style="display:flex;gap:8px;align-items:center;background:rgba(52,199,89,.14);border-radius:12px;padding:8px 10px">
-      <div style="flex:1;min-width:0;font-size:15px">${esc(x.t)}<div style="font-size:12px;opacity:.65">${ago(x.at)}</div></div><button data-greplay="${x.i}" style="flex:none">⏪ شاهد الهدف</button></div>`).join('')
+      <div style="flex:1;min-width:0;font-size:15px">${esc(x.t)}<div style="font-size:12px;opacity:.65">${ago(x.at)}</div></div><button data-greplay="${x.i}" style="flex:none">⏪ شاهد الهدف</button>${x.v ? `<button data-gph="${esc(x.v)}" style="flex:none">📱</button>` : ''}</div>`).join('')
       : '<div style="font-size:13px;opacity:.65">⚽ أهداف مبارياتك 🔔 تطلع هنا أول ما تتسجّل — اضغط «شاهد الهدف» ويرجع التلفزيون دقيقة على القناة الناقلة</div>';
   } catch (e) { }
 }
@@ -488,7 +500,7 @@ async function goals() {
   goalNow();
   const box = $('gl');
   try {
-    const j = await (await fetch('/goals')).json(), g = j.g || [];
+    const j = await (await fetch('/goals')).json(), g = (j.g || []).sort((a, b) => b.at - a.at);
     if (!g.length) { box.innerHTML = '<div style="opacity:.7">ما وصلت الأهداف بعد — ثواني وتطلع</div>'; setTimeout(() => { if (cur === 'g') goals(); }, 6000); return; }
     const old = GSEEN; GSEEN = new Set(g.map(x => x.id));
     const ago = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60e3)); return m < 60 ? 'قبل ' + m + ' د' : m < 1440 ? 'قبل ' + Math.round(m / 60) + ' س' : 'قبل ' + Math.round(m / 1440) + ' يوم'; };
@@ -496,8 +508,8 @@ async function goals() {
     box.innerHTML = g.map(x => `<div style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.06);border-radius:14px;padding:8px">
       <img src="https://i.ytimg.com/vi/${esc(x.id)}/mqdefault.jpg" alt="" style="width:132px;height:74px;object-fit:cover;border-radius:10px;flex:none" loading="lazy">
       <div style="flex:1;min-width:0"><div style="font-size:15px;line-height:1.35">${old && !old.has(x.id) ? '<b style="background:#e0263f;color:#fff;border-radius:6px;padding:0 6px;font-size:12px">جديد</b> ' : ''}${esc(x.t)}</div>
-        <div style="font-size:12px;opacity:.65;margin-top:3px">${esc(x.ch)} · ${ago(x.at)}</div>
-        <div style="display:flex;gap:8px;margin-top:6px"><button data-gtv="${esc(x.id)}" style="flex:1">📺 على التلفزيون</button><a href="https://youtu.be/${esc(x.id)}" target="_blank" rel="noopener" style="flex:none;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,.1);color:inherit;text-decoration:none">📱 هنا</a></div></div></div>`).join('');
+        <div style="font-size:12px;opacity:.65;margin-top:3px">${esc(x.ch)} · ${ago(x.at)}${x.d ? ' · <b style="color:#ffd60a">⏱ ' + dur(x.d) + '</b>' : ''}</div>
+        <div style="display:flex;gap:8px;margin-top:6px"><button data-gtv="${esc(x.id)}" style="flex:1">📺 على التلفزيون</button><button data-gph="${esc(x.id)}" style="flex:none">📱 هنا</button></div></div></div><div class="gpl" data-gpl="${esc(x.id)}"></div>`).join('');
   } catch (e) { box.innerHTML = '<div style="opacity:.7">التلفزيون مو متصل</div>'; }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-gtv]'); if (!b) return; buzz(); post('/goalplay', b.dataset.gtv); $('s').textContent = '▶ على التلفزيون'; });

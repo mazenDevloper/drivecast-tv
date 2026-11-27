@@ -4081,6 +4081,12 @@ const rmRow = (m, i) => ({ i, h: m.home?.name || '', a: m.away?.name || '', hl: 
 const RGCH = [['UCJUCcJUeh0Cz2xyKwkw5Q1w', 'beIN SPORTS'], ['UCj-2hfXdYPPNcLqcBeW3y8g', 'ثمانية'], ['UCF8Fpc7bPHC8Jrflci-mUiQ', 'AD Sports'], ['UCmJr9VRnC8Q1TCIrf2G8bcg', 'دبي الرياضية'], ['UClz2SvkY_nUDfnIMAmTPTgw', 'عمان الرياضية']];
 const RGRE = /ملخص|هدف|أهداف|اهداف|الأهداف|ركلات الترجيح|highlights?|goals?\b/i;
 let RGOALS = [], RGAT = 0;
+// ⏱ the length of a clip (its page says it) — kept on the device, a video never changes
+const RGD = (() => { try { return JSON.parse(localStorage.rgdur || '{}'); } catch (e) { return {}; } })();
+async function rgDur(l) {
+  for (const x of l.slice(0, 10)) { if (RGD[x.id]) continue; const t = await getText('https://www.youtube.com/watch?v=' + x.id).catch(() => null), m = t && /"lengthSeconds":"(\d+)"/.exec(t); if (m) RGD[x.id] = +m[1]; }
+  const k = Object.keys(RGD); if (k.length > 300) k.slice(0, k.length - 300).forEach(i => delete RGD[i]); try { localStorage.rgdur = JSON.stringify(RGD); } catch (e) {}
+}
 async function rgLoad() {
   if (rgLoad.busy) return; rgLoad.busy = 1;
   try {
@@ -4089,10 +4095,10 @@ async function rgLoad() {
       for (const e of x.split('<entry>').slice(1)) { const v = (/<yt:videoId>([^<]+)/.exec(e) || [])[1], t = ((/<title>([^<]+)/.exec(e) || [])[1] || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
         const at = Date.parse((/<published>([^<]+)/.exec(e) || [])[1] || '') || 0;
         if (v && t && RGRE.test(t)) all.push({ id: v, t, ch, at }); } }));
-    if (all.length) { const seen = new Set(); RGOALS = all.filter(g => !seen.has(g.id) && seen.add(g.id)).sort((a, b) => b.at - a.at).slice(0, 50); RGAT = Date.now(); }
+    if (all.length) { const seen = new Set(); RGOALS = all.filter(g => !seen.has(g.id) && seen.add(g.id)).sort((a, b) => b.at - a.at).slice(0, 50); RGAT = Date.now(); rgDur(RGOALS).catch(() => {}); }
   } finally { rgLoad.busy = 0; }
 }
-window.remoteGoals = () => { if (Date.now() - RGAT > 4 * 60e3) rgLoad().catch(() => {}); return JSON.stringify({ g: RGOALS, at: RGAT }); };
+window.remoteGoals = () => { if (Date.now() - RGAT > 4 * 60e3) rgLoad().catch(() => {}); return JSON.stringify({ g: RGOALS.map(x => ({ ...x, d: RGD[x.id] || 0 })), at: RGAT }); };
 window.remoteGoalPlay = id => { if (/^[\w-]{11}$/.test(String(id || '').trim())) { lastSet({ k: 'yt', id: String(id).trim(), t: '' }); TV.youtube(String(id).trim()); } };
 window.remoteMatches = () => {
   if ((!MLIST || !MLIST.length) && Date.now() - (window.__rmAt || 0) > 60e3) { window.__rmAt = Date.now(); try { loadMatches(); } catch (e) {} }
@@ -4143,10 +4149,12 @@ const REMIND = () => { try { return JSON.parse(localStorage.getItem('mremind') |
 // ⏪ «شاهد الهدف»: a goal's offer opens the carrier and winds back ~75 s (the player does it when the stream allows) — and the
 // last goals are kept for the web remote («الأهداف الآن»), each one watchable from the phone
 const GOALNOW = [];
-window.remoteGoalNow = () => JSON.stringify({ g: GOALNOW.map((x, i) => ({ i, t: x.t, at: x.at })) });
+// 📱 the YouTube clip of that match (goals / summary posted by the channels, the newest) — found by both teams' names in its title
+const rgClip = x => { if (!x.h || !x.a) return ''; const H = rMatcher(x.h), A = rMatcher(x.a); const c = RGOALS.find(v => v.at > x.at - 36e5 && H(v.t) && A(v.t)); return c ? c.id : ''; };
+window.remoteGoalNow = () => { if (Date.now() - RGAT > 90e3) rgLoad().catch(() => {}); return JSON.stringify({ g: GOALNOW.map((x, i) => ({ i, t: x.t, at: x.at, v: rgClip(x) })) }); };
 window.remoteGoalReplay = i => { const x = GOALNOW[+i]; if (x && x.f) { if (TV.replayNext) TV.replayNext(); x.f(); } };
-function rOffer(t, logo, f, goal) {
-  if (goal && f) { const g = f; f = () => { if (TV.replayNext) TV.replayNext(); return g(); }; GOALNOW.unshift({ t, at: Date.now(), f: g }); GOALNOW.length = Math.min(GOALNOW.length, 20); }
+function rOffer(t, logo, f, goal, meta) {
+  if (goal && f) { const g = f; f = () => { if (TV.replayNext) TV.replayNext(); return g(); }; GOALNOW.unshift({ t, at: Date.now(), f: g, ...(meta || {}) }); GOALNOW.length = Math.min(GOALNOW.length, 20); }
   OFFERP = f;
   if (goal && TV.playerGoal && TV.playerGoal(t)) return;   // ⚽ over a channel: the card, «حوّل للقناة» ready for OK, 6 s
   if (TV.playerAlert && TV.playerAlert(t)) return;
@@ -4222,13 +4230,14 @@ let RWW = { at: 0, d: null };
 let RLBUSY = 0, RLAT = 0;
 async function remindLoop(force) {
   if (RLBUSY && Date.now() - RLBUSY < 25e3) return;
-  if (!force && Date.now() - RLAT < 15e3) return;
+  if (!force && Date.now() - RLAT < 8e3) return;
   RLBUSY = RLAT = Date.now();
   try { await remindRun(); } finally { RLBUSY = 0; }
 }
 window.remindLoop = remindLoop;
+let HUBAT = 0;
 async function remindRun() {
-  hubPoll();
+  if (Date.now() - HUBAT > 18e3) { HUBAT = Date.now(); hubPoll(); }
   const rem = REMIND();
   if ((MLIST || []).length) bellSync(rem);
   if (!rem.length) { if (TV.playerScoresClear) TV.playerScoresClear(); else if (TV.playerScores) TV.playerScores('[]'); return; }
@@ -4246,18 +4255,30 @@ async function remindRun() {
   const now = {};
   for (const m of watch) {
     const k = mKey(m); if (!rem.includes(k)) continue;
-    const g = (m.score?.home ?? 0) + (m.score?.away ?? 0), p = RSTATE[k]; now[k] = { st: m.status, g };
+    const sh = m.score?.home ?? 0, sa = m.score?.away ?? 0, g = sh + sa, p = RSTATE[k]; now[k] = { st: m.status, g, sc: [sh, sa] };
     const title = `${m.home?.name || ''} ${m.status === 'upcoming' ? '×' : (m.score?.home ?? 0) + ' - ' + (m.score?.away ?? 0)} ${m.away?.name || ''}`;
     const go = () => { const i = (MLIST || []).findIndex(x => mKey(x) === k); if (i >= 0) return playMatch(i); MLIST = [m, ...(MLIST || [])]; playMatch(0); };
     if (!p) continue;
-    const hk = kd => { const x = ID365(m) + ':' + kd; if (Date.now() - (GOALAT[x] || 0) < 120e3) return 0; GOALAT[x] = Date.now(); return 1; };
+    const hk = kd => { const x = (ID365(m) || k) + ':' + kd; if (Date.now() - (GOALAT[x] || 0) < (/^(goal|var)/.test(kd) ? 15 * 60e3 : 120e3)) return 0; GOALAT[x] = Date.now(); return 1; };
     if (p.st === 'upcoming' && m.status === 'live') { if (hk('start')) rOffer('🟢 بدأت: ' + title, m.home?.logo, go); if (!ID365(m)) rPush('🟢 بدأت: ' + title, m.league?.name); }
-    else if (m.status === 'live' && g > p.g) { if (hk('goal')) rOffer('⚽ هدف! ' + title, m.home?.logo, go, 1); if (!ID365(m)) rPush('⚽ هدف! ' + title, m.league?.name); }
+    else if (m.status === 'live' && g !== p.g) {
+      // 🧠 the goal read from the score itself: WHO scored (which side went up), the MINUTE, two goals between two looks, and a goal that goes
+      // back (VAR) — each score line is announced once, however many times it is seen
+      const [ph, pa] = p.sc || [0, 0], dh = sh - ph, da = sa - pa, mn = (m.elapsed != null && m.elapsed !== '' ? ' ' + m.elapsed + '′' : '');
+      if (g < p.g || dh < 0 || da < 0) {
+        if (hk('var' + sh + '-' + sa)) { const i = GOALNOW.findIndex(x => x.k === k); if (i >= 0) GOALNOW.splice(i, 1); rOffer('❌ أُلغي الهدف (VAR): ' + title, m.home?.logo, go); if (!ID365(m)) rPush('❌ أُلغي الهدف (VAR): ' + title, m.league?.name); }
+      } else if (hk('goal' + sh + '-' + sa)) {
+        const who = dh > 0 && da > 0 ? 'هدفان' : (dh > 0 ? m.home?.name : m.away?.name) || '', n = dh + da > 1 && !(dh > 0 && da > 0) ? ' ×' + (dh + da) : '';
+        const t2 = '⚽ هدف ' + (who ? 'لـ' + who : '') + n + '! ' + title + mn;
+        rOffer(t2, m.home?.logo, go, 1, { k, h: m.home?.name || '', a: m.away?.name || '', m: m.elapsed });
+        if (!ID365(m)) rPush(t2, m.league?.name);
+      }
+    }
     else if (p.st === 'live' && m.status === 'finished' && !ID365(m)) rPush('🏁 انتهت: ' + title, m.league?.name);
   }
   RSTATE = { ...RSTATE, ...now };
 }
-setInterval(() => remindLoop(), 20e3);   // (with a channel in front the page sleeps: the player itself calls remindLoop every 20 s)
+setInterval(() => remindLoop(), 10e3);   // (with a channel in front the page sleeps: the player itself calls remindLoop every 20 s)
 window.remoteCall = q => {
   let a = {}; try { a = JSON.parse(q || '{}'); } catch (e) {}
   const out = o => JSON.stringify(o);
