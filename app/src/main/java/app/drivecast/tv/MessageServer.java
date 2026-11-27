@@ -312,14 +312,7 @@ public class MessageServer extends Service {
     /** a recording's file, streamed (HLS: the playlist, then each 6-second piece) */
     private static void replyFile(OutputStream out, java.io.File f) throws Exception {
         String type = f.getName().endsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";
-        out.write(("HTTP/1.1 200 OK
-Content-Type: " + type + "
-Cache-Control: no-store
-Access-Control-Allow-Origin: *
-Content-Length: " + f.length() + "
-Connection: close
-
-").getBytes(StandardCharsets.UTF_8));
+        out.write(("HTTP/1.1 200 OK\r\nContent-Type: " + type + "\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: " + f.length() + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         try (InputStream in = new java.io.FileInputStream(f)) { byte[] b = new byte[64 * 1024]; int n; while ((n = in.read(b)) > 0) out.write(b, 0, n); }
         out.flush();
     }
