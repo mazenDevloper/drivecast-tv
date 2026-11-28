@@ -999,7 +999,8 @@ function couchTick() {
 // 🪶 Lite's home (Google TV's): ⭐ the favourite channels (the Arabic ones, beIN LIVE EVENT · Alwan · Thmanyah · beIN SPORTS first;
 // none Arabic → the first foreign one), the apps (round), today's matches each with an ARABIC carrier (none → Alwan Sport 1)
 const GTVPRI = [/bein.*live.?event/i, /alwan|[اأ]لوان/i, /thm?a?n[ae]?y?ah?|thmanayh|ثماني/i, /^bein ?sports?/i];
-const gtvArab = c => !!c && (liteOk(c) || isArabChannel(c.name || ''));
+// an Arabic channel by its NAME (an Arabic brand, or written in Arabic) — not by the folder it sits in («Cerezo Osaka - Live Match» sat in an Arabic sports folder)
+const gtvArab = c => !!c && (isArabChannel(c.name || '') || /[؀-ۿ]/.test(c.name || ''));
 const gtvAlwan = () => [...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])].find(c => c && /alwan[\s\-_]*sports?[\s\-_]*1(?!\d)/i.test(c.name || '')) || null;
 let GTVF = [], GTVM = [], GTVSIG = '';
 function gtvFav() {
