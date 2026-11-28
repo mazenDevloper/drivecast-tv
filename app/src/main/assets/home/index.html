@@ -523,7 +523,32 @@ body.ambient .phrase.on{display:block}
 .pill .gold{color:var(--gold)}
 .pill .tx{display:flex;flex-direction:column;gap:var(--s1);min-width:0}.pill .tx span{font-size:var(--t2)}
 /* 📺 the Channels tab: a side menu of the lists, one list beside it (made for a TV box remote) */
-.liteonly{display:none}html.lite .liteonly{display:block}html.lite .fullonly{display:none!important}
+.liteonly{display:none}html.lite .liteonly{display:block}
+/* 🪶 Lite = Google TV's home: the bar (search · tabs · ⚙ the device's own settings), then three rows — favourite channels, apps, matches */
+.gico,#gtv{display:none}
+html.lite body,html.lite .screen{background:#1f2125!important}
+html.lite #gtv{display:flex;flex-direction:column;gap:var(--s2);order:-1;padding-top:var(--s2)}
+html.lite #homeScroll>:not(#gtv){display:none!important}
+html.lite #mSwitch,html.lite .top .wx,html.lite .top .sal,html.lite .top #date,html.lite .top .line,html.lite #cScene{display:none!important}
+html.lite .top .clock{order:9;display:flex;align-items:center;gap:var(--s1)}html.lite .top .clock #time{font-size:var(--t2);font-weight:500;color:#e8eaed}
+html.lite .top .clock::before{content:'DriveCast  |';font-size:var(--t2);font-weight:600;color:#e8eaed;white-space:pre}
+html.lite .tabs{background:#2d3036!important;border:0!important;box-shadow:none!important}html.lite .tab{color:#e8eaed}html.lite .tab.on{background:#e8eaed;color:#202124}
+html.lite .gico{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;border:0;background:none;color:#e8eaed;padding:0}
+html.lite .gico svg{width:28px;height:28px}html.lite .gico:focus{background:#e8eaed;color:#202124;outline:none}
+.gh{margin:0 var(--s1);font-size:var(--t1);font-weight:600;color:#c4c7cc}
+.grow{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s1) var(--s1) var(--s2);scrollbar-width:none}.grow::-webkit-scrollbar{display:none}
+.gcard{flex:none;width:300px;height:170px;border-radius:16px;border:0;background:#2d3036;padding:0;position:relative;overflow:hidden;color:#e8eaed;font-family:inherit;text-align:right}
+.gcard>img{width:100%;height:100%;object-fit:contain;padding:28px 44px;box-sizing:border-box}
+.gcard>span{position:absolute;inset:auto 0 0 0;padding:6px 12px;font-size:var(--t1);background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcard:focus,.gapp:focus{outline:4px solid #fff;outline-offset:3px}
+.gapp{flex:none;width:108px;height:108px;border-radius:50%;border:0;background:#fff;padding:0;overflow:hidden}.gapp img{width:100%;height:100%;object-fit:cover}
+.gapp.ban img{object-fit:contain;padding:14px;box-sizing:border-box}
+.gm{display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px;width:340px}
+.gm .gl{font-size:var(--t1);color:#9aa0a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm .gt{display:flex;align-items:center;justify-content:space-between;gap:var(--s1)}.gm .gt>div{flex:1;min-width:0;text-align:center;font-size:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gm .gt img{display:block;width:44px;height:44px;object-fit:contain;margin:0 auto 4px}.gm .gt>b{font-size:var(--t3);flex:none}
+.gm .gc{font-size:var(--t1);color:#8ab4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm.live .gc{color:#f28b82}
+.gempty{padding:var(--s2) var(--s1);color:#9aa0a6;font-size:var(--t1)}html.lite .fullonly{display:none!important}
 #s-radio .card{width:520px}
 html.noanim *,html.noanim *::before,html.noanim *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition-duration:0s!important}
@@ -674,6 +699,8 @@ body:not(.mode-series):not(.couch) #shSer,body:not(.mode-series) #shMbc{display:
       <button class="tab f" data-page="matches">المباريات</button>
       <button class="tab f" data-page="apps">التطبيقات</button>
       <button class="tab f" data-act="settings">الإعدادات</button>
+      <button class="gico f" data-act="gsearch" aria-label="بحث"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="gico f" data-act="gset" aria-label="إعدادات الجهاز"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </nav>
     <div class="mswitch" id="mSwitch"><button class="f mtab" data-mode="sports">⚽ رياضة<small>11</small></button><button class="f mtab" data-mode="series">📺 مسلسلات<small>22</small></button></div>
     <div><div class="wx" id="wx"></div><div class="sal">اللهم صلِّ وسلّم على نبينا محمد ﷺ</div></div>
@@ -681,6 +708,7 @@ body:not(.mode-series):not(.couch) #shSer,body:not(.mode-series) #shMbc{display:
 
   <div id="nightVeil"></div><div id="numIn"></div><div id="offline" role="status"></div>
   <section class="page on" id="p-home"><div class="scroll" id="homeScroll">
+    <div id="gtv"><h3 class="gh">قنواتك المفضّلة</h3><div class="grow" id="g-fav"><div class="gempty">أجيب قنواتك…</div></div><h3 class="gh">تطبيقاتك</h3><div class="grow" id="g-apps"><div class="gempty">أجيب التطبيقات…</div></div><h3 class="gh">مباريات اليوم</h3><div class="grow" id="g-mt"><div class="gempty">أجيب مباريات اليوم…</div></div></div>
     <div class="heroRow">
       <div class="hero glass" id="heroP">
         <div class="l"><small id="heroSmall">الصلاة القادمة</small><h1 id="next">…</h1><p id="nextSub"></p></div>
@@ -968,7 +996,50 @@ function couchTick() {
   let hijri = ''; try { hijri = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long' }); } catch (e) {}
   const c = $('#cDate'); if (c) c.textContent = d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' }) + (hijri ? ' · ' + hijri : '') + (S('clock', '12') !== '24' ? (d.getHours() < 12 ? ' · ص' : ' · م') : '');
 }
+// 🪶 Lite's home (Google TV's): ⭐ the favourite channels (the Arabic ones, beIN LIVE EVENT · Alwan · Thmanyah · beIN SPORTS first;
+// none Arabic → the first foreign one), the apps (round), today's matches each with an ARABIC carrier (none → Alwan Sport 1)
+const GTVPRI = [/bein.*live.?event/i, /alwan|[اأ]لوان/i, /thm?a?n[ae]?y?ah?|thmanayh|ثماني/i, /^bein ?sports?/i];
+const gtvArab = c => !!c && (liteOk(c) || isArabChannel(c.name || ''));
+const gtvAlwan = () => [...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])].find(c => c && /alwan[\s\-_]*sports?[\s\-_]*1(?!\d)/i.test(c.name || '')) || null;
+let GTVF = [], GTVM = [], GTVSIG = '';
+function gtvFav() {
+  loadFavs();
+  const seen = new Set(), pool = [...MYFAV, ...IFAV].filter(c => c && c.url && !seen.has(favKey(c)) && seen.add(favKey(c)));
+  const rank = c => { const i = GTVPRI.findIndex(r => r.test(c.name || '')); return i < 0 ? 9 : i; };
+  let ar = pool.filter(gtvArab).map((c, i) => [rank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
+  if (!ar.length) ar = pool.length ? [pool[0]] : ILIST.filter(gtvArab).slice(0, 12);
+  if (!ar.length && ILIST.length) ar = [ILIST[0]];
+  return ar.slice(0, 12);
+}
+function gtvCarrier(m) {
+  let a = null; try { a = (matchLinks(m) || []).find(x => x.c && !/^yt-live:/.test(x.c.url || '') && gtvArab(x.c)); } catch (e) {}
+  return a ? a.c : gtvAlwan();
+}
+function gtvUi() {
+  if (!LITE || !$('#gtv')) return;
+  if (!(MLIST || []).length && Date.now() - (gtvUi.mAt || 0) > 5 * 60e3) { gtvUi.mAt = Date.now(); try { loadMatches(); } catch (e) {} }
+  GTVF = gtvFav();
+  GTVM = (MLIST || []).filter(m => m.status !== 'finished' || Date.now() / 1000 - m.timestamp < 3 * 3600).slice(0, 14).map(m => [m, gtvCarrier(m)]);
+  const apps = APPS.slice(0, 14);
+  const sig = GTVF.map(favKey).join() + '|' + apps.map(a => a.pkg).join() + '|' + GTVM.map(([m, c]) => m.id + m.status + (m.score?.home ?? '') + (m.score?.away ?? '') + (c ? c.name : '')).join();
+  if (sig === GTVSIG) return; GTVSIG = sig;
+  const had = document.activeElement, hk = had && had.closest && had.closest('#gtv') ? (had.dataset.gch != null ? 'gch' : had.dataset.gm != null ? 'gm' : 'pkg') : null, hv = hk && had.dataset[hk];
+  $('#g-fav').innerHTML = GTVF.map((c, i) => `<button class="gcard f" data-gch="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span>${esc(c.name)}</span></button>`).join('')
+    || '<div class="gempty">ما فيه قنوات بعد — أضف رابط قائمتك من القنوات</div>';
+  $('#g-apps').innerHTML = apps.map(a => `<button class="gapp f ${a.ico || !a.tv ? '' : 'ban'}" data-pkg="${esc(a.pkg)}" aria-label="${esc(a.label)}"><img src="${a.ico || a.art}" alt=""></button>`).join('') || '<div class="gempty">ما فيه تطبيقات</div>';
+  $('#g-mt').innerHTML = GTVM.map(([m, c], i) => { const live = m.status === 'live', fin = m.status === 'finished';
+    return `<button class="gcard gm f ${live ? 'live' : ''}" data-gm="${i}"><div class="gl">${esc(m.league?.name || '')}</div><div class="gt">
+      <div>${m.home?.logo ? `<img src="${esc(m.home.logo)}" alt="" loading="lazy">` : ''}${esc(m.home?.name || '')}</div>
+      <b>${live || fin ? `${m.score?.home ?? 0}-${m.score?.away ?? 0}` : hm24(m.timestamp)}</b>
+      <div>${m.away?.logo ? `<img src="${esc(m.away.logo)}" alt="" loading="lazy">` : ''}${esc(m.away?.name || '')}</div></div>
+      <div class="gc">${live ? '🔴 ' + (mMin(m) != null ? mMin(m) + '′ · ' : '') : fin ? 'انتهت · ' : ''}${c ? '▶ ' + esc(chEn(c.name)) : 'ما لقيت قناة عربية'}</div></button>`; }).join('')
+    || '<div class="gempty">ما فيه مباريات اليوم</div>';
+  if (hk && hv != null) { const n = $(`#gtv [data-${hk}="${CSS.escape(hv)}"]`); if (n) n.focus({ preventScroll: true }); }
+  else if (!had || had === document.body) $('#gtv .f')?.focus({ preventScroll: true });
+}
+setTimeout(gtvUi, 1500); setInterval(() => { if (LITE && !document.hidden && $('#p-home').classList.contains('on')) gtvUi(); }, 15e3);
 function couchRows() {
+  if (LITE) try { gtvUi(); } catch (e) {}
   if (typeof hlUi === 'function') try { hlUi(); } catch (e) {}
   if (!couchOn()) return;
   const mt = $('#shMt'), vd = $('#shVod');
@@ -2950,7 +3021,7 @@ setInterval(liveRefresh, 60e3);
 // 📺 وضع المسلسلات: the home's channels in this order — MBC 1, Oman's channels, the Quran, MBC's other channels, Dubai's, then the
 // Arabic drama channels; each found in the lists by its name (one that the scan found working first)
 const MODE0 = LITE ? 'series' : 'sport';
-const SERIES = () => S('mode', MODE0) === 'series';
+const SERIES = () => !LITE && S('mode', MODE0) === 'series';   // 🪶 Lite's home is one (Google TV's): no series mode
 const POS5 = [['', 'تلقائي'], ['1', 'الأول'], ['2', 'الثاني'], ['3', 'الثالث'], ['4', 'الرابع'], ['5', 'الخامس']];
 // ↕ the home's sections in the order chosen in the settings (a section not placed keeps its usual place: in وضع المسلسلات the
 // channels and the apps come right under the top row); and only the tabs chosen are shown at the top
@@ -2960,7 +3031,9 @@ function homeOrder() {
   for (const [k, q] of secs) { const el = $(q); if (!el) continue; const v = +S('pos-' + k, '') || def[k]; el.style.order = String(v * 2 + (S('pos-' + k, '') ? 0 : 1)); }
   if ($('#shRec')) $('#shRec').style.order = String(+$('#shLive').style.order || 0);
   for (const t of ['board', 'subs', 'apps', 'quran']) { const b = $(`#tabs [data-page="${t}"]`); if (b) b.hidden = S('tab-' + t, t === 'quran' ? 'on' : 'off') === 'off'; }
-  if (LITE) { const m = $('#tabs [data-page="matches"]'); if (m) m.hidden = SERIES(); const q = $('#tabs [data-page="quran"]'); if (q) q.textContent = '📻 الراديو'; }
+  if (LITE) { const tb = (q, on, t) => { const b = $('#tabs ' + q); if (!b) return; b.hidden = !on; if (t) b.textContent = t; };
+    tb('[data-page="home"]', 1, 'الصفحة الرئيسية'); tb('[data-page="iptv"]', 1, 'القنوات'); tb('[data-page="matches"]', 1, 'المباريات'); tb('[data-page="apps"]', 1, 'تطبيقات');
+    tb('[data-page="quran"]', 0); tb('[data-page="board"]', 0); tb('[data-page="subs"]', 0); tb('[data-act="settings"]', 0); }
 }
 const SERIES_PICKS = [/^MBC ?1\b(?!.*(masr|egypt|usa|iraq))/i, /^Oman TV( \(|$|\s*HD)/i, /^Oman TV (Mubashir|Mubasher|Live)/i, /^Oman TV Cultur/i, /^(Al Quran Al Kareem|Saudi Quran|Quran Kareem|Oman.*Quran)/i,
   /^MBC Drama\b/i, /^MBC ?4\b/i, /^MBC ?5\b/i, /^MBC Masr\b(?! ?2)/i, /^MBC Masr Drama/i, /^MBC Iraq/i, /^MBC ?2\b/i, /^MBC Max/i, /^MBC Action/i, /^MBC ?3\b/i,
@@ -3429,6 +3502,7 @@ function loadApps() {
   APPS.sort((a, b) => (use[b.pkg] || 0) - (use[a.pkg] || 0) || (b.tv - a.tv) || a.label.localeCompare(b.label, 'ar'));
   $('#s-apps').innerHTML = appsHtml(24) ||   // the home: the 24 most used (all 200 were drawn — a heavy page, a slow remote)
     '<div class="empty">لا تطبيقات</div>';
+  setTimeout(() => { try { gtvUi(); } catch (e) {} }, 0);
   $('#s-apps2').innerHTML = appsHtml(200) || '<div class="empty">ما لقيت تطبيقات على الجهاز — افتح «الإعدادات» وجرّب مرة ثانية</div>';
   for (const id of ['#sugg1', '#sugg2']) if ($(id)) $(id).innerHTML = suggestHtml();
 }
@@ -5048,6 +5122,10 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.page) return show(b.dataset.page);
   if (b.dataset.act === 'settings') return settings(true);
+  if (b.dataset.act === 'gset') return TV.settings ? TV.settings() : settings(true);   // ⚙ the device's own settings (long OK: DriveCast's)
+  if (b.dataset.act === 'gsearch') { show('iptv'); setTimeout(() => { const q = $('#s-isearch'); if (q) { q.focus(); q.scrollIntoView({ block: 'center' }); } }, 300); return; }
+  if (b.dataset.gch != null) return playChannel(GTVF, +b.dataset.gch);
+  if (b.dataset.gm != null) { const x = GTVM[+b.dataset.gm]; if (!x) return; if (!x[1]) return toast('ما لقيت قناة عربية تنقل هالمباراة ولا Alwan Sport 1 في قوائمك'); MATCHPLAY = true; return playChannel([x[1]], 0); }
   if (b.dataset.act === 'close') return settings(false);
   if (b.dataset.act === 'system') return TV.settings();
   if (b.dataset.act === 'phone') return settings(true);
@@ -5532,6 +5610,7 @@ function move(dir, full) {
 }
 let HOLD = null, MVF = 0, HOLDS = 0, HOLDL = 0;
 function holdPlay(b) {
+  if (b.dataset.act === 'gset') return settings(true);   // ⚙ long OK: DriveCast's own settings
   if (b.dataset.rec) return recMenu(b.dataset.rec);
   if (b.dataset.epg) return epgMenu(b.dataset.epg);
   if (b.dataset.mg != null) return M3UV.url && mgroupToggle(M3UV.url, b.dataset.mg);
@@ -5705,7 +5784,7 @@ async function ctxDo(k) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && HOLD === 'done') { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the long press's own OK, still held
   if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
-  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.rec || (b.dataset.epg && TV.recAdd) || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
+  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.rec || b.dataset.act === 'gset' || (b.dataset.epg && TV.recAdd) || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
   HOLD = setTimeout(() => { HOLD = 'done'; try { holdPlay(b); } catch (er) {} }, 600);

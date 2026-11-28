@@ -390,7 +390,8 @@ public class HomeActivity extends Activity {
                         boolean banner = art != null;
                         if (art == null) art = ai.loadIcon(pm);
                         out.put(new JSONObject().put("pkg", pkg).put("label", String.valueOf(ai.loadLabel(pm)))
-                                .put("art", png(art, banner ? 320 : 128, banner ? 180 : 128)).put("tv", cat.equals(Intent.CATEGORY_LEANBACK_LAUNCHER)));
+                                .put("art", png(art, banner ? 320 : 128, banner ? 180 : 128)).put("tv", cat.equals(Intent.CATEGORY_LEANBACK_LAUNCHER))
+                                .put("ico", banner ? png(ai.loadIcon(pm), 128, 128) : null));   // 🪶 Lite's round app icons
                     } catch (Exception ignored) {
                     }
                 }
