@@ -526,27 +526,27 @@ body.ambient .phrase.on{display:block}
 .liteonly{display:none}html.lite .liteonly{display:block}
 /* 🪶 Lite = Google TV's home: the bar (search · tabs · ⚙ the device's own settings), then three rows — favourite channels, apps, matches */
 .gico,#gtv{display:none}
-html.lite body,html.lite .screen{background:#1f2125!important}
-html.lite #gtv{display:flex;flex-direction:column;gap:var(--s2);order:-1;padding-top:var(--s2)}
+html.lite body,html.lite .screen{background:linear-gradient(180deg,#18121d 0%,#0e0b13 55%,#09090e 100%)!important}
+html.lite #gtv{display:flex;flex-direction:column;gap:var(--s2);order:-1;padding-top:40px;padding-inline-start:41px}
 html.lite #homeScroll>:not(#gtv){display:none!important}
 html.lite #mSwitch,html.lite .top .wx,html.lite .top .sal,html.lite .top #date,html.lite .top .line,html.lite #cScene{display:none!important}
-html.lite .top .clock{order:9;display:flex;align-items:center;gap:var(--s1)}html.lite .top .clock #time{font-size:var(--t2);font-weight:500;color:#e8eaed}
-html.lite .top .clock::before{content:'DriveCast  |';font-size:var(--t2);font-weight:600;color:#e8eaed;white-space:pre}
-html.lite .tabs{background:#2d3036!important;border:0!important;box-shadow:none!important}html.lite .tab{color:#e8eaed}html.lite .tab.on{background:#e8eaed;color:#202124}
-html.lite .gico{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;border:0;background:none;color:#e8eaed;padding:0}
-html.lite .gico svg{width:28px;height:28px}html.lite .gico:focus{background:#e8eaed;color:#202124;outline:none}
-.gh{margin:0 var(--s1);font-size:var(--t1);font-weight:600;color:#c4c7cc}
-.grow{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s1) var(--s1) var(--s2);scrollbar-width:none}.grow::-webkit-scrollbar{display:none}
-.gcard{flex:none;width:300px;height:170px;border-radius:16px;border:0;background:#2d3036;padding:0;position:relative;overflow:hidden;color:#e8eaed;font-family:inherit;text-align:right}
-.gcard>img{width:100%;height:100%;object-fit:contain;padding:28px 44px;box-sizing:border-box}
+html.lite .top .clock{order:9;display:flex;align-items:center;gap:var(--s1)}html.lite .top .clock #time{font-size:34px;font-weight:400;color:#c8c8c8}
+html.lite .top .clock::before{content:'DriveCast  |';font-size:34px;font-weight:400;color:#c8c8c8;white-space:pre}
+html.lite .tabs{background:#312e3a!important;border:0!important;box-shadow:none!important;padding:8px!important}html.lite .tab{color:#e3e3e3;font-size:30px;font-weight:500;padding:16px 30px}html.lite .tab.on{background:#cfdfed;color:#1f1f1f}
+html.lite .gico{display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;border:0;background:none;color:#e8eaed;padding:0}
+html.lite .gico svg{width:34px;height:34px}html.lite .gico:focus{background:#e8eaed;color:#202124;outline:none}
+.gh{margin:0 var(--s1);font-size:24px;font-weight:500;color:#c4c7c5}
+.grow{display:flex;gap:40px;overflow-x:auto;padding:16px var(--s1) 40px;scrollbar-width:none}#g-apps{gap:32px}.grow::-webkit-scrollbar{display:none}
+.gcard{flex:none;width:391px;height:220px;border-radius:20px;border:0;background:#2a2533;padding:0;position:relative;overflow:hidden;color:#e8eaed;font-family:inherit;text-align:right}
+.gcard>img{width:100%;height:100%;object-fit:contain;padding:22px 40px 40px;box-sizing:border-box}
 .gcard>span{position:absolute;inset:auto 0 0 0;padding:6px 12px;font-size:var(--t1);background:linear-gradient(transparent,rgba(0,0,0,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gcard:focus,.gapp:focus{outline:4px solid #fff;outline-offset:3px}
-.gapp{flex:none;width:108px;height:108px;border-radius:50%;border:0;background:#fff;padding:0;overflow:hidden}.gapp img{width:100%;height:100%;object-fit:cover}
-.gapp.ban img{object-fit:contain;padding:14px;box-sizing:border-box}
-.gm{display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px;width:340px}
+.gapp{flex:none;width:150px;height:150px;border-radius:50%;border:0;background:#fff;padding:0;overflow:hidden}.gapp img{width:100%;height:100%;object-fit:cover}
+.gapp.ban img{object-fit:contain;padding:20px;box-sizing:border-box}
+.gm{display:flex;flex-direction:column;justify-content:space-between;padding:16px 20px;width:391px}
 .gm .gl{font-size:var(--t1);color:#9aa0a6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gm .gt{display:flex;align-items:center;justify-content:space-between;gap:var(--s1)}.gm .gt>div{flex:1;min-width:0;text-align:center;font-size:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gm .gt img{display:block;width:44px;height:44px;object-fit:contain;margin:0 auto 4px}.gm .gt>b{font-size:var(--t3);flex:none}
+.gm .gt img{display:block;width:56px;height:56px;object-fit:contain;margin:0 auto 4px}.gm .gt>b{font-size:var(--t3);flex:none}
 .gm .gc{font-size:var(--t1);color:#8ab4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm.live .gc{color:#f28b82}
 .gempty{padding:var(--s2) var(--s1);color:#9aa0a6;font-size:var(--t1)}html.lite .fullonly{display:none!important}
 #s-radio .card{width:520px}
@@ -560,6 +560,8 @@ html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!importan
 #p-iptv .tvx{display:flex;gap:var(--s3);height:930px;min-height:0}
 #p-iptv .irail{flex:none;width:300px;display:flex;flex-direction:column;gap:var(--s1);overflow:auto;padding:8px 8px 120px;scrollbar-width:none}
 #p-iptv .irail::-webkit-scrollbar{display:none}
+/* ◀▶ the side menu folded to its icons until ▶ from the folders (it opens while it holds the focus) */
+#p-iptv .irail{transition:width .12s}#p-iptv .irail:not(:focus-within){width:92px}#p-iptv .irail:not(:focus-within) .ri{padding:0;justify-content:center}#p-iptv .irail:not(:focus-within) .ri b,#p-iptv .irail:not(:focus-within) .ri small{display:none}
 .ri{flex:none;display:flex;align-items:center;gap:var(--s2);min-height:66px;padding:0 20px;border-radius:var(--r);border:1px solid transparent;background:transparent;color:var(--dim);font-family:inherit;font-size:var(--t2);font-weight:600;text-align:right}
 .ri i{font-style:normal;font-size:var(--t2);width:34px;text-align:center;flex:none}
 .ri i svg,#snav i svg{width:28px;height:28px;display:block;margin:auto;opacity:.9}
@@ -1003,6 +1005,8 @@ const GTVPRI = [/bein.*live.?event/i, /alwan|[اأ]لوان/i, /thm?a?n[ae]?y?ah
 const gtvArab = c => !!c && (isArabChannel(c.name || '') || /[؀-ۿ]/.test(c.name || ''));
 const gtvAlwan = () => [...MYFAV, ...IFAV, ...ILIST, ...(M3UV.all || [])].find(c => c && /alwan[\s\-_]*sports?[\s\-_]*1(?!\d)/i.test(c.name || '')) || null;
 let GTVF = [], GTVM = [], GTVSIG = '';
+const GHIDE = () => { try { return new Set(JSON.parse(S('ghide', '[]')) || []); } catch (e) { return new Set(); } };
+const GORD = () => { try { return JSON.parse(S('gord', '[]')) || []; } catch (e) { return []; } };
 function gtvFav() {
   loadFavs();
   const seen = new Set(), pool = [...MYFAV, ...IFAV].filter(c => c && c.url && !seen.has(favKey(c)) && seen.add(favKey(c)));
@@ -1010,8 +1014,14 @@ function gtvFav() {
   let ar = pool.filter(gtvArab).map((c, i) => [rank(c), i, c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
   if (!ar.length) ar = pool.length ? [pool[0]] : ILIST.filter(gtvArab).slice(0, 12);
   if (!ar.length && ILIST.length) ar = [ILIST[0]];
-  return ar.slice(0, 12);
+  const off = GHIDE(), ord = GORD(), every = [...pool, ...ILIST, ...(M3UV.all || [])];
+  const mine = ord.map(k => every.find(c => c && favKey(c) === k)).filter(c => c && !off.has(favKey(c)));
+  return [...mine, ...ar.filter(c => !ord.includes(favKey(c)) && !off.has(favKey(c)))].slice(0, 24);
 }
+// 📱 the apps row: the user's own order, the ones taken off the home (they stay in «تطبيقات»)
+const GAPPOFF = () => { try { return new Set(JSON.parse(S('gappoff', '[]')) || []); } catch (e) { return new Set(); } };
+const GAPPORD = () => { try { return JSON.parse(S('gappord', '[]')) || []; } catch (e) { return []; } };
+function gtvApps() { const off = GAPPOFF(), ord = GAPPORD(), l = APPS.filter(a => !off.has(a.pkg)); return [...ord.map(p => l.find(a => a.pkg === p)).filter(Boolean), ...l.filter(a => !ord.includes(a.pkg))].slice(0, 24); }
 function gtvCarrier(m) {
   let a = null; try { a = (matchLinks(m) || []).find(x => x.c && !/^yt-live:/.test(x.c.url || '') && gtvArab(x.c)); } catch (e) {}
   return a ? a.c : gtvAlwan();
@@ -1021,11 +1031,11 @@ function gtvUi() {
   if (!(MLIST || []).length && Date.now() - (gtvUi.mAt || 0) > 5 * 60e3) { gtvUi.mAt = Date.now(); try { loadMatches(); } catch (e) {} }
   GTVF = gtvFav();
   GTVM = (MLIST || []).filter(m => m.status !== 'finished' || Date.now() / 1000 - m.timestamp < 3 * 3600).slice(0, 14).map(m => [m, gtvCarrier(m)]);
-  const apps = APPS.slice(0, 14);
+  const apps = gtvApps();
   const sig = GTVF.map(favKey).join() + '|' + apps.map(a => a.pkg).join() + '|' + GTVM.map(([m, c]) => m.id + m.status + (m.score?.home ?? '') + (m.score?.away ?? '') + (c ? c.name : '')).join();
   if (sig === GTVSIG) return; GTVSIG = sig;
-  const had = document.activeElement, hk = had && had.closest && had.closest('#gtv') ? (had.dataset.gch != null ? 'gch' : had.dataset.gm != null ? 'gm' : 'pkg') : null, hv = hk && had.dataset[hk];
-  $('#g-fav').innerHTML = GTVF.map((c, i) => `<button class="gcard f" data-gch="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span>${esc(c.name)}</span></button>`).join('')
+  const had = document.activeElement, inG = had && had.closest && had.closest('#gtv'), hsel = inG ? (had.dataset.ilist ? `[data-ilist="gtv"][data-i="${had.dataset.i}"]` : had.dataset.gm != null ? `[data-gm="${had.dataset.gm}"]` : `[data-pkg="${CSS.escape(had.dataset.pkg || '')}"]`) : null;
+  $('#g-fav').innerHTML = GTVF.map((c, i) => `<button class="gcard f" data-ilist="gtv" data-i="${i}">${c.logo ? `<img src="${esc(c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span>${esc(c.name)}</span></button>`).join('')
     || '<div class="gempty">ما فيه قنوات بعد — أضف رابط قائمتك من القنوات</div>';
   $('#g-apps').innerHTML = apps.map(a => `<button class="gapp f ${a.ico || !a.tv ? '' : 'ban'}" data-pkg="${esc(a.pkg)}" aria-label="${esc(a.label)}"><img src="${a.ico || a.art}" alt=""></button>`).join('') || '<div class="gempty">ما فيه تطبيقات</div>';
   $('#g-mt').innerHTML = GTVM.map(([m, c], i) => { const live = m.status === 'live', fin = m.status === 'finished';
@@ -1035,7 +1045,7 @@ function gtvUi() {
       <div>${m.away?.logo ? `<img src="${esc(m.away.logo)}" alt="" loading="lazy">` : ''}${esc(m.away?.name || '')}</div></div>
       <div class="gc">${live ? '🔴 ' + (mMin(m) != null ? mMin(m) + '′ · ' : '') : fin ? 'انتهت · ' : ''}${c ? '▶ ' + esc(chEn(c.name)) : 'ما لقيت قناة عربية'}</div></button>`; }).join('')
     || '<div class="gempty">ما فيه مباريات اليوم</div>';
-  if (hk && hv != null) { const n = $(`#gtv [data-${hk}="${CSS.escape(hv)}"]`); if (n) n.focus({ preventScroll: true }); }
+  if (hsel) { const n = $('#gtv ' + hsel); if (n) n.focus({ preventScroll: true }); }
   else if (!had || had === document.body) $('#gtv .f')?.focus({ preventScroll: true });
 }
 setTimeout(gtvUi, 1500); setInterval(() => { if (LITE && !document.hidden && $('#p-home').classList.contains('on')) gtvUi(); }, 15e3);
@@ -3100,6 +3110,43 @@ function homeHide(c, off) {
 }
 /** the player's «🏠»: on the home row → off it; not there → back and pinned */
 window.homeFromPlayer = c => { try { const k = favKey(c); if (LIVE.some(x => favKey(x) === k)) homeHide(c); else { homeHide(c, false); if (!isPin(c)) togglePin(c); } iptvUi(); } catch (e) {} };
+// 🔢 the home's channels by number: «أضف للرئيسية برقم…» on any channel (long OK), «غيّر رقمها» on one already there — then the number
+const homeList = () => LITE ? gtvFav() : LIVE;
+function homeAdd(c) {
+  const k = favKey(c);
+  if (LITE) { const off = GHIDE(); off.delete(k); setPref('ghide', JSON.stringify([...off])); const o = GORD(); if (!o.includes(k)) setPref('gord', JSON.stringify([...gtvFav().map(favKey).filter(x => x !== k), k])); GTVSIG = ''; return; }
+  homeHide(c, false); if (!isPin(c)) togglePin(c);
+}
+function homePlace(c, n) {
+  homeAdd(c);
+  setTimeout(() => {
+    if (!LITE) try { liveUi(); } catch (e) {}
+    const k = favKey(c), keys = homeList().map(favKey).filter(x => x !== k); keys.splice(Math.max(0, n - 1), 0, k);
+    if (LITE) { setPref('gord', JSON.stringify(keys)); GTVSIG = ''; gtvUi(); }
+    else { try { localStorage.setItem('homeorder2', JSON.stringify(keys)); } catch (e) {} liveUi(); }
+    toast('🔢 «' + c.name + '» صارت رقم ' + n + ' في الرئيسية');
+  }, 300);
+}
+function numPick(title, max, cb) {
+  max = Math.max(1, Math.min(30, max));
+  CTX = { b: document.activeElement, num: cb }; $('#ctxName').textContent = '🔢 ' + title + ' — اختر رقمه في الرئيسية'; $('#ctxLogo').src = '';
+  $('#ctxBody').innerHTML = '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">' + Array.from({ length: max }, (_, i) => `<button class="f" data-ctx="n${i + 1}" style="justify-content:center;font-size:var(--t2)">${i + 1}</button>`).join('') + '</div>';
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+// 📱 an app (Lite): ▶ open · 🔢 its number on the home · 🗑 off the home / 🏠 back on it
+function appMenu(b) {
+  const pkg = b.dataset.pkg, a = APPS.find(x => x.pkg === pkg); if (!a) return;
+  const on = gtvApps().some(x => x.pkg === pkg);
+  CTX = { b, app: pkg }; $('#ctxName').textContent = a.label; $('#ctxLogo').src = a.ico || a.art || '';
+  const rows = [['aopen', '▶︎', 'افتح'], ['apos', '🔢', on ? 'غيّر رقمه في الرئيسية' : 'أضف للرئيسية برقم…'], on ? ['aoff', '🗑', 'إزالة من الرئيسية'] : ['aon', '🏠', 'أضف إلى الرئيسية']];
+  $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
+  $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
+}
+function appPlace(pkg, n) {
+  const off = GAPPOFF(); off.delete(pkg); setPref('gappoff', JSON.stringify([...off]));
+  const keys = gtvApps().map(a => a.pkg).filter(p => p !== pkg); keys.splice(Math.max(0, n - 1), 0, pkg); setPref('gappord', JSON.stringify(keys));
+  GTVSIG = ''; gtvUi(); toast('🔢 صار رقم ' + n + ' في الرئيسية');
+}
 let HKEYS = '';
 function homeKeysSave() { const v = JSON.stringify(LIVE.map(favKey)); if (v !== HKEYS) { HKEYS = v; setPref('homekeys', v); } }
 
@@ -3222,7 +3269,7 @@ const BIG5 = [
   ['الكوري', /الكوري/, /spotv|coupang/i, 'SPOTV', [FOREIGN(/spotv|coupang|sbs sports|mbc sports|kbs n sports|sky sports/i)]],
 ];
 let B5 = -1, B5LIST = [], B5F = [], TODAYM = [], SPORTS = null;
-const listOf = n => n === 'm3uv' ? M3UV.shown : n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'k4' ? K4 : n === 'pin' ? PINS : n === 'most' ? MOST : window.__shown;
+const listOf = n => n === 'gtv' ? GTVF : n === 'm3uv' ? M3UV.shown : n === 'fav' ? IFAV : n === 'live' ? LIVE : n === 'b5' ? B5LIST : n === 'b5f' ? B5F : n === 'my' ? MYFAV : n === 'ytl' ? YTL : n === 'dyn' ? DYNCH : n === 'gsp' ? GSP : n === 'k4' ? K4 : n === 'pin' ? PINS : n === 'most' ? MOST : window.__shown;
 // 🔴 leagues that stream matches live on YouTube (official channels and broadcasters): searched live-only, every 20 minutes
 const YTLEAGUES = [
   ['الكل', ''], ['الياباني', 'J.League live'], ['الكوري', 'K League live'], ['الأسترالي', 'A-League live'],
@@ -5542,7 +5589,7 @@ function move(dir, full) {
     }
   }
   const inRail = cur.closest && cur.closest('#iRail'), inPane = !inRail && cur.closest && cur.closest('#iPanes');
-  if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) { const c = LITE && $('#s-ilist [data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'center' }); return; } return iRailFocus(); }
+  if (cur.classList.contains('tab') && dir === 'down' && $('#p-iptv').classList.contains('on') && scope === document) { const c = LITE && $('#s-ilist [data-ilist]'); if (c) { c.focus({ preventScroll: true }); c.scrollIntoView({ block: 'center' }); return; } return iEnter(); }   // ▼ into the list: the side menu stays folded until ▶
   if (inRail && scope === document) {   // the side menu: ▲▼ go through it (the list beside shows at once), ◀ goes into the list
     if (dir === 'left') return iEnter();
     if (dir === 'right') return;
@@ -5611,6 +5658,7 @@ function move(dir, full) {
 }
 let HOLD = null, MVF = 0, HOLDS = 0, HOLDL = 0;
 function holdPlay(b) {
+  if (LITE && b.dataset.pkg) return appMenu(b);
   if (b.dataset.act === 'gset') return settings(true);   // ⚙ long OK: DriveCast's own settings
   if (b.dataset.rec) return recMenu(b.dataset.rec);
   if (b.dataset.epg) return epgMenu(b.dataset.epg);
@@ -5633,7 +5681,7 @@ function ctxOpen(b) {
   $('#ctxName').textContent = c.name; $('#ctxLogo').src = c.logo || '';
   const lives = match && SERIES() ? (MLIST || []).map((m, i) => [m, i]).filter(([m]) => m.status === 'live').slice(0, 6).map(([m, i]) => ['live' + i, '⚽', `مباشر: ${m.home?.name || ''} × ${m.away?.name || ''}`]) : [];
   const rows = match ? [...(SERIES() ? [['play', '▶︎', 'شغّل MBC 1'], ...lives] : [['play', '▶︎', 'شغّل القناة الناقلة'], ['ext', '📺', 'في مشغّل آخر'], ['matches', '⚽', 'مباريات اليوم']]), ['mode', SERIES() ? '⚽' : '📺', SERIES() ? 'غيّر إلى وضع الرياضة' : 'غيّر إلى وضع المسلسلات']]
-    : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)'], ['hide', '🗑', 'إزالة من الرئيسية']] : [['home', '🏠', 'أضف إلى الرئيسية']]), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['epg', '✏️', 'اربط دليل البرامج'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
+    : [...(b.dataset.ilist === 'live' ? [['reorder', '↔', 'رتّب قنوات الرئيسية (◀ ▶ ثم OK)'], ['hpos', '🔢', 'غيّر رقمها في الرئيسية'], ['hide', '🗑', 'إزالة من الرئيسية']] : b.dataset.ilist === 'gtv' ? [['hpos', '🔢', 'غيّر رقمها في الرئيسية'], ['hide', '🗑', 'إزالة من الرئيسية']] : [['home', '🏠', 'أضف إلى الرئيسية'], ['hpos', '🔢', 'أضف للرئيسية برقم…']]), ['pin', isPin(c) ? '📌' : '⬆', isPin(c) ? 'إلغاء التثبيت في الأعلى' : 'ثبّت في الأعلى'], ['play', '▶︎', 'شغّل'], ['epg', '✏️', 'اربط دليل البرامج'], ['ext', '📺', 'في مشغّل آخر'], ['fav', isFav(c) ? '☆' : '⭐', isFav(c) ? 'إزالة من المفضّلة' : 'أضف للمفضّلة']];
   $('#ctxBody').innerHTML = rows.map(([k, ic, t]) => `<button class="f" data-ctx="${k}"><i>${ic}</i>${t}</button>`).join('');
   $('#ctx').classList.add('on'); $('#ctxBody .f').focus();
 }
@@ -5753,6 +5801,15 @@ function ctxClose() { $('#ctx').classList.remove('on'); const b = CTX && CTX.b; 
 async function ctxDo(k) {
   const x = CTX; if (!x) return; ctxClose();
   if (x.news) return;
+  if (x.num) { const n = +String(k).replace(/^n/, ''); if (n) x.num(n); return; }
+  if (x.app) {
+    const a = APPS.find(y => y.pkg === x.app); if (!a) return;
+    if (k === 'aopen') return TV.open(a.pkg);
+    if (k === 'apos') { const on = gtvApps().some(y => y.pkg === a.pkg); return numPick(a.label, gtvApps().length + (on ? 0 : 1), n => appPlace(a.pkg, n)); }
+    if (k === 'aoff') { const off = GAPPOFF(); off.add(a.pkg); setPref('gappoff', JSON.stringify([...off])); GTVSIG = ''; gtvUi(); toast('🗑 «' + a.label + '» انشال من الرئيسية — يبقى في «تطبيقات»'); return; }
+    if (k === 'aon') { appPlace(a.pkg, gtvApps().length + 1); return; }
+    return;
+  }
   if (x.rec) { if (k === 'rplay') return recPlay(x.rec); if (k === 'rdel') { TV.recDel(x.rec); toast('🗑 انحذف'); recUi(1); } return; }
   if (x.epgrec) {
     const e = x.epgrec;
@@ -5777,6 +5834,9 @@ async function ctxDo(k) {
   if (k === 'play') return playChannel(x.list, x.i);
   if (k === 'ext') { const c = await resolveChannel(x.c); return TV.external ? TV.external(c.url) : TV.link(c.url); }
   if (k === 'reorder') return reorderStart(x.i);
+  if (k === 'hpos') { const inH = homeList().some(c => favKey(c) === favKey(x.c)); return numPick(x.c.name, homeList().length + (inH ? 0 : 1), n => homePlace(x.c, n)); }
+  if (k === 'hide' && x.list === GTVF) { const off = GHIDE(); off.add(favKey(x.c)); setPref('ghide', JSON.stringify([...off].slice(-300))); GTVSIG = ''; gtvUi(); toast('🗑 «' + x.c.name + '» انشالت من الرئيسية'); return; }
+  if (k === 'home' && LITE) { homeAdd(x.c); gtvUi(); toast('🏠 «' + x.c.name + '» صارت في الرئيسية'); return; }
   if (k === 'hide') { homeHide(x.c); toast('🗑 «' + x.c.name + '» انشالت من الرئيسية — ترجعها من الإعدادات ← الشاشة الرئيسية'); const b = $(`#s-live [data-i="${Math.min(x.i, LIVE.length - 1)}"]`); if (b) b.focus(); return; }
   if (k === 'home') { homeHide(x.c, false); if (!isPin(x.c)) togglePin(x.c); toast('🏠 «' + x.c.name + '» صارت في الرئيسية'); return; }
   if (k === 'pin') { togglePin(x.c); iptvUi(); dynUi(); gspUi(true); favUi(); return; }
@@ -5785,7 +5845,7 @@ async function ctxDo(k) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && HOLD === 'done') { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the long press's own OK, still held
   if (e.key !== 'Enter' || S('hold', 'menu') === 'off' || CTX) return;
-  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.rec || b.dataset.act === 'gset' || (b.dataset.epg && TV.recAdd) || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
+  const b = document.activeElement; if (!b || !b.dataset || !(b.dataset.ilist || b.dataset.rec || b.dataset.act === 'gset' || (LITE && b.dataset.pkg) || (b.dataset.epg && TV.recAdd) || b.dataset.act === 'nextm' || b.dataset.mi != null || (b.dataset.mg != null && b.dataset.mg !== 'all'))) return;
   e.preventDefault(); e.stopImmediatePropagation();
   if (HOLD) return;   // the repeats of an OK being held
   HOLD = setTimeout(() => { HOLD = 'done'; try { holdPlay(b); } catch (er) {} }, 600);
