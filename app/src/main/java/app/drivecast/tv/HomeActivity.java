@@ -104,7 +104,7 @@ public class HomeActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= 26) { web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false); s.setSafeBrowsingEnabled(false); }
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         web.setWebViewClient(new WebViewClient() {
-            @Override public void onPageFinished(WebView v, String u) { final android.view.View sp = splash; if (sp != null) new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { sp.setVisibility(android.view.View.GONE); if (splash == sp) splash = null; }, 700); }
+            @Override public void onPageFinished(WebView v, String u) { new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> coverOff(), 5000); }
             @Override
             public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail d) {
                 Crash.note(HomeActivity.this, "page " + (d.didCrash() ? "crashed" : "stopped to free memory"));
@@ -125,14 +125,54 @@ public class HomeActivity extends Activity {
         web.loadUrl("file:///android_asset/home/index.html");
         // while the page loads (the first start, or after the system took its memory back) a dark «loading» screen instead of black
         android.widget.FrameLayout box = new android.widget.FrameLayout(this); box.setBackgroundColor(0xFF0B1210); box.addView(web);
-        final android.widget.TextView sp = new android.widget.TextView(this); sp.setText("DriveCast TV\nجاري التحميل…"); sp.setTextColor(0xCCFFFFFF); sp.setTextSize(28); sp.setGravity(android.view.Gravity.CENTER); sp.setBackgroundColor(0xFF0B1210);
+        android.view.View sp = null;
+        try { java.io.File f = snapFile(this); if (f.isFile()) { android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(f.getPath()); if (bm != null) { android.widget.ImageView iv = new android.widget.ImageView(this); iv.setScaleType(android.widget.ImageView.ScaleType.FIT_XY); iv.setImageBitmap(bm); sp = iv; } } } catch (Throwable ignored) { }
+        if (sp == null) sp = new Skeleton(this);
         box.addView(sp, new android.widget.FrameLayout.LayoutParams(-1, -1));
-        splash = sp; new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> { if (splash == sp) { sp.setVisibility(android.view.View.GONE); splash = null; } }, 9000);   // never longer than that
+        splash = sp; new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::coverOff, 9000);   // never longer than that
         setContentView(box); quiet(box); web.setSoundEffectsEnabled(false);   // no navigation clicks
         web.requestFocus();
     }
 
     private android.view.View splash;
+    // 🖼 no «loading» screen on Home: the system sometimes takes the page's memory back (a 2 GB box) and the page starts again — meanwhile
+    // the last picture of the home covers it (taken a few seconds after the home settles), so Home looks instant; it fades once the
+    // page has drawn its rows (TV.ready). No picture yet (just installed): Google TV-like empty cards
+    static java.io.File snapFile(android.content.Context c) { return new java.io.File(c.getCacheDir(), "home-cover.jpg"); }
+    private void coverOff() {
+        final android.view.View sp = splash; if (sp == null) return; splash = null;
+        sp.animate().alpha(0f).setDuration(180).withEndAction(() -> { sp.setVisibility(android.view.View.GONE); if (sp instanceof android.widget.ImageView) ((android.widget.ImageView) sp).setImageDrawable(null); }).start();
+        snapSoon(4000);
+    }
+    private void snapSoon(long ms) { new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::snap, ms); }
+    private void snap() {
+        if (front != this || web == null || splash != null || android.os.Build.VERSION.SDK_INT < 26) return;
+        final android.view.View root = getWindow().getDecorView(); int w = root.getWidth(), hh = root.getHeight(); if (w < 100 || hh < 100) return;
+        try {
+            final android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(w / 2, hh / 2, android.graphics.Bitmap.Config.ARGB_8888);
+            android.view.PixelCopy.request(getWindow(), bm, r -> {
+                if (r != android.view.PixelCopy.SUCCESS) { bm.recycle(); return; }
+                new Thread(() -> { java.io.File f = snapFile(this), t = new java.io.File(f.getPath() + ".tmp");
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(t)) { bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 82, o); } catch (Throwable ignored) { }
+                    bm.recycle(); if (t.length() > 0) t.renameTo(f); }, "home-cover").start();
+            }, new android.os.Handler(android.os.Looper.getMainLooper()));
+        } catch (Throwable ignored) { }
+    }
+    /** Google TV's home as empty shapes (1920×1080 measures, scaled): the bar, a row of cards, a row of app circles, a row of cards */
+    static final class Skeleton extends android.view.View {
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        Skeleton(android.content.Context c) { super(c); setBackgroundColor(0xFF120E17); }
+        @Override protected void onDraw(android.graphics.Canvas c) {
+            float k = getWidth() / 1920f; c.save(); c.scale(k, k);
+            p.setColor(0xFF2A2533);
+            c.drawRoundRect(940, 36, 1855, 134, 49, 49, p);   // the bar
+            p.setColor(0xFF221E2A);
+            c.drawRoundRect(1660, 200, 1803, 228, 10, 10, p); c.drawRoundRect(1700, 552, 1803, 580, 10, 10, p); c.drawRoundRect(1660, 830, 1803, 858, 10, 10, p);   // the rows' titles
+            for (int i = 0; i < 5; i++) { float r = 1803 - i * 431; c.drawRoundRect(r - 391, 272, r, 492, 20, 20, p); c.drawRoundRect(r - 391, 900, r, 1120, 20, 20, p); }   // the cards
+            for (int i = 0; i < 11; i++) { float cx = 1803 - 75 - i * 182; c.drawCircle(cx, 695, 75, p); }   // the apps
+            c.restore();
+        }
+    }
     @Override
     protected void onDestroy() {
         if (alive == this) alive = null;
@@ -189,6 +229,7 @@ public class HomeActivity extends Activity {
         if (web == null) makeWeb();
         Access.keep(this);
         if (web != null) web.evaluateJavascript("window.onTvResume && onTvResume()", null);
+        if (splash == null) snapSoon(5000);   // 🖼 the home's picture kept fresh for the next restart
     }
 
     @Override
@@ -668,6 +709,9 @@ public class HomeActivity extends Activity {
         public void playerScores(String j) { runOnUiThread(() -> PlayerActivity.scores(j)); }
         @JavascriptInterface
         public void playerScoresClear() { runOnUiThread(PlayerActivity::clearScores); }
+        /** 🖼 the home is drawn: the cover (the last picture of the home) fades */
+        @JavascriptInterface public void ready() { runOnUiThread(HomeActivity.this::coverOff); }
+
         /** ⏺ «تسجيلاتي»: the list, a guide programme to record ({t,ch,logo,url,s,e}), one deleted, the live 🔔 matches' carriers
          *  (their goals cut into clips), a goal */
         @JavascriptInterface public String recList() { return Recorder.list(HomeActivity.this); }

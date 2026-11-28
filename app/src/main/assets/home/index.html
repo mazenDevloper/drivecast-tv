@@ -1045,6 +1045,7 @@ function gtvUi() {
       <div>${m.away?.logo ? `<img src="${esc(m.away.logo)}" alt="" loading="lazy">` : ''}${esc(m.away?.name || '')}</div></div>
       <div class="gc">${live ? '🔴 ' + (mMin(m) != null ? mMin(m) + '′ · ' : '') : fin ? 'انتهت · ' : ''}${c ? '▶ ' + esc(chEn(c.name)) : 'ما لقيت قناة عربية'}</div></button>`; }).join('')
     || '<div class="gempty">ما فيه مباريات اليوم</div>';
+  if ((GTVF.length || apps.length) && !gtvUi.ready) { gtvUi.ready = 1; try { TV.ready && TV.ready(); } catch (e) {} }   // 🖼 the cover over the restarting page fades
   if (hsel) { const n = $('#gtv ' + hsel); if (n) n.focus({ preventScroll: true }); }
   else if (!had || had === document.body) $('#gtv .f')?.focus({ preventScroll: true });
 }
@@ -3226,6 +3227,7 @@ function liveUi() {
   if (SERIES()) nowUi();
   const was = document.activeElement, keepI = was && was.closest && was.closest('#s-live') ? was.dataset.i : null;
   $('#s-live').innerHTML = LIVE.map((c, i) => liveHtml(c, i)).join('') || '<div class="empty">لا اتصال بالإنترنت</div>';
+  if (LIVE.length && !LITE && !liveUi.ready) { liveUi.ready = 1; setTimeout(() => { try { TV.ready && TV.ready(); } catch (e) {} }, 300); }   // 🖼 the cover fades
   if (keepI != null) { const b = $(`#s-live [data-i="${keepI}"]`) || $('#s-live .ichan'); if (b) b.focus({ preventScroll: true }); }
   else if (window.__first && !LASTKEY && LIVE.length && $('#p-home').classList.contains('on') && (was === document.body || (was && was.matches && was.matches('.tab.on')))) window.__first = 0;   // nothing pressed yet: the first channel again
   if (!window.__first && LIVE.length && $('#p-home').classList.contains('on') && !LASTKEY) { window.__first = 1; const f = $('#s-live .ichan'); if (f) { f.focus({ preventScroll: true }); f.scrollIntoView({ block: 'center', inline: 'nearest' }); } }   // the first selection: the home's first channel
